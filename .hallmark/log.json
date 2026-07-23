@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-07-23",
+    "scope": "app",
+    "macrostructure": "warm editorial — home dashboard + library grid + topic long-document + flashcard stage",
+    "theme": "warm editorial (off-white paper · terracotta accent · Geist Sans + Geist Mono)",
+    "enrichment": "none (typography + ASCII diagram panels)",
+    "brief": "System Design Atlas — redesign after user rejected the dark terminal look. design.md locked at project root.",
+    "note": "Replaced first build (dark terminal-tuned atmospheric) per user feedback: 'looks super shit / generic / dark-green terminal look'. New system: modern-minimal warm editorial, terracotta accent throughout, Geist sans, mono only in diagrams."
+  }
+]

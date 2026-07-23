@@ -1,0 +1,166 @@
+@import "../tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  overflow-x: clip; /* gate 34 — never `hidden` */
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background-color: rgb(var(--paper-rgb));
+  color: rgb(var(--ink-rgb));
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(var(--accent-rgb) / 0.22);
+  color: rgb(var(--ink-rgb));
+}
+
+/* Headings — Geist, roman, tight tracking (gate 38a — no italic). */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  overflow-wrap: anywhere; /* gate 51 */
+  min-width: 0;
+}
+
+/* Focus discipline — visible ring, never animated in. */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--focus-rgb));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Links */
+a {
+  color: rgb(var(--accent-2-rgb));
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a:hover {
+  color: rgb(var(--accent-rgb));
+}
+
+/* Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--rule-rgb)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--rule-rgb));
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------------ */
+/* ASCII diagram block — mono lives HERE, not in the headings.         */
+/* ------------------------------------------------------------------ */
+.diagram {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+  color: rgb(var(--ink-rgb));
+}
+.diagram code,
+.diagram {
+  background: transparent;
+}
+
+/* Prose (rendered markdown body) */
+.prose-atlas {
+  color: rgb(var(--ink-rgb));
+  line-height: 1.7;
+  font-size: var(--text-lg);
+}
+.prose-atlas h2,
+.prose-atlas h3,
+.prose-atlas h4 {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+  color: rgb(var(--ink-rgb));
+  font-family: var(--font-display);
+}
+.prose-atlas h2 { font-size: var(--text-2xl); }
+.prose-atlas h3 { font-size: var(--text-xl); }
+.prose-atlas p,
+.prose-atlas ul,
+.prose-atlas ol {
+  margin-block: var(--space-3);
+  color: rgb(var(--ink-rgb) / 0.9);
+}
+.prose-atlas ul,
+.prose-atlas ol {
+  padding-left: 1.25rem;
+}
+.prose-atlas li {
+  margin-block: var(--space-2);
+}
+.prose-atlas li::marker {
+  color: rgb(var(--accent-rgb));
+}
+.prose-atlas strong {
+  color: rgb(var(--ink-rgb));
+  font-weight: 600;
+}
+.prose-atlas a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgb(var(--accent-rgb) / 0.5);
+}
+.prose-atlas code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: rgb(var(--paper-3-rgb));
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-sm);
+  color: rgb(var(--ink-rgb));
+}
+.prose-atlas pre {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: rgb(var(--paper-2-rgb));
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.prose-atlas pre code {
+  background: none;
+  padding: 0;
+}
+.prose-atlas blockquote {
+  border-left: 3px solid rgb(var(--accent-rgb));
+  padding-left: var(--space-4);
+  color: rgb(var(--ink-2-rgb));
+  font-style: italic;
+}

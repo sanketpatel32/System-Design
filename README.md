@@ -1,59 +1,76 @@
-# System Design — Interview Roadmap
+# System Design Atlas
 
-**300 problems** organized across **24 categories**, arranged in a deliberate learning order.
+An **interactive study companion** to **300 system design topics** — search, read, track your progress, and drill yourself with flashcards. Built with Next.js, TypeScript, and Tailwind CSS, exported as a fast static site.
 
-## 📚 What's Inside
+> Warm editorial theme · terracotta accent · Geist typography.
 
-- **300 markdown files** (`001_*.md` … `300_*.md`), one per topic.
-- Each file has **Requirements**, **Estimation**, **Architecture (ASCII diagram)**, **Data Model**, **APIs**, **Trade-offs**, and a **Key takeaway**.
-- Coverage spans fundamentals, networking, databases, caching, distributed systems, observability, security, full design problems, and low-level design.
-- An indexed **[`000_list.md`](000_list.md)** with every topic hyperlinked and grouped by category.
+## ✨ Features
 
-## 🗂️ Categories
+- **Library** — all 300 topics searchable by title/category, filterable by status and the 24 categories, with a `/` keyboard shortcut to jump to search.
+- **Topic pages** — rendered Markdown with ASCII architecture diagrams (copy-to-clipboard), a sticky table of contents with scrollspy, and a per-topic reading-time estimate.
+- **Progress tracking** — mark topics New / In progress / Done, save favorites, and see your stats on the dashboard. Everything is stored locally in your browser (no account, no server).
+- **Flashcards** — spaced repetition built from every topic's "Key takeaway." Flip with `Space`, rate with `←`/`→`, and missed cards resurface sooner.
+- **Dashboard** — overall completion ring, per-category progress bars, and recently viewed topics.
+- **Fully static** — `next build` exports the whole site to `out/`, hostable on GitHub Pages or any static host.
 
-Open [`000_list.md`](000_list.md) for the full hyperlinked table of contents, or jump straight to a category:
+## 🚀 Quick start
 
-- **System Design Basics** (15 problems)
-- **Back-of-the-Envelope Estimation** (9 problems)
-- **Networking Basics** (13 problems)
-- **API Design** (11 problems)
-- **Load Balancing** (10 problems)
-- **Scaling** (14 problems)
-- **Databases** (21 problems)
-- **Caching** (15 problems)
-- **Message Queues and Event Streaming** (15 problems)
-- **Storage Systems** (11 problems)
-- **CDN and Media Delivery** (9 problems)
-- **Distributed Systems** (17 problems)
-- **Reliability and Fault Tolerance** (14 problems)
-- **Observability** (10 problems)
-- **Security** (14 problems)
-- **Beginner System Design Problems** (12 problems)
-- **Intermediate System Design Problems** (15 problems)
-- **Search and Recommendation Systems** (9 problems)
-- **Location Based Systems** (8 problems)
-- **E-Commerce and Payments** (12 problems)
-- **Data Intensive Systems** (9 problems)
-- **Advanced System Design Problems** (16 problems)
-- **Real-Time Systems** (8 problems)
-- **Low Level Design - Optional but Useful** (13 problems)
-
-## 🚀 How to Use
-
-1. Open [`000_list.md`](000_list.md) and pick a topic.
-2. Click the link to open the `.md` file.
-3. Read the requirements, estimation, architecture, data model, and key takeaways.
-4. Use the **Key takeaway** at the bottom of each file for quick review.
-
-## 📌 Progress Tracking
-
-Copy this checklist into your own notes and tick off problems as you go:
-
-```markdown
-- [ ] 001 — first problem
-- [ ] ... (300 total)
-- [ ] 300 — last problem
+```bash
+npm install
+npm run dev      # http://localhost:3000
 ```
+
+Build a production static export:
+
+```bash
+npm run build    # outputs to out/
+```
+
+## 🧱 Tech stack
+
+| Area        | Choice                                   |
+| ----------- | ---------------------------------------- |
+| Framework   | Next.js 14 (App Router, static export)   |
+| Language    | TypeScript                               |
+| Styling     | Tailwind CSS + CSS custom-property tokens |
+| Markdown    | react-markdown + remark-gfm             |
+| Icons       | lucide-react                             |
+| Fonts       | Geist Sans & Geist Mono                  |
+| Persistence | `localStorage` (no backend)              |
+
+## 🗂️ Project structure
+
+```
+topics/                 # 300 markdown source files (001_*.md … 300_*.md)
+000_list.md             # category-ordered index of every topic
+app/                    # Next.js App Router pages (home, library, dashboard, flashcards, topics/[slug])
+components/             # UI components (TopicCard, FlashcardDeck, DashboardView, …)
+lib/content.ts          # parses topics/*.md into structured data
+lib/progress.ts         # localStorage-backed progress store with cross-tab sync
+tokens.css              # design tokens (color, type, spacing, motion)
+tailwind.config.ts      # Tailwind config wired to the token system
+```
+
+Each topic markdown file follows a consistent structure:
+
+```
+# Title
+> **Category:** Some Category
+---
+(intro)
+### Section
+…
+```ASCII architecture diagram```
+…
+### Key takeaway
+the one-liner to remember
+```
+
+## 📚 What's inside
+
+300 topics across **24 categories**, in a deliberate learning order — from fundamentals (CAP, scalability, latency) through networking, databases, caching, distributed systems, and observability, all the way to full design problems (Twitter, Uber, Kafka, DynamoDB) and low-level design.
+
+Open [`000_list.md`](000_list.md) for the complete hyperlinked table of contents.
 
 ## 🔗 Repository
 
