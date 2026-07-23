@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Bookmark } from "lucide-react";
 import type { Category } from "@/lib/content";
 import { useProgress } from "@/lib/progress";
 import { TopicCard } from "@/components/TopicCard";
@@ -14,7 +14,7 @@ interface LightTopic {
   takeaway: string | null;
 }
 
-type StatusFilter = "all" | "new" | "doing" | "done";
+type StatusFilter = "all" | "new" | "doing" | "done" | "saved";
 
 export function LibraryBrowser({
   topics,
@@ -73,7 +73,11 @@ export function LibraryBrowser({
       if (status !== "all") {
         const s = hydrated ? state.status[t.id] : undefined;
         if (status === "new" && s !== undefined) return false;
-        if (status !== "new" && s !== status) return false;
+        if (status === "saved") {
+          if (!hydrated || !state.favorites.includes(t.id)) return false;
+        } else if (status !== "new" && s !== status) {
+          return false;
+        }
       }
       if (q) {
         const hay = `${t.title} ${t.category} ${t.takeaway ?? ""}`.toLowerCase();
@@ -81,7 +85,7 @@ export function LibraryBrowser({
       }
       return true;
     });
-  }, [topics, categories, cat, status, query, hydrated, state.status]);
+  }, [topics, categories, cat, status, query, hydrated, state.status, state.favorites]);
 
   const activeCat = categories.find((c) => c.slug === cat);
 
@@ -146,14 +150,25 @@ export function LibraryBrowser({
             <span className="text-xs font-medium uppercase tracking-wider text-ink-3">
               status
             </span>
-            {(["all", "new", "doing", "done"] as StatusFilter[]).map((s) => (
-              <FilterChip
-                key={s}
-                active={status === s}
-                onClick={() => setStatus(s)}
-                label={s === "all" ? "any" : s === "doing" ? "in progress" : s}
-              />
-            ))}
+            {(["all", "new", "doing", "done", "saved"] as StatusFilter[]).map(
+              (s) => (
+                <FilterChip
+                  key={s}
+                  active={status === s}
+                  onClick={() => setStatus(s)}
+                  label={
+                    s === "all"
+                      ? "any"
+                      : s === "doing"
+                        ? "in progress"
+                        : s === "saved"
+                          ? "saved"
+                          : s
+                  }
+                  icon={s === "saved" ? <Bookmark size={13} /> : undefined}
+                />
+              )
+            )}
           </div>
         </div>
       </div>
@@ -193,11 +208,13 @@ function FilterChip({
   onClick,
   label,
   count,
+  icon,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
   count?: number;
+  icon?: React.ReactNode;
 }) {
   return (
     <button
@@ -206,6 +223,7 @@ function FilterChip({
       data-active={active}
       className="inline-flex items-center gap-1.5 rounded-full border border-rule bg-paper px-3 py-1 text-sm text-ink-2 transition-colors hover:border-accent/50 hover:text-ink data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-[rgb(var(--accent-ink-rgb))]"
     >
+      {icon}
       {label}
       {count !== undefined && (
         <span className="opacity-60 data-[active=true]:opacity-90">

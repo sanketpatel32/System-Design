@@ -8,6 +8,7 @@ import {
 } from "@/lib/content";
 import { TopicActions } from "@/components/topic/TopicActions";
 import { TopicContent } from "@/components/topic/TopicContent";
+import { ReadingProgress } from "@/components/topic/ReadingProgress";
 
 export function generateStaticParams() {
   return getAllTopics().map((t) => ({ slug: t.slug }));
@@ -28,7 +29,9 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
   const { prev, next } = getTopicNeighbors(topic.id);
 
   return (
-    <article className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
+    <>
+      <ReadingProgress />
+      <article className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
       {/* Breadcrumb */}
       <nav
         aria-label="Breadcrumb"
@@ -110,5 +113,6 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
         )}
       </nav>
     </article>
+    </>
   );
 }

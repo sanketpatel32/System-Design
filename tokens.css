@@ -81,3 +81,62 @@
     --dur-slow: 0ms;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Dark theme — overrides only the color channels; structure unchanged. */
+/* Applied via [data-theme="dark"] on <html>, set pre-paint in layout. */
+/* Same warm editorial feel inverted: dark warm paper, bright ink,      */
+/* a slightly brighter terracotta so the accent still reads.           */
+/* ------------------------------------------------------------------ */
+[data-theme="dark"] {
+  --paper-rgb: 26 23 20;
+  --paper-2-rgb: 34 30 26;
+  --paper-3-rgb: 46 41 36;
+  --rule-rgb: 62 55 48;
+  --rule: rgb(var(--rule-rgb));
+
+  --ink-rgb: 236 232 222;
+  --ink-2-rgb: 178 170 156;
+  --ink-3-rgb: 130 122 108;
+
+  --accent-rgb: 228 124 82;
+  --accent-2-rgb: 238 144 104;
+  --accent-ink-rgb: 26 23 20;
+
+  --warn-rgb: 214 168 90;
+  --ok-rgb: 130 168 110;
+
+  --focus-rgb: 228 124 82;
+}
+
+/* Respect the OS setting when the user hasn't chosen explicitly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --paper-rgb: 26 23 20;
+    --paper-2-rgb: 34 30 26;
+    --paper-3-rgb: 46 41 36;
+    --rule-rgb: 62 55 48;
+    --rule: rgb(var(--rule-rgb));
+
+    --ink-rgb: 236 232 222;
+    --ink-2-rgb: 178 170 156;
+    --ink-3-rgb: 130 122 108;
+
+    --accent-rgb: 228 124 82;
+    --accent-2-rgb: 238 144 104;
+    --accent-ink-rgb: 26 23 20;
+
+    --warn-rgb: 214 168 90;
+    --ok-rgb: 130 168 110;
+
+    --focus-rgb: 228 124 82;
+  }
+}
+
+/* Smooth the color transition when toggling, but never for reduced-motion users. */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition: background-color var(--dur-base) var(--ease-out),
+      color var(--dur-base) var(--ease-out);
+  }
+}
