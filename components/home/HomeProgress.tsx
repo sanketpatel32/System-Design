@@ -10,7 +10,7 @@ export function HomeProgress({ total }: { total: number }) {
     : 0;
 
   return (
-    <div className="flex flex-col items-start justify-center gap-1 bg-paper p-5">
+    <div className="flex flex-col items-start justify-center gap-1 rounded-xl border border-rule bg-paper p-5 elev-xs">
       <div className="flex items-baseline gap-2">
         <ProgressRing done={done} total={total} size={64} stroke={6} />
         <div>

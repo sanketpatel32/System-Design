@@ -27,7 +27,7 @@ export function HomeContinue({ topics }: { topics: Topic[] }) {
   return (
     <Link
       href={`/topics/${target.slug}`}
-      className="group flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-6 transition-colors hover:border-accent/50 hover:bg-paper-3/50"
+      className="lift group flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-6 elev-sm hover:border-accent/50 hover:bg-paper-3/50"
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">

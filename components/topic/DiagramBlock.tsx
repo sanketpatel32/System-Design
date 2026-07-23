@@ -18,7 +18,7 @@ export function DiagramBlock({ code }: { code: string }) {
   }
 
   return (
-    <figure className="my-5 overflow-hidden rounded-xl border border-rule bg-paper-2">
+    <figure className="my-5 overflow-hidden rounded-xl border border-rule bg-paper-2 elev-sm">
       <figcaption className="flex items-center justify-between border-b border-rule bg-paper-3/50 px-4 py-2">
         <span className="text-xs font-medium uppercase tracking-wider text-ink-3">
           diagram

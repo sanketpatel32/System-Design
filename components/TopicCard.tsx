@@ -19,7 +19,7 @@ export function TopicCard({ topic, showCategory = true }: TopicCardProps) {
   return (
     <div
       data-status={status}
-      className="group relative flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-5 transition-colors hover:border-accent/50 hover:bg-paper-3/50 data-[status=done]:border-ok/30"
+      className="lift group relative flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-5 elev-xs hover:border-accent/50 hover:bg-paper-3/50 data-[status=done]:border-ok/30 data-[status=done]:bg-ok/5"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-xs font-medium text-ink-3">

@@ -92,7 +92,7 @@ export function LibraryBrowser({
   return (
     <div>
       {/* Controls */}
-      <div className="sticky top-16 z-30 -mx-5 mb-8 border-b border-rule bg-paper/90 px-5 py-4 backdrop-blur-md sm:mx-0 sm:rounded-xl sm:border sm:px-5">
+      <div className="sticky top-16 z-30 -mx-5 mb-8 border-b border-rule bg-paper/90 px-5 py-4 backdrop-blur-md elev-sm sm:mx-0 sm:rounded-xl sm:border sm:px-5">
         <div className="flex flex-col gap-4">
           <div className="relative">
             <Search
@@ -129,7 +129,9 @@ export function LibraryBrowser({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Categories — horizontal scroll on mobile to avoid a 24-chip wall;
+              wraps naturally on larger screens. */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <FilterChip
               active={cat === "all"}
               onClick={() => setCat("all")}
@@ -221,7 +223,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       data-active={active}
-      className="inline-flex items-center gap-1.5 rounded-full border border-rule bg-paper px-3 py-1 text-sm text-ink-2 transition-colors hover:border-accent/50 hover:text-ink data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-[rgb(var(--accent-ink-rgb))]"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink-2 transition-colors hover:border-accent/50 hover:text-ink data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-[rgb(var(--accent-ink-rgb))]"
     >
       {icon}
       {label}

@@ -133,7 +133,7 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
         >
           {/* Front — question */}
           <div
-            className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-rule bg-paper-2 p-7 [backface-visibility:hidden]"
+            className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-rule bg-paper-2 p-7 elev-lg [backface-visibility:hidden]"
             style={{ transform: "rotateY(0deg)" }}
           >
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
@@ -149,7 +149,7 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
 
           {/* Back — answer */}
           <div
-            className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-accent/40 bg-paper-3 p-7 [backface-visibility:hidden]"
+            className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-accent/40 bg-paper-3 p-7 elev-lg [backface-visibility:hidden]"
             style={{ transform: "rotateY(180deg)" }}
           >
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">

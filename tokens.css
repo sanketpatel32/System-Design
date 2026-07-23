@@ -72,6 +72,13 @@
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 320ms;
+
+  /* elevation — layered, warm-tinted shadows for real depth (not flat borders) */
+  --shadow-xs: 0 1px 2px -1px rgb(51 44 35 / 0.08);
+  --shadow-sm: 0 2px 4px -2px rgb(51 44 35 / 0.06), 0 1px 3px -1px rgb(51 44 35 / 0.08);
+  --shadow-md: 0 6px 16px -8px rgb(51 44 35 / 0.12), 0 2px 6px -3px rgb(51 44 35 / 0.08);
+  --shadow-lg: 0 16px 40px -12px rgb(51 44 35 / 0.18), 0 4px 12px -6px rgb(51 44 35 / 0.1);
+  --ring-accent: 0 0 0 3px rgb(var(--accent-rgb) / 0.15);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -107,9 +114,14 @@
   --ok-rgb: 130 168 110;
 
   --focus-rgb: 228 124 82;
-}
 
-/* Respect the OS setting when the user hasn't chosen explicitly. */
+  /* Darker, deeper shadows read better on dark surfaces; add a faint top glow. */
+  --shadow-xs: 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 2px 4px -2px rgb(0 0 0 / 0.4), 0 1px 3px -1px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 6px 16px -8px rgb(0 0 0 / 0.5), 0 2px 6px -3px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 4px 12px -6px rgb(0 0 0 / 0.4);
+  --ring-accent: 0 0 0 3px rgb(var(--accent-rgb) / 0.22);
+}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --paper-rgb: 26 23 20;

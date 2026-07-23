@@ -152,7 +152,7 @@ export function TopicContent({ topic }: { topic: Topic }) {
           {takeawaySection && topic.takeaway && (
             <aside
               aria-labelledby="takeaway-heading"
-              className="rounded-xl border border-accent/30 bg-accent/5 p-6"
+              className="rounded-xl border border-accent/30 bg-accent/5 p-6 elev-sm"
             >
               <h2
                 id="takeaway-heading"

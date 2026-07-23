@@ -25,7 +25,7 @@ export function SurpriseButton({ slugs }: SurpriseButtonProps) {
     <button
       type="button"
       onClick={surprise}
-      className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink-3/30 bg-transparent px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+      className="lift inline-flex items-center justify-center gap-2 rounded-lg border border-ink-3/30 bg-paper px-5 py-2.5 text-sm font-semibold text-ink elev-xs hover:border-accent hover:text-accent"
     >
       <Shuffle size={16} /> Surprise me
     </button>

@@ -42,7 +42,7 @@ export function DashboardView({
     <div className="space-y-12">
       {/* Top-line stats */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-rule bg-paper-2/60 p-6">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-rule bg-paper-2/60 p-6 elev-sm">
           <ProgressRing done={doneCount} total={totalTopics} size={140} />
           <p className="text-sm text-ink-3">
             <span className="font-semibold text-ink">{doneCount}</span> of{" "}
@@ -94,7 +94,7 @@ export function DashboardView({
               <li key={cat.slug}>
                 <Link
                   href={`/library?cat=${cat.slug}`}
-                  className="group block rounded-xl border border-rule bg-paper-2/40 p-4 transition-colors hover:border-accent/40"
+                  className="lift group block rounded-xl border border-rule bg-paper-2/40 p-4 elev-xs hover:border-accent/40"
                 >
                   <div className="mb-2 flex items-baseline justify-between gap-2">
                     <span className="font-semibold text-ink group-hover:text-accent">
@@ -146,7 +146,7 @@ export function DashboardView({
                 <li key={t!.id}>
                   <Link
                     href={`/topics/${t!.slug}`}
-                    className="group flex items-center justify-between gap-2 rounded-lg border border-rule bg-paper-2/40 px-4 py-2.5 transition-colors hover:border-accent/40"
+                    className="lift group flex items-center justify-between gap-2 rounded-lg border border-rule bg-paper-2/40 px-4 py-2.5 elev-xs hover:border-accent/40"
                   >
                     <span className="truncate text-sm font-medium text-ink group-hover:text-accent">
                       {t!.title}
@@ -213,7 +213,7 @@ function StatBox({
   const toneCls =
     tone === "ok" ? "text-ok" : tone === "warn" ? "text-warn" : "text-accent";
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-rule bg-paper-2/60 p-5">
+    <div className="flex flex-col gap-2 rounded-xl border border-rule bg-paper-2/60 p-5 elev-xs">
       <span className={toneCls} aria-hidden>
         {icon}
       </span>

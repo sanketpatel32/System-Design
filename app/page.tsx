@@ -38,7 +38,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/library"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))] transition-colors hover:bg-accent-2"
+              className="lift inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))] elev-sm hover:elev-md"
             >
               Browse all topics <ArrowRight size={16} />
             </Link>
@@ -53,10 +53,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stat row */}
+      {/* Stat row — elevated tiles with subtle separation (not the dated gap-px) */}
       <section
         aria-label="Overview"
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-rule bg-rule lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4"
       >
         <HomeProgress total={stats.total} />
         <StatTile value={stats.categories} label="categories" />
@@ -97,7 +97,7 @@ export default function HomePage() {
             <li key={cat.slug}>
               <Link
                 href={`/library?cat=${cat.slug}`}
-                className="group flex items-center gap-4 rounded-xl border border-rule bg-paper-2/60 p-4 transition-colors hover:border-accent/50 hover:bg-paper-3/50"
+                className="lift group flex items-center gap-4 rounded-xl border border-rule bg-paper-2/60 p-4 elev-xs hover:border-accent/50 hover:bg-paper-3/50"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-paper-3 font-mono text-sm font-semibold text-ink-2 transition-colors group-hover:bg-accent group-hover:text-[rgb(var(--accent-ink-rgb))]">
                   {String(i + 1).padStart(2, "0")}
@@ -125,7 +125,7 @@ export default function HomePage() {
 
 function StatTile({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col gap-1 bg-paper p-5">
+    <div className="flex flex-col gap-1 rounded-xl border border-rule bg-paper p-5 elev-xs">
       <span className="text-3xl font-bold tracking-tight text-ink">{value}</span>
       <span className="text-xs font-medium uppercase tracking-wider text-ink-3">
         {label}

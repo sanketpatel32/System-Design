@@ -70,7 +70,7 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
         {prev ? (
           <Link
             href={`/topics/${prev.slug}`}
-            className="group flex items-center gap-3 rounded-xl border border-rule bg-paper-2/50 p-4 transition-colors hover:border-accent/50"
+            className="lift group flex items-center gap-3 rounded-xl border border-rule bg-paper-2/50 p-4 elev-xs hover:border-accent/50"
           >
             <ArrowLeft
               size={16}
@@ -92,7 +92,7 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
         {next ? (
           <Link
             href={`/topics/${next.slug}`}
-            className="group flex items-center justify-end gap-3 rounded-xl border border-rule bg-paper-2/50 p-4 text-right transition-colors hover:border-accent/50 sm:col-start-2"
+            className="lift group flex items-center justify-end gap-3 rounded-xl border border-rule bg-paper-2/50 p-4 text-right elev-xs hover:border-accent/50 sm:col-start-2"
           >
             <span className="min-w-0">
               <span className="block text-xs font-medium uppercase tracking-wider text-ink-3">
