@@ -117,9 +117,20 @@ describe("hashArchitecture is stable and order-independent", () => {
   });
 
   it("changes hash when config changes", () => {
-    const g1: ArchitectureGraph = { nodes: [sampleNode("a")], edges: [] };
-    const changed = sampleNode("a");
-    changed.config = { ...changed.config, replicas: 5 };
+    const node = sampleNode("a"); // service config with replicas: 3
+    const g1: ArchitectureGraph = { nodes: [node], edges: [] };
+    const changed: ArchitectureNode = {
+      ...node,
+      config: {
+        kind: "service",
+        replicas: 5, // changed from 3
+        baseCapacityRpsPerReplica: 80,
+        baseLatencyMs: 40,
+        timeoutMs: 2000,
+        supportsIdempotency: false,
+        idempotencyKeySource: "none",
+      },
+    };
     const g2: ArchitectureGraph = { nodes: [changed], edges: [] };
     expect(hashArchitecture(g1)).not.toBe(hashArchitecture(g2));
   });

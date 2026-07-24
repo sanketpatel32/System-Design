@@ -652,6 +652,13 @@ export interface RunSimulationCommand {
   type: "RUN_SIMULATION";
   meta: CommandMetadata;
   seed: string;
+  /**
+   * The precomputed simulation run. The application layer computes this with
+   * the pure simulation engine (seeded from session + architecture), then
+   * dispatches the command carrying the result. This keeps the reducer pure —
+   * it never calls the simulator itself (spec §12.2, §15.4).
+   */
+  run: SimulationRun;
 }
 
 export interface AcceptSolutionCommand {
