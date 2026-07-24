@@ -714,3 +714,8 @@ export type RankLabel =
 export type Result<T, E> =
   | { ok: true; value: T }
   | { ok: false; error: E };
+
+// Re-exported here so UI components can import everything from one module.
+// The canonical definition lives in errors.ts (no circular dep: errors.ts
+// imports nothing from types.ts at runtime that would cycle).
+export type { GameRuleError } from "./errors";

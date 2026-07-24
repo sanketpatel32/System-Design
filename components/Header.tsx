@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "Home" },
   { href: "/library", label: "Library" },
   { href: "/flashcards", label: "Flashcards" },
+  { href: "/game", label: "Incident Lab" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 
