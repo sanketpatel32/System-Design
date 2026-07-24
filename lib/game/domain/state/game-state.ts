@@ -33,7 +33,10 @@ export type PhaseEvent =
 const TRANSITIONS: Record<GamePhase, Partial<Record<PhaseEvent, GamePhase>>> = {
   LOADING: { CASE_LOADED: "BRIEFING" },
   BRIEFING: { START_CASE: "INVESTIGATION" },
-  INVESTIGATION: { CAN_FORM_HYPOTHESIS: "HYPOTHESIS_READY" },
+  // The player can submit a hypothesis directly from investigation (the
+  // HYPOTHESIS_READY intermediate is optional — spec §3.4 note: "UI may still
+  // allow more investigation"). Both paths lead to DESIGN.
+  INVESTIGATION: { CAN_FORM_HYPOTHESIS: "HYPOTHESIS_READY", SUBMIT_HYPOTHESIS: "DESIGN" },
   HYPOTHESIS_READY: { SUBMIT_HYPOTHESIS: "DESIGN" },
   DESIGN: { RUN_SIMULATION: "SIMULATING" },
   SIMULATING: { SIMULATION_COMPLETE: "OUTCOME_REVIEW" },
