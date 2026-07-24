@@ -4,55 +4,37 @@
 
 ---
 
-Static content = **files that don't change per-request**: images, CSS, JS, fonts, documents.
+Static Content Delivery involves serving **unchanging web assets** (HTML files, CSS stylesheets, JavaScript bundles, images, fonts) to global users with minimal latency and high availability.
 
-### Why CDN it
-- Static content is **cacheable** — perfect for CDN.
-- ~90% of typical web traffic is static.
-- CDN absorbs it → origin load drops 10x.
+### Static Asset Delivery Pipeline
 
-### Cache strategy
 ```
-Static assets:
-  Cache-Control: public, max-age=31536000, immutable
-  (1 year, never revalidate)
-
-  URL contains hash: /app.a1b2c3.js
-  Change content → change hash → new URL → new cache entry
++--------+        1. HTTP GET /static/app.a9b1.js        +---------------+
+| Client | --------------------------------------------> | CDN Edge Node |
++--------+                                               +---------------+
+    ^                                                            |
+    | 4. Return Asset (Cached)                                   | 2. Cache Miss (First Request)
+    +------------------------------------------------------------+
+                                                                 v
+                                                         +---------------+
+                                                         | Origin Store  |
+                                                         | (AWS S3 Bucket|
+                                                         +---------------+
 ```
 
-### Versioned (hashed) URLs
-- Build tools (Webpack, Vite) generate hashes from content.
-- `app.a1b2c3.js` → file content never changes (immutable).
-- New deploy → new hash → new URL.
-- **Infinite TTL**, no invalidation needed.
+### Optimization Checklist Matrix
 
-### Long TTL with revalidation
-```
-Cache-Control: public, max-age=86400
-ETag: "abc123"
-```
-- Cached for 1 day.
-- On expiry, browser sends `If-None-Match: "abc123"`.
-- If unchanged: 304 Not Modified (no body).
-- If changed: 200 + new body.
+| Technique | Implementation Details | Latency Reduction |
+| :--- | :--- | :--- |
+| **Brotli / Gzip Compression**| Compresses text payloads (CSS/JS) at edge | ~70% smaller bandwidth transfer |
+| **HTTP/3 (QUIC)** | Uses UDP multiplexing to eliminate head-of-line blocking | 20-30% faster load on mobile networks |
+| **Long-Term Cache Headers** | Sets `max-age=31536000` on immutable hashed filenames | Zero network requests on repeat visits |
+| **Font Subsetting & Preloading**| Injects `<link rel="preload">` for critical render path fonts | Eliminates Flash of Unstyled Text (FOUT) |
 
-### Static site hosting
-- S3 + CloudFront = standard pattern.
-- Or Cloudflare Pages, Vercel, Netlify.
-- Cheap, fast, scalable.
+### Scalability Considerations
 
-### Compression
-- gzip: 70% reduction.
-- brotli: better than gzip, supported by modern browsers.
-- CDN auto-compresses for clients.
-
-### Image optimization
-- WebP / AVIF: 30-50% smaller than JPEG.
-- Responsive images (srcset) — different sizes per device.
-- Lazy loading — defer offscreen images.
+- **Storage Decoupling**: Static assets should never be served directly from application server disks; upload build artifacts to S3/GCS during CI/CD deploy.
 
 ### Key takeaway
-Static content belongs on a **CDN with long TTL + versioned URLs**. Hash content for immutable
-URLs, set `max-age=31536000, immutable`, and let the CDN cache forever. Update = new hash = new
-URL.
+
+Optimize static content delivery by **serving versioned assets from object storage through a global CDN**, leveraging compression (Brotli) and aggressive browser caching.

@@ -4,41 +4,52 @@
 
 ---
 
-RPS (requests/sec) sizes your app tier, load balancers, and database load.
+Estimating **Requests Per Second (RPS)** or **Queries Per Second (QPS)** converts daily user activity into a continuous throughput metric required to size application compute nodes, load balancers, and database clusters.
 
-### Formula
+### RPS Conversion Pipeline
+
 ```
-RPS = DAU × requests_per_user_per_day / 86400
++-------------------------------------------------------------------------+
+|                        RPS CONVERSION PIPELINE                          |
++-------------------------------------------------------------------------+
+
+  [ Daily Active Users (DAU) ]  ---> (e.g., 100 Million)
+               |
+               v (Requests per user/day ~ 20)
+  [ Total Daily Requests ]      ---> (100M * 20 = 2 Billion requests/day)
+               |
+               v (Divide by 86,400 seconds/day ≈ 100,000 for mental math)
+  [ Average RPS / QPS ]         ---> (2 Billion / 100,000 = 20,000 QPS)
 ```
 
-### Worked example — news feed
-- DAU = 100M
-- Each user opens app 5 times, each open makes 20 API calls
-- = 100 calls/user/day
-- 100M × 100 = 10B calls/day ÷ 86400 = **~116k RPS average**
+### Estimation Constants & Mental Math Cheat Sheet
 
-### Peak multiplier
-Traffic is never flat. Peak is typically **2x–10x** average depending on product:
-| Product type | Peak/Avg ratio |
-|--------------|----------------|
-| B2B SaaS | ~2x (work hours) |
-| Social network | ~3x (evening) |
-| News site | ~5-10x (breaking news) |
-| E-commerce sale | ~20-50x (flash sale) |
+| Metric / Unit | Exact Value | Interview Approximation | Why Use Approximation? |
+| :--- | :--- | :--- | :--- |
+| **Seconds per Day** | 86,400 seconds | **100,000 ($10^5$) seconds** | Simplifies division by orders of magnitude |
+| **Seconds per Month** | 2,592,000 seconds | **2.5 Million ($2.5 \times 10^6$) seconds**| Fast mental math for monthly totals |
+| **1 Million ($10^6$) / 100,000**| 11.57 requests/sec | **10 QPS** | Quick mental baseline |
+| **1 Billion ($10^9$) / 100,000**| 11,574 requests/sec| **10,000 QPS** | Standard enterprise throughput scale |
 
-So 116k avg × 3x = **~350k peak RPS**.
+### Step-by-Step Mathematical Calculation
 
-### Read vs write split
-- Read-heavy (feed): 95% reads, 5% writes.
-- Write-heavy (messaging): closer to 50/50 or write-dominant.
+1. **Calculate Total Daily Volume**:
+   - Given $\text{DAU} = 100\,\text{Million}$
+   - Average user actions per day $= 20$ (e.g., 15 reads, 5 writes)
 
-This decides whether you need read replicas (cheap) or aggressive write scaling (sharding).
+$$\text{Total Daily Requests} = 100\,\text{M} \times 20 = 2\,\text{Billion requests/day}$$
 
-### Instance count
-```
-instances = ceil(peak_RPS / per_instance_RPS)
-```
-A tuned web instance handles ~5k RPS. So 350k peak → ~70 instances, plus N+1 redundancy.
+2. **Convert Daily Volume to Average RPS**:
+
+$$\text{Average RPS} = \frac{\text{Total Requests per Day}}{86,400} \approx \frac{2,000,000,000}{100,000} = 20,000\,\text{RPS}$$
+
+3. **Separate Read RPS vs. Write RPS**:
+   - If Read:Write ratio is $3:1$ (75% reads, 25% writes):
+
+$$\text{Read QPS} = 20,000 \times 0.75 = 15,000\,\text{Read QPS}$$
+
+$$\text{Write QPS} = 20,000 \times 0.25 = 5,000\,\text{Write QPS}$$
 
 ### Key takeaway
-Average RPS tells you cost; **peak RPS** tells you capacity. Always design for the peak.
+
+To calculate Average RPS, convert daily volume by dividing total daily requests by **$100,000$ (86,400 exact)**. Always split total RPS into **Read QPS vs. Write QPS** to properly design database caching and storage layers.

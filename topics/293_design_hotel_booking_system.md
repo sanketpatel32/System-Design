@@ -4,57 +4,39 @@
 
 ---
 
-LLD: model hotel bookings.
+Object-Oriented Low-Level Design (LLD) for a Hotel Booking System managing room availability, room types, dynamic pricing models, check-in workflows, and concurrent reservation handling.
 
-### Requirements
-- Rooms, room types, rates.
-- Book, cancel, check-in, check-out.
-- Pricing by date / season.
+### System Requirements & Inventory Model
+- Manage multi-hotel and multi-room inventory (`Standard`, `Deluxe`, `Suite`).
+- Search available rooms by city, dates, and guest capacity.
+- Perform atomic room reservations to prevent double-booking during concurrent checkouts.
 
-### Classes
+### System Component Diagram
 ```
-class Hotel:
-    rooms[]
-
-class Room:
-    number
-    type  # SINGLE, DOUBLE, SUITE
-    status  # AVAILABLE, BOOKED, OCCUPIED
-
-class Booking:
-    id
-    guest
-    room
-    check_in
-    check_out
-    status  # CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED
-
-class Guest:
-    id
-    name
-    contact
-
-class PricingStrategy:
-    calculate(room, dates) -> money
+[ Guest App ] ---> [ Hotel Search Controller ]
+                            |
+                            v
+               [ Reservation Engine ]
+                            |
+        +-------------------+-------------------+
+        |                                       |
+        v                                       v
+[ Room Availability Inventory ]        [ Dynamic Pricing Strategy ]
+(Dates & Room Type Grid)               (Peak Season / Weekend Multipliers)
+        |                                       |
+        +-------------------+-------------------+
+                            |
+                            v
+               [ Payment Processing Gateway ]
 ```
 
-### Pricing
-- **Base rate** per room type.
-- **Seasonal multipliers** (peak season).
-- **Day-of-week** (weekend premium).
-- Strategy pattern.
-
-### Booking flow
-1. Search availability (date range, type).
-2. Create booking.
-3. Pay deposit.
-4. Check-in → room occupied.
-5. Check-out → settle balance, room available.
-
-### Concurrency
-- Two guests book same room same dates → conflict.
-- Lock room for date range during booking.
+### Class Responsibilities
+| Class | Key Fields | Primary Methods |
+|---|---|---|
+| `Hotel` | `hotelId`, `name`, `location`, `rooms` | `getAvailableRooms(startDate, endDate)` |
+| `Room` | `roomId`, `roomType`, `basePrice`, `status` | `isAvailable(dateRange)`, `markReserved()` |
+| `Booking` | `bookingId`, `guest`, `room`, `startDate`, `endDate` | `confirmBooking()`, `cancelBooking()` |
+| `PricingService` | `pricingStrategy` | `calculateTotalPrice(room, startDate, endDate)` |
 
 ### Key takeaway
-Hotel LLD = Hotel + Room + Booking + Guest + PricingStrategy. Strategy pattern for pricing.
-Lock rooms for date ranges to prevent double-booking.
+Hotel booking LLD isolates room availability state grids from dynamic pricing strategies, using atomic reservation locks to manage concurrent booking requests cleanly.

@@ -4,47 +4,51 @@
 
 ---
 
-Database cache = **the DB's internal cache** of recently accessed pages. Invisible to the
-app, but critical to performance.
+A **Database Cache** is an in-memory buffer pool maintained directly inside a database management system (e.g., MySQL InnoDB Buffer Pool, PostgreSQL Shared Buffers). It caches index pages and data rows in RAM to avoid expensive disk I/O operations during query execution.
 
-### Postgres: shared_buffers
-- A pool of shared memory holding recently accessed 8KB pages.
-- Default: 25% of system RAM (tune higher for DB-dedicated boxes).
-- Hit rate target: > 99%.
-```sql
-SHOW shared_buffers;
+### Database memory architecture
+
+```
+                           +------------------------+
+                           |  Incoming SQL Query    |
+                           +------------------------+
+                                       |
+                                       v
+                           +------------------------+
+                           | Query Execution Engine |
+                           +------------------------+
+                                       |
+                                       v
+                           +------------------------+
+                           | DB Buffer Pool (RAM)   |
+                           |  [ Hot Data Pages ]    |
+                           +------------------------+
+                                  /          \
+                      Page Hit   /            \ Page Miss
+                                v              v
+                    +---------------+  +---------------+
+                    | Return Page   |  | Read Disk Page|
+                    | from RAM      |  | & Load to RAM |
+                    +---------------+  +---------------+
 ```
 
-### MySQL: InnoDB buffer pool
-- Same idea, called `innodb_buffer_pool_size`.
-- Typically 50-75% of system RAM on DB-dedicated boxes.
+### Core mechanics
 
-### How it works
-1. First query reads page from disk into buffer pool.
-2. Subsequent queries hit the in-memory page (no disk I/O).
-3. Dirty pages flushed to disk periodically (checkpoint).
-4. WAL ensures durability on crash.
+1. **Buffer Pool Management**: Databases read and write data in fixed-size memory blocks called pages (typically 8KB–16KB). Hot pages are retained in RAM using modified LRU eviction algorithms.
+2. **Dirty Page Flushing**: Updates write to the buffer pool in RAM and write-ahead log (WAL) on disk. Modified pages ("dirty pages") are asynchronously flushed to database tables on disk later.
+3. **Query Result Cache vs Buffer Pool**:
+   - *Query Result Cache*: Caches raw SQL output strings. Invalidated whenever underlying tables change. *Deprecated in modern databases due to poor scalability.*
+   - *Buffer Pool Cache*: Caches raw data pages and index nodes. Remains valid across granular row updates.
 
-### Why this matters for design
-- A "fast" DB query is one whose pages are in the buffer pool.
-- **Working set > RAM** → constant disk reads → slow.
-- Scaling vertically (more RAM) often helps more than faster CPU.
+### Buffer Pool vs External Application Cache
 
-### Query cache (deprecated)
-- MySQL had a query cache (results cached by SQL text). Removed in 8.0 — overhead > benefit.
-- Postgres never had one; use app-level caching instead.
-
-### Other DB caches
-- **Redis**: the whole DB is a cache (in-memory).
-- **Cassandra**: row cache, key cache, chunk cache.
-- **MongoDB**: WiredTiger cache (~50% of RAM).
-
-### Tuning
-- Size buffer pool to fit your **working set**.
-- Monitor cache hit ratio (target > 99%).
-- Add RAM if miss rate is high.
+| Feature | Internal Database Buffer Pool | External Application Cache (Redis) |
+| :--- | :--- | :--- |
+| **Location** | Inside database process RAM | Autonomous cache cluster |
+| **Management** | Transparently handled by DB engine | Application code explicitly handles reads/writes |
+| **Network Overhead**| Included within standard DB query hop | Separate network connection |
+| **Granularity** | Page-level binary storage | Object/Key-level domain structures |
 
 ### Key takeaway
-The DB's internal buffer pool is the first line of caching. Size it to fit your working set
-(often 50-75% of RAM). When working set > RAM, queries hit disk and slow down dramatically —
-time to scale vertically or shard.
+
+Database buffer pools minimize disk I/O by caching data and index pages in engine RAM. Size buffer pools adequately (typically 60-80% of server RAM on dedicated database hardware) to maximize page hit ratios.

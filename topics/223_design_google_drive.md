@@ -1,47 +1,58 @@
 # Design Google Drive
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Google Drive: file storage, sync across devices, sharing, collaboration.
+### Overview
+**Google Drive** is a cloud storage and synchronization platform supporting block-level file chunking, delta synchronization, folder hierarchy management, and real-time collaborative file sharing.
 
-### Requirements
-- **Functional**: upload/sync files; share; collaborate (Docs); versioning.
-- **Non-functional**: cross-device sync; real-time collaboration.
+### System Architecture Topology
 
-### Architecture
 ```
-[Client] <-> [Sync service] <-> [Metadata DB]
-              [Block service]   [S3 (blocks)]
-              [Notification (WebSocket)]
++--------+     1. Chunk File & Upload Chunks     +-------------------+
+| Client | ------------------------------------> | Ingestion Gateway |
++--------+                                       +-------------------+
+    ^                                                      |
+    | 5. Sync Notification                                 v 2. Store Chunks
+    |                                            +-------------------+
+    | <----------------------------------------- | Chunk Storage     |
+    |                                            | (S3 / Blob Store) |
+    |                                            +-------------------+
+    |                                                      |
+    v                                                      v 3. Save Metadata
++-------------------+                            +-------------------+
+| Sync Service      | <------------------------- | Metadata DB       |
+| (WebSockets/SSE)  |    4. Trigger Sync Event   | (Spanner / MySQL) |
++-------------------+                            +-------------------+
 ```
 
-### Chunking
-- Files split into **blocks** (4MB).
-- Only changed blocks synced.
-- Hash each block for dedup.
+### Core API Specification
 
-### Sync
-- Client watches filesystem.
-- Sends changed blocks to server.
-- Server pushes notifications to other devices.
+| Endpoint | Method | Request Payload | Response |
+|---|---|---|---|
+| `/api/v1/files/upload/init` | `POST` | `{"file_name": "report.pdf", "size": 10485760}` | `200 OK` -> `{"upload_id": "u_99", "chunk_size": 4194304}` |
+| `/api/v1/files/chunks` | `PUT` | Binary chunk payload + `checksum` | `200 OK` -> `{"chunk_hash": "a8f9..."}` |
+| `/api/v1/files/{id}/sync` | `GET` | `?last_version=v3` | `200 OK` -> `{"delta_chunks": [...]}` |
 
-### Collaboration (Docs)
-- Operational Transform or CRDTs.
-- Edits merged in real-time.
+### Block-Level Chunking & Deduplication
+Large files are split into fixed or variable-sized chunks (e.g., 4 MB blocks).
+- **Chunk Hash**: SHA-256 string generated per chunk.
+- **Global Deduplication**: If SHA-256 hash already exists in storage, skip upload and point metadata to existing chunk byte blob.
 
-### Versioning
-- Snapshot of block list per version.
-- Restore = reassemble blocks.
-
-### Data model
-```
-files (id, owner, name, parent_id)
-blocks (id, hash, size, s3_key)
-file_blocks (file_id, block_id, version, position)
+### Metadata Schema (Google Spanner / Relational Shards)
+```json
+{
+  "file_id": "f_8819a",
+  "user_id": "usr_9981",
+  "file_name": "quarterly_presentation.pptx",
+  "version": 4,
+  "chunks": [
+    { "index": 0, "hash": "sha256_chunk_1a2b", "size": 4194304 },
+    { "index": 1, "hash": "sha256_chunk_3c4d", "size": 4194304 },
+    { "index": 2, "hash": "sha256_chunk_5e6f", "size": 2097152 }
+  ]
+}
 ```
 
 ### Key takeaway
-Google Drive = **block-level sync** (4MB chunks, hash-based dedup) + versioning + real-time
-collaboration (CRDTs). Only changed blocks sync, saving bandwidth.
+Google Drive optimizes bandwidth using **block-level chunking** (4 MB blocks) and **SHA-256 hash deduplication**, notifying client sync agents of file updates via persistent **WebSocket sync connections**.

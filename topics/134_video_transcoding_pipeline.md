@@ -4,77 +4,57 @@
 
 ---
 
-A video transcoding pipeline converts uploaded videos into **multiple formats and
-resolutions** for adaptive streaming across devices.
+A Video Transcoding Pipeline converts raw uploaded videos into **multiple resolutions, codecs, and adaptive streaming formats (HLS / DASH)** to support seamless playback across diverse devices and network speeds.
 
-### Why
-- Different devices need different formats (HLS for iOS, DASH for web/Android).
-- Bandwidth varies → multiple resolutions.
-- Compression reduces storage + bandwidth.
-- DRM / watermarking for protection.
+### Distributed Pipeline Architecture
 
-### Stages
 ```
-1. Ingest       : receive raw upload (multipart to S3).
-2. Trigger      : S3 event -> queue -> transcoder worker.
-3. Analyze      : probe video (codec, duration, resolution).
-4. Transcode    : FFmpeg to multiple resolutions:
-                  - 240p (H.264, low bitrate)
-                  - 480p
-                  - 720p
-                  - 1080p
-                  - 4K (if source supports)
-5. Package      : HLS segments + playlists (.m3u8).
-6. Store        : output to S3 processed bucket.
-7. Notify       : publish "video ready" event.
-8. Distribute   : CDN caches the output.
-```
-
-### Architecture
-```
-[S3 raw] -> [SQS/SNS] -> [Transcoder workers (auto-scaled)]
-                                |
-                                v
-                          [FFmpeg processing]
-                                |
-                                v
-                          [S3 processed + HLS]
-                                |
-                                v
-                          [CDN] -> viewers
++------------------------+      1. Video Created Event      +------------------------+
+| Transcode Queue (Kafka)| -------------------------------> | Pipeline Orchestrated  |
++------------------------+                                  +------------------------+
+                                                                         |
+                                     +-----------------------------------+-----------------------------------+
+                                     | 2. Split Video into 10s Chunks                                        |
+                                     v                                                                       v
+                         +------------------------+                                              +------------------------+
+                         | Transcode Worker A     |                                              | Transcode Worker B     |
+                         | (Chunk 0-10s -> 1080p)|                                              | (Chunk 10-20s -> 720p) |
+                         +------------------------+                                              +------------------------+
+                                     |                                                                       |
+                                     +-----------------------------------+-----------------------------------+
+                                                                         v 3. Merge & Generate Playlists
+                                                            +------------------------+
+                                                            | Manifest Builder       |
+                                                            | (Creates master.m3u8)  |
+                                                            +------------------------+
+                                                                         |
+                                                                         v 4. Sync to Object Store
+                                                            +------------------------+
+                                                            | CDN / S3 Storage       |
+                                                            +------------------------+
 ```
 
-### Worker scaling
-- Transcoding is CPU/GPU-heavy.
-- Autoscale workers on queue depth.
-- Each worker processes one job at a time.
+### Transcoding Pipeline Stages
 
-### FFmpeg basics
-```bash
-ffmpeg -i input.mp4 \
-  -map 0:v -map 0:a \
-  -s:v:0 1920x1080 -b:v:0 5000k \
-  -s:v:1 1280x720  -b:v:1 2500k \
-  -s:v:2 854x480   -b:v:2 1000k \
-  -f hls \
-  -hls_playlist_type vod \
-  -hls_segment_filename "v%v/segment_%03d.ts" \
-  -master_pl_name master.m3u8 \
-  -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \
-  out.m3u8
-```
+1. **Preprocessing & Segmentation**: Demuxes source file and splits raw video into uniform 2-10 second GOP (Group of Pictures) chunks.
+2. **Parallel Chunk Transcoding**: Distributes chunk encoding across GPU worker pools in parallel.
+3. **Adaptive Bitrate Encoding**: Produces profile variants (1080p @ 6Mbps, 720p @ 3Mbps, 480p @ 1Mbps) using codecs like H.264, H.265 (HEVC), or AV1.
+4. **Manifest Assembly**: Generates playlist index files (`.m3u8` for HLS or `.mpd` for DASH) detailing chunk segment URLs.
 
-### Failure handling
-- Transcoder crash → retry, DLQ.
-- Bad input → mark failed, notify user.
-- Partial output → cleanup, retry.
+### Transcoding Profile Matrix
 
-### Optimizations
-- **GPU acceleration** (NVENC) — 5-10x faster.
-- **Two-pass encoding** — better quality at same bitrate.
-- **Per-title encoding** — adapt to content complexity.
-- **Scene-based segmentation** — better seeking.
+| Resolution | Video Bitrate | Audio Bitrate | Frame Rate | Typical Target Device |
+| :--- | :--- | :--- | :--- | :--- |
+| **1080p (FHD)** | 5,000 - 8,000 kbps | 192 kbps | 60 fps | Smart TVs, Desktop Monitors |
+| **720p (HD)** | 2,500 - 4,000 kbps | 128 kbps | 30 fps | Tablets, High-end Mobile |
+| **480p (SD)** | 1,000 - 1,500 kbps | 96 kbps | 30 fps | Standard Mobile Networks |
+| **360p (Low)** | 400 - 700 kbps | 64 kbps | 24 fps | Low Bandwidth 3G Connections |
+
+### Engineering Considerations & Cost Optimization
+
+- **Spot Instance Utilization**: Transcoding is stateless; execute video chunk rendering on low-cost spot instance worker pools.
+- **Priority Queuing**: Process short clips or premium user uploads ahead of batch background archival videos.
 
 ### Key takeaway
-A transcoding pipeline = **queue + auto-scaled FFmpeg workers + HLS output to S3 + CDN**. Use
-GPU for speed, multi-resolution for adaptive streaming, queue + DLQ for reliability.
+
+Speed up video transcoding by **chunking source files into short time segments**, processing chunks across parallel GPU worker pools, and outputting HLS/DASH manifest playlists.

@@ -1,45 +1,45 @@
 # Design A/B Testing Platform
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-Design a platform to run A/B tests: split users into variants, measure outcomes.
+An A/B Testing and Experimentation Platform enables product teams to run concurrent feature experiments, dynamically assign users to variant buckets, and evaluate statistical significance on business metrics.
 
-### Requirements
-- **Functional**: define experiments; assign users; track metrics; significance.
-- **Non-functional**: consistent assignment; accurate metrics.
+### System Requirements
+- **Functional Requirements**:
+  - Deterministically map users to experiment variants (Control vs Treatment).
+  - Support multi-layer experiments (running overlapping, independent tests without bias).
+  - Collect impression and conversion telemetry to compute statistical significance.
+- **Non-Functional Requirements**:
+  - Zero Latency Impact: Local SDK evaluation without synchronous remote network calls.
+  - Deterministic Uniformity: Consistent variant assignment across web, mobile, and server sessions.
+  - Statistical Rigor: Guard against Sample Ratio Mismatch (SRM) and p-hacking.
 
-### Architecture
+### System Architecture
 ```
-[Client] -> [SDK] -> bucket user -> variant
-                       |
-                       v
-                  [Assignment service]
-                  [Event tracking]
-                  [Analysis]
+[ Experiment Management UI ] ---> [ Experiment Rule Publisher ] ---> [ Edge CDN / Local SDK ]
+                                                                             |
+                                                                             v
+[ User Mobile App ] -----------------------------------------> [ Hash Variant Evaluator ]
+                                                               (MurmurHash3 Bucketing)
+                                                                             |
+                                                                             v
+[ Impression Telemetry Stream (Kafka) ] <----------------------- [ Log Variant Assignment ]
+                 |
+                 v
+[ Statistical Evaluation Engine (Spark/ClickHouse) ] ---> [ Real-Time Experiment Dashboard ]
 ```
 
-### Assignment
-- Hash(user_id + experiment_id) % 100 → bucket.
-- Sticky: same user → same variant.
-- Mutually exclusive tests (layers).
+### Bucketing & Layering Mechanism
+Variants are calculated deterministically using salt hashing:
+$$	ext{bucket} = 	ext{MurmurHash3}(	ext{user\_id} + 	ext{experiment\_salt}) \pmod{100}$$
 
-### Metrics
-- **Primary**: the metric you're testing (conversion).
-- **Guardrails**: don't break existing metrics.
-- Compute lift + statistical significance.
-
-### Analysis
-- Compare variants' metric distributions.
-- T-test / sequential testing.
-- Segment analysis (does it help mobile but hurt desktop?).
-
-### Pitfalls
-- **Sample ratio mismatch**: 50/50 split becomes 51/49 → bug.
-- **Multiple comparisons**: too many metrics → false positives.
-- **Interaction effects**: overlapping tests.
+| Experiment Design | Implementation | Use Case |
+|---|---|---|
+| **Single Layer Split** | Divide $100\%$ user base into mutually exclusive slices | Major UI overhauls or risky backend changes. |
+| **Overlapping Layers** | Re-hash user ID with layer-specific salts | Run UI test, search rank test, and pricing test simultaneously on same user base. |
+| **Sequential Testing** | Continuous p-value monitoring (e.g. mSPRT) | Stop winning/failing tests early without inflating Type I error rates. |
 
 ### Key takeaway
-A/B testing = consistent bucketing (hash user ID) + event tracking + significance testing.
-Watch for SRM, multiple comparisons. Guardrail metrics prevent regressions.
+A/B testing platforms use deterministic salted hashing (MurmurHash3) within edge SDKs for instant variant evaluation, piping impression streams to statistical pipeline engines for real-time significance calculation.

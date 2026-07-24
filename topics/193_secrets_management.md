@@ -1,71 +1,44 @@
 # Secrets Management
-
 > **Category:** Security
 
 ---
 
-Secrets management = **securely storing, distributing, and rotating secrets** (passwords,
-API keys, certs, tokens).
+### Overview
+**Secrets Management** refers to the architecture, tools, and processes used to securely store, transmit, rotate, and audit sensitive application credentials, including database passwords, API tokens, TLS private keys, and encryption keys.
 
-### What's a secret
-- Database passwords.
-- API keys (Stripe, GitHub, AWS).
-- TLS private keys.
-- OAuth client secrets.
-- SSH keys.
-- Encryption keys (KMS).
+### Centralized Secrets Architecture (e.g., HashiCorp Vault, AWS Secrets Manager)
 
-### Why dedicated management
-- **Don't commit to git** (leaks).
-- **Don't bake into images** (compromise = leak).
-- **Rotate easily**.
-- **Audit access**.
-- **Centralize**.
-
-### Approaches
-
-#### 1. Secret manager (Vault, AWS SM, GCP SM)
-- Centralized store.
-- App fetches at startup.
-- Auto-rotation.
-- Audit logs.
-- Encryption at rest (KMS).
-
-#### 2. Cloud KMS / HSM
-- For encryption keys (more sensitive than secrets).
-- Hardware-backed (HSM) for highest security.
-- AWS KMS, GCP KMS, Azure Key Vault.
-
-#### 3. Environment variables
-- Simple, but leak (process listings, container inspect).
-- OK for non-sensitive config; bad for secrets.
-
-#### 4. Config files with restricted permissions
-- Works on single host.
-- Doesn't scale, hard to rotate.
-
-### Vault pattern
 ```
-1. App authenticates to Vault (via k8s service account, etc.).
-2. Vault returns secret (with TTL).
-3. App uses secret.
-4. Vault auto-rotates underlying DB password.
++------------------+     1. Authenticate (K8s ServiceAccount / IAM)     +-------------------+
+| App Microservice | -------------------------------------------------> | Vault / Secrets   |
++------------------+                                                    | Engine            |
+        ^                                                               +-------------------+
+        |                                                                         |
+        |                2. Return Ephemeral Secret (TTL 1 hour)                  |
+        +-------------------------------------------------------------------------+
+                                                                                  |
+                                                                                  v 3. Auto-Rotate
+                                                                        +-------------------+
+                                                                        | Target DB / API   |
+                                                                        +-------------------+
 ```
 
-### Best practices
-- **Least privilege**: each app gets only the secrets it needs.
-- **Rotation**: automate where possible.
-- **Audit**: log every access.
-- **Encryption at rest**: KMS / HSM.
-- **No secrets in code / git / images / logs**.
-- **Separate environments**: dev/staging/prod keys.
+### Core Security Principles
 
-### Leaks
-- Scan git history for secrets (git-secrets, trufflehog).
-- Revoke immediately on suspicion.
-- Have an incident response plan.
+| Principle | Description | Implementation |
+|---|---|---|
+| **No Hardcoded Secrets** | Codebases & git repositories must contain zero plaintext secrets | Pre-commit hooks (TruffleHog, Gitleaks) |
+| **Dynamic Ephemeral Secrets** | Generate short-lived credentials per application instance | Vault Database Secrets Engine |
+| **Encryption at Rest & Transit** | Secrets encrypted with Envelope Encryption (KMS Master Key) | AES-256-GCM / Hardware Security Modules |
+| **Strict Audit Logging** | Log every secret access attempt (who, when, which secret) | Tamper-proof SIEM logging |
+
+### Secret Storage Solutions Comparison
+
+| Solution | Storage Model | Auto-Rotation | Use Case |
+|---|---|---|---|
+| **HashiCorp Vault** | Multi-Cloud / On-Prem KMS | Native support for DBs, Cloud IAM | Multi-cloud enterprise infrastructure |
+| **AWS Secrets Manager** | Managed AWS KMS | Integrated AWS Lambda rotation | AWS-native serverless & EC2 apps |
+| **Kubernetes Secrets** | Base64 in `etcd` (Unencrypted by default) | Manual without external operator | Basic local dev (Requires KMS plugin in prod) |
 
 ### Key takeaway
-Use a secret manager (Vault, AWS Secrets Manager). Apps fetch at startup, never hard-code.
-Encrypt at rest with KMS, rotate regularly, audit access. Scan for leaks — assume secrets will
-leak eventually.
+Never store plaintext secrets in source code or environment variables. Implement a central **Secrets Manager** using **dynamic, ephemeral credentials**, automated key rotation, and KMS envelope encryption.

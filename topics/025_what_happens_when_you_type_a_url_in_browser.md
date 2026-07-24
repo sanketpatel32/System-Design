@@ -4,41 +4,48 @@
 
 ---
 
-The classic interview question. Tests whether you understand DNS, TCP, TLS, HTTP, CDNs, and
-browser rendering in one go.
+The classic interview question **"What happens when you type `https://www.example.com` into a browser and press Enter?"** tests end-to-end knowledge across DNS resolution, transport layer handshakes, TLS encryption, HTTP protocol processing, load balancing, server execution, and DOM rendering.
 
-### The full sequence
+### End-to-End Request Execution Timeline
+
 ```
-1. URL parse            browser splits "https://news.example.com/path?q=1"
-                        into scheme, host, port, path, query
-2. HSTS check           browser may force HTTPS via built-in list
-3. DNS resolution       host -> IP (multiple caches below)
-4. Routing              ARP + IP routing to the server's gateway
-5. TCP handshake        SYN, SYN-ACK, ACK  (1 round trip)
-6. TLS handshake        ClientHello, ServerHello, key exchange, Finished (1-2 RTT)
-7. HTTP request         GET /path HTTP/1.1 + headers + cookies
-8. Server processing    LB -> app -> DB/cache -> response
-9. HTTP response        200 OK + headers + body
-10. Browser parsing     HTML -> DOM, CSS -> CSSOM, JS execution
-11. Resource fetch      parallel requests for CSS, JS, images
-12. Render              DOM + CSSOM -> render tree -> layout -> paint
++-------------------------------------------------------------------------+
+|                  END-TO-END URL REQUEST EXECUTION                       |
++-------------------------------------------------------------------------+
+
+  [ Browser ] --( 1. DNS Lookup )--> [ DNS Resolver / Root / TLD ]
+       |                                     | (Returns IP 93.184.216.34)
+       +<------------------------------------+
+       |
+       |--( 2. TCP 3-Way Handshake [SYN, SYN-ACK, ACK] )--> [ Load Balancer ]
+       |--( 3. TLS 1.3 Handshake [ClientHello, ServerHello] )
+       |
+       |--( 4. HTTP GET / Request )------------------------> [ Web Server ]
+       |                                                         |
+       |<--( 5. HTTP 200 OK Response + HTML Payload )------------+
+       |
+  [ 6. DOM Tree Construction + CSSOM + JS Execution + Critical Rendering Path ]
 ```
 
-### DNS resolution (cached at multiple layers)
-1. **Browser cache**
-2. **OS cache** (hosts file + resolver cache)
-3. **Router cache**
-4. **ISP recursive resolver**
-5. **Root → TLD → authoritative nameservers**
+### Complete Execution Phase Breakdown
 
-Each cache hit avoids the next step. Typical DNS lookup: 20-120ms.
+| Execution Step | Protocols & Components | Detailed Action |
+| :--- | :--- | :--- |
+| **1. URL Parsing & HSTS** | Browser Engine, HSTS Preload | Browser parses protocol (`https`), hostname (`www.example.com`), port (`443`), and checks HSTS (HTTP Strict Transport Security) list to enforce HTTPS. |
+| **2. DNS Resolution** | OS Cache, Local Resolver, Root, TLD, Authoritative DNS | Browser checks caches (Browser -> OS -> Router -> ISP). If missing, recursively queries Root (`.`), TLD (`.com`), and Authoritative DNS to resolve IP (`93.184.216.34`). |
+| **3. ARP Resolution** | Address Resolution Protocol (ARP) | OS maps target IP to physical MAC address of the default gateway router via local ARP table lookup or ARP broadcast. |
+| **4. TCP Handshake** | TCP Transport Layer | Client sends `SYN`, Server returns `SYN-ACK`, Client sends `ACK` (establishing 3-way TCP socket connection). |
+| **5. TLS 1.3 Handshake** | TLS/SSL, Public Key Cryptography | Client sends `ClientHello` (cipher suites, key share). Server returns `ServerHello` + Certificate. Symmetric session keys negotiated via ECDHE. |
+| **6. HTTP Request & Server Processing**| HTTP/2 or HTTP/3 (QUIC) | Client sends `GET / HTTP/2`. Reverse proxy / Load balancer routes request to application server. App queries DB/cache and builds HTML response. |
+| **7. DOM Rendering Path**| HTML Parser, CSSOM, JS V8 Engine, Compositor | Browser parses HTML to construct DOM tree, parses CSS for CSSOM tree, executes JS, calculates Layout, and paints pixels to GPU framebuffer. |
 
-### Why it matters for system design
-- Every hop adds **latency** — minimize them.
-- **TLS** is expensive (use HTTP/2 + connection reuse).
-- **CDN** moves steps 6-9 closer to the user.
-- **Preconnect / DNS-prefetch** warm up connections early.
+### Failure Modes & Edge Cases
+
+- **DNS Failure**: Returns `NXDOMAIN` error or connection times out.
+- **TCP Connection Reset**: Server port closed or firewall drops packet (`RST` packet returned).
+- **TLS Certificate Mismatch**: Expired certificate or hostname mismatch throws security warning.
+- **5xx Gateway Timeout**: Reverse proxy cannot reach upstream application backend within timeout limit.
 
 ### Key takeaway
-Know the 12 steps cold. In design interviews, you'll often propose changes ("add a CDN",
-"use HTTP/3") and need to explain which steps they affect.
+
+Understanding the URL lifecycle requires tracing requests across **DNS resolution**, **TCP 3-way handshakes**, **TLS key negotiation**, **HTTP/2 multiplexing**, **Load Balancer routing**, and **browser Critical Rendering Path construction**.

@@ -4,50 +4,47 @@
 
 ---
 
-Client-side cache = **data stored on the user's device** (browser, mobile app) to avoid
-network calls entirely.
+**Client-Side Caching** involves storing application data, static resources (images, JS, CSS), and API responses locally on the user's client device (browser, mobile application) to eliminate unnecessary network round trips to origin servers.
 
-### Where
-- **Browser HTTP cache**: stores responses keyed by URL + headers.
-- **Service Worker / Cache API**: programmable cache in the browser.
-- **localStorage / sessionStorage**: small key-value store.
-- **IndexedDB**: large structured store in the browser.
-- **Mobile app local DB** (SQLite, Room, CoreData).
+### Client-side lookup flow
 
-### HTTP caching headers
-| Header | Meaning |
-|--------|---------|
-| `Cache-Control: max-age=3600` | Cache for 1 hour |
-| `Cache-Control: public` | Any cache (incl. CDN) can store |
-| `Cache-Control: private` | Only browser can store |
-| `Cache-Control: no-cache` | Always revalidate with server |
-| `Cache-Control: no-store` | Never cache |
-| `ETag` | Version hash for revalidation |
-| `Last-Modified` | Timestamp for revalidation |
-| `Vary` | Cache separately per listed header |
-
-### Validation flow
 ```
-1. First request:    GET /img.png -> 200 OK + ETag: "abc"
-2. Second request:   GET /img.png + If-None-Match: "abc"
-3. If unchanged:     304 Not Modified (no body, super fast)
-4. If changed:       200 OK + new body
+                           +------------------------+
+                           | User Action / Request  |
+                           +------------------------+
+                                       |
+                                       v
+                           +------------------------+
+                           |  Check Local Cache     |
+                           | (Memory / Disk / DB)   |
+                           +------------------------+
+                                  /          \
+                      Cache Hit  /            \ Cache Miss
+                                v              v
+                    +---------------+  +---------------+
+                    | Return Local  |  | Network Fetch |
+                    | Payload (<1ms)|  | to Origin API |
+                    +---------------+  +---------------+
 ```
 
-### Trade-offs
-- ✅ **Zero network** → fastest possible.
-- ✅ **Offline support** (with service workers).
-- ✅ **Reduces server load**.
-- ❌ **Stale data** — must design invalidation.
-- ❌ **Hard to debug** (cache state lives on user's device).
-- ❌ **Security** — don't cache sensitive data on shared devices.
+### Mechanisms & standards
 
-### When to use
-- Static assets (images, JS, CSS).
-- User-specific data that doesn't change often (profile, settings).
-- API responses with explicit TTLs.
+1. **HTTP Cache-Control Headers**:
+   - `max-age=<seconds>`: Specifies how long the browser can serve cached content without revalidating.
+   - `no-cache`: Requires revalidating with the origin server (using `ETag` or `If-Modified-Since`) before using cached content.
+   - `no-store`: Prohibits storing responses locally (used for sensitive financial or personal data).
+2. **Conditional Requests (`ETag` / `If-None-Match`)**: Browser passes document hash (`ETag`) to origin. If unchanged, server responds with `304 Not Modified` without re-sending the response body.
+3. **Service Workers & PWA Storage**: Intercept network calls via JavaScript to implement custom caching strategies (e.g., Cache-First, Network-First).
+
+### Client Storage Options Matrix
+
+| Storage Mechanism | Capacity | Persistence | Best Used For |
+| :--- | :--- | :--- | :--- |
+| **HTTP Browser Cache**| $pprox 50-500$ MB | Managed by browser HTTP policies | Static web assets (JS, CSS, Images, Fonts) |
+| **IndexedDB** | High ($>50\%$ free disk) | Permanent until cleared by app | Offline PWA data, complex object stores |
+| **LocalStorage** | $pprox 5$ MB | Permanent until cleared by code | Non-sensitive UI state flags (Theme, Language) |
+| **SessionStorage** | $pprox 5$ MB | Tab session lifetime | Single-tab transient form inputs |
 
 ### Key takeaway
-Use HTTP cache headers (`Cache-Control`, `ETag`) to cache aggressively on the client. Validate
-with 304 Not Modified to keep data fresh without re-downloading. For rich offline experiences,
-layer service workers + IndexedDB.
+
+Client-side caching eliminates network overhead by serving resources directly from user device memory or disk. Use `Cache-Control` headers and Service Workers to balance instant local load times against stale asset risks.

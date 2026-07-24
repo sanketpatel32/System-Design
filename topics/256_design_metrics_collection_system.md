@@ -1,50 +1,41 @@
 # Design Metrics Collection System
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-Design a system to collect metrics from all services (like Prometheus + Datadog).
+A Metrics Collection and Monitoring System gathers, indexes, and visualizes system infrastructure metrics (CPU, memory, request rates, error counts) across thousands of servers and microservices.
 
-### Requirements
-- **Functional**: collect; aggregate; alert; visualize.
-- **Non-functional**: high write throughput; queryable.
+### System Requirements
+- **Functional Requirements**:
+  - Collect time-series metrics from application services and infrastructure hosts.
+  - Support counter, gauge, histogram, and summary metric types with rich key-value tags.
+  - Real-time alerting engine based on metric thresholds and anomaly detection.
+- **Non-Functional Requirements**:
+  - High Ingestion Bandwidth: Ingest millions of data points per second smoothly.
+  - Efficient Compression: Time-series delta-of-delta and XOR compression for timestamps/values.
+  - High Availability: Operational stability during infrastructure outages.
 
-### Architecture
+### System Architecture
 ```
-[Services] expose /metrics -> [Scraper (Prometheus)]
-                                 |
-                                 v
-                            [TSDB (Prometheus)]
-                                 |
-                                 v
-                            [Alertmanager] -> [PagerDuty]
-                            [Grafana]
+[ App Hosts / Pods ] ---> [ OpenTelemetry Agent ] ---> [ Metrics Ingestion Pipeline ]
+                                                                  |
+                             +------------------------------------+------------------------------------+
+                             |                                                                         |
+                             v                                                                         v
+                 [ Alerting Engine (PromQL) ]                                              [ Time-Series Database (TSDB) ]
+                 (PagerDuty / Slack Hooks)                                                 (Prometheus / VictoriaMetrics)
+                                                                                                       |
+                                                                                                       v
+                                                                                           [ Grafana Dashboard UI ]
 ```
 
-### Pull model (Prometheus)
-- Scraper fetches `/metrics` every N seconds.
-- Pros: simple, no app changes for push.
-- Cons: services must be reachable.
-
-### Push model (StatsD, CloudWatch)
-- App pushes metrics.
-- Pros: works behind NAT.
-- Cons: more app code.
-
-### TSDB
-- Time-series optimized.
-- Compresses well (delta encoding).
-- Columns: metric name, labels, timestamp, value.
-
-### Cardinality
-- High cardinality (per-user labels) explodes storage.
-- Keep labels bounded.
-
-### Alerting
-- Threshold rules (`error_rate > 0.01 for 5m`).
-- Alertmanager routes to PagerDuty/Slack.
+### Metric Types & Timeseries Database Engines
+| Metric Type | Description | TSDB Storage Choice | Pros & Cons |
+|---|---|---|---|
+| **Counter** | Monotonically increasing value (e.g. `http_requests_total`) | **Prometheus TSDB** | Highly optimized local TSDB; hard to scale horizontally without Thanos/Cortex. |
+| **Gauge** | Value that goes up and down (e.g. `memory_usage_bytes`) | **VictoriaMetrics** | Extreme compression ratio; high horizontal scaling efficiency. |
+| **Histogram** | Samples observations into configurable buckets | **TimescaleDB** | PostgreSQL extension; excellent SQL support but higher disk storage footprint. |
 
 ### Key takeaway
-Metrics collection = pull (Prometheus) or push (StatsD) → TSDB → alerting + Grafana dashboards.
-Watch cardinality. Most modern stacks use Prometheus + Grafana.
+Metrics collection systems rely on specialized Time-Series Databases (TSDB) using Gorilla timestamp/value compression and alerting evaluation engines to process high-velocity telemetry streams with low overhead.

@@ -1,57 +1,49 @@
 # Design Configuration Management System
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design a centralized config service: store and serve configs to all services.
+### Overview
+A **Configuration Management System** (e.g., Spring Cloud Config, etcd, Consul) manages dynamic runtime application configurations, feature toggles, and environment properties centrally across distributed microservices.
 
-### Requirements
-- **Functional**: store key-value configs; versioning; per-environment; audit.
-- **Non-functional**: low-latency reads; HA; eventually consistent.
+### Centralized Architecture with Push Notifications
 
-### Architecture
 ```
-[Admin UI] -> [Config Service] -> [DB]
-                                   |
-                                   v
-                              [Cache]
-                                   |
-[Services] <-- SDK poll ----------+
-```
-
-### Features
-- **Per-environment**: dev/staging/prod.
-- **Per-service**: namespace by service.
-- **Versioning**: rollback to previous.
-- **Audit**: who changed what, when.
-- **Schema validation**.
-
-### SDK
-- Cached locally (file + memory).
-- Poll for changes (every 30s).
-- Watch / push for instant updates.
-
-### Data model
-```
-configs:
-  key
-  value (JSON)
-  env
-  service
-  version
-  updated_by
-  updated_at
++-----------------------+     1. Commit Config     +---------------------+
+| Developer / Git Ops   | -----------------------> | Git Repository      |
++-----------------------+                          +---------------------+
+                                                              |
+                                                              v 2. Webhook Event
+                                                   +---------------------+
+                                                   | Config Server       |
+                                                   +---------------------+
+                                                              |
+                                                              v 3. Sync State & Cache
+                                                   +---------------------+
+                                                   | Redis / etcd Cluster|
+                                                   +---------------------+
+                                                              |
+                                                              v 4. Push Dynamic Update (Long Poll / gRPC)
+                                                   +---------------------+
+                                                   | Microservice Nodes  |
+                                                   +---------------------+
 ```
 
-### HA
-- Multi-AZ.
-- Fallback to local cached file if config service down.
-- Never block on config fetch.
+### Configuration Data Storage Comparison
 
-### Real-world
-- Spring Cloud Config, Consul KV, etcd, Zookeeper, AWS AppConfig.
+| Storage Engine | Consistency Model | Watch / Notification Mechanism | Ideal Usage |
+|---|---|---|---|
+| **etcd** | Strong Consistency (Raft consensus) | Native gRPC Long-polling Watchers | Kubernetes cluster config, core infrastructure |
+| **HashiCorp Consul**| Strong Consistency (Raft) | HTTP Long Polling / Event Streams | Service discovery & dynamic key-value store |
+| **Git Backend + Redis**| Eventual Consistency | Webhooks + Memory Cache | Application properties, YAML configuration files |
+
+### Property Hierarchy & Inheritance Matrix
+
+| Level | Precedence | Example |
+|---|---|---|
+| **1. Service Local Override** | Highest | Command line args (`--server.port=8081`) |
+| **2. Environment Specific** | Medium | `application-production.yaml` |
+| **3. Global Service Defaults** | Lowest | `application-default.yaml` |
 
 ### Key takeaway
-Config service = centralized store + SDK with local cache + fallback. Per-env, versioned,
-audited. Services should never hard-fail if config is unreachable — fall back to local cache.
+Centralize configuration management using **etcd** or **Consul** backed by **Git version control**. Provide instant configuration updates to application pods using **gRPC streaming watches** or **long polling**.

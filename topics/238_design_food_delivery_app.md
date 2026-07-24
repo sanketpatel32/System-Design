@@ -1,36 +1,45 @@
 # Design Food Delivery App
-
 > **Category:** Location Based Systems
 
 ---
 
-Design Uber Eats / DoorDash: order food, match delivery driver, track.
+### Overview
+A **Food Delivery App** (e.g., DoorDash, UberEats, Zomato, Swiggy) coordinates a 3-way marketplace: customers placing orders, restaurants fulfilling food preparation, and delivery couriers handling pickup and drop-off.
 
-### Requirements
-- **Functional**: browse restaurants; order; match driver; track delivery; pay.
-- **Non-functional**: real-time tracking; matching.
+### System Architecture & State Machine
 
-### Architecture
-- Similar to Uber + restaurant catalog + order management.
+```
++---------------+     1. Place Order     +-------------------+     2. Assign Order     +-------------------+
+| Customer App  | ---------------------> | Order Gateway     | ----------------------> | Restaurant App    |
++---------------+                        +-------------------+                         +-------------------+
+        ^                                          |                                             |
+        | 6. Live Map Tracking                     | 3. Order Ready                              v
+        |                                          v                                   +-------------------+
+        |                                +-------------------+                         | Food Preparation  |
+        |                                | Matching Engine   |                         +-------------------+
+        |                                +-------------------+                                   |
+        |                                          | 4. Dispatch Courier                         |
+        |                                          v                                             |
+        |                                +-------------------+                                   |
+        +------------------------------- | Courier App       | <---------------------------------+
+                                         +-------------------+ 5. Pick Up Order
+```
 
-### Components
-- **Restaurant service**: catalog, menu.
-- **Order service**: order lifecycle.
-- **Matching service**: match driver to order.
-- **Location service**: track driver.
-- **Payment**: charge customer, pay restaurant + driver.
+### Order Lifecycle State Machine
+```
+[ PLACED ] ---> [ CONFIRMED_BY_RESTAURANT ] ---> [ PREPARING ] ---> [ READY_FOR_PICKUP ]
+                                                                             |
+[ DELIVERED ] <--- [ ON_THE_WAY ] <--- [ PICKED_UP ] <-----------------------+
+```
 
-### Order flow
-1. Customer places order.
-2. Restaurant accepts.
-3. Driver matched.
-4. Driver picks up, delivers.
-5. Payment completes.
+### Core Architecture Components
 
-### Matching
-- Nearby available drivers (geohash).
-- Offer to drivers, first accept wins.
+| Component | Engineering Implementation |
+|---|---|
+| **Menu & Catalog** | Cached in **Redis / CDN** for sub-10ms menu renders |
+| **Order Management** | Transactional RDBMS (PostgreSQL) with Saga pattern for payment/stock locks |
+| **Courier Dispatch** | Geohash spatial matching algorithm prioritizing courier proximity and kitchen readiness |
+| **Live Tracking** | WebSocket stream forwarding courier GPS coordinates to customer map view |
 
 ### Key takeaway
-Food delivery = restaurant catalog + order lifecycle + driver matching (Uber-style) + real-time
-tracking + payments. Combines e-commerce with ride-sharing patterns.
+Food Delivery Apps require a **3-way state machine** (Customer, Restaurant, Courier) orchestrated via the **Saga pattern** and coupled with **Geohash spatial dispatch algorithms**.

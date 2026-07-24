@@ -4,49 +4,50 @@
 
 ---
 
-Two transport protocols on top of IP. Choose based on whether you need **reliability** or
-**speed**.
+**TCP (Transmission Control Protocol)** and **UDP (User Datagram Protocol)** are the two fundamental Layer 4 (Transport Layer) protocols powering computer networks. TCP prioritizes **reliability and ordered delivery**, while UDP prioritizes **low latency and minimal overhead**.
 
-### Comparison
-| Feature | TCP | UDP |
-|---------|-----|-----|
-| Connection | Yes (handshake) | No (stateless) |
-| Reliability | Guaranteed delivery | Best-effort |
-| Order | In-order delivery | Out-of-order possible |
-| Flow / congestion control | Yes | No |
-| Overhead | Higher (20+ bytes) | Lower (8 bytes) |
-| Use cases | HTTP, SSH, email | DNS, video, games, VoIP |
+### TCP 3-Way Handshake vs UDP Datagram Transmission
 
-### TCP in depth
 ```
-Handshake:  SYN -> SYN-ACK -> ACK  (1 RTT)
-Data:       each segment ACKed, retransmitted on loss
-Teardown:   FIN -> FIN-ACK
++-------------------------------------------------------------------------+
+|                    TCP vs. UDP TRANSMISSION FLOW                        |
++-------------------------------------------------------------------------+
+
+  TCP (Connection-Oriented, Guaranteed Order, Flow Controlled)
+  Client                             Server
+    |------ SYN (Seq=X) -------------->|
+    |<----- SYN-ACK (Seq=Y, Ack=X+1) --|  (3-Way Handshake setup overhead)
+    |------ ACK (Ack=Y+1) ------------>|
+    |------ Data Packet 1 ------------>|
+    |<----- ACK Packet 1 --------------|
+
+  UDP (Connectionless, Low Overhead, Unreliable Delivery)
+  Client                             Server
+    |------ Datagram 1 --------------->|  (No handshake, no ACK overhead)
+    |------ Datagram 2 --------------->|
 ```
-Features: flow control (don't overwhelm receiver), congestion control (back off on loss —
-Cubic, BBR), ordered byte stream.
 
-### UDP in depth
-- Fire-and-forget datagrams.
-- No retransmission, no ordering.
-- Used by **QUIC** (HTTP/3) which layers reliability on top of UDP for speed.
+### Technical Comparison Matrix
 
-### When to use which
-| Need | Protocol |
-|------|----------|
-| Web pages, APIs | TCP (HTTP/1, HTTP/2) |
-| Modern web, mobile | QUIC over UDP (HTTP/3) |
-| Video streaming | UDP (lost frames are OK) |
-| Voice/video calls | UDP (latency > completeness) |
-| Multiplayer games | UDP |
-| DNS | UDP for small queries, TCP for large |
-| File transfer | TCP |
+| Dimension | TCP (Transmission Control Protocol) | UDP (User Datagram Protocol) |
+| :--- | :--- | :--- |
+| **Connection State** | Connection-oriented (Requires 3-way handshake) | Connectionless (Fires packets without setup) |
+| **Reliability** | Guaranteed delivery via ACKs & retransmissions | Best-effort; lost packets are not retransmitted |
+| **Data Order** | Strict in-order delivery via sequence numbers | Out-of-order packet delivery possible |
+| **Header Size** | 20 to 60 Bytes | Fixed 8 Bytes |
+| **Flow & Congestion Control**| Yes (Sliding window algorithm, slow start) | None (Sends packets at application transmission rate) |
+| **Streaming Style** | Byte stream (Boundary not preserved) | Independent Datagrams (Message boundaries preserved)|
+| **Use Cases** | Web (HTTP/HTTPS), Email (SMTP), Files (FTP), SSH | Live Video Streaming, Voice (VoIP), Gaming, DNS, QUIC |
 
-### Why it matters
-- **TCP overhead** hurts latency-sensitive workloads (a dropped packet stalls everything).
-- **UDP lossiness** requires app-level recovery if you need reliability.
-- **HTTP/3 over QUIC** is the modern answer: UDP's speed + TCP's reliability + 0-RTT handshakes.
+### Key TCP Reliability Algorithms
+
+1. **Sliding Window Flow Control**: Sender scales data transmission based on Receiver Window size (`rwnd`) to prevent overwhelming the client memory.
+2. **Congestion Control (Slow Start, AIMD)**: Sender throttles rate upon packet loss detection to prevent network buffer overflow.
+3. **Head-of-Line (HoL) Blocking**: If TCP Packet 2 is dropped, Packet 3 cannot be processed by application until Packet 2 is retransmitted, causing latency spikes.
+
+### Modern Protocol Evolution: QUIC (HTTP/3)
+HTTP/3 runs on top of **QUIC**, which uses **UDP at Layer 4** with custom zero-round-trip encryption and connection migration, eliminating TCP Head-of-Line blocking while maintaining reliability.
 
 ### Key takeaway
-TCP for correctness, UDP for latency. Modern apps increasingly use **QUIC/HTTP/3** to get the
-best of both.
+
+Use **TCP** when zero data loss and strict ordering are mandatory (HTTP APIs, database connections, financial transactions). Use **UDP** (or HTTP/3 over QUIC) when low latency takes priority over occasional packet loss (video calls, live gaming, DNS lookups).

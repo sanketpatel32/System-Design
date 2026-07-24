@@ -4,29 +4,38 @@
 
 ---
 
-See **#253 Design Ticket Booking System** for HLD.
+Object-Oriented Low-Level Design (LLD) for a Movie Ticket Booking System managing cinema halls, seating layouts, showtimes, seat reservations, and ticket generation.
 
-### LLD-specific
-- Classes: Movie, Show, Theater, Seat, Booking, User.
-- Seat locking during selection.
+### System Requirements & Domain Model
+- Model hierarchy: `City` $ightarrow$ `Cinema` $ightarrow$ `Hall` $ightarrow$ `Show` $ightarrow$ `Seat`.
+- Support seat classification (`REGULAR`, `PREMIUM`, `VIP`).
+- Concurrent seat selection and temporary holding (10-min locking mechanism).
 
-### Classes
+### Class Diagram Architecture
 ```
-class Movie: id, title, duration
-class Theater: id, name, screens[]
-class Screen: id, seats[]
-class Show: id, movie, screen, time
-class Seat: id, show_id, status, held_by, held_until
-class Booking: id, user, show, seats[], total, status
-class User: id, name
++-------------------+          +-------------------+          +-------------------+
+|      Cinema       | 1     *  |        Hall       | 1     *  |       Seat        |
++-------------------+ --------> +-------------------+ --------> +-------------------+
+| - cinemaId: string|          | - hallId: string  |          | - seatId: string  |
+| - halls: List     |          | - seats: List     |          | - row: int        |
++-------------------+          +-------------------+          | - seatType: Type  |
+                                                              +-------------------+
+                                                                        ^
+                                                                        | (for show)
+                                                              +-------------------+
+                                                              |     ShowSeat      |
+                                                              +-------------------+
+                                                              | - price: double   |
+                                                              | - status: Status  |
+                                                              +-------------------+
 ```
 
-### Operations
-- `search_movies()`: list.
-- `select_seats(show, seats[])`: lock seats.
-- `pay(booking)`: process payment.
-- `cancel(booking)`: release seats.
+### Class Responsibilities
+| Class | Attributes | Primary Responsibilities |
+|---|---|---|
+| `Show` | `showId`, `movie`, `startTime`, `hall` | Represents a movie screening at a specific hall and time. |
+| `ShowSeat` | `showSeatId`, `seat`, `price`, `status` | Tracks individual seat status (`AVAILABLE`, `LOCKED`, `BOOKED`) per show. |
+| `BookingController` | `seatLockManager`, `paymentGateway` | Coordinates atomic seat locking and ticket issuance. |
 
 ### Key takeaway
-Movie ticket LLD = Movie / Theater / Show / Seat / Booking classes. Seat holding (held_by,
-held_until) prevents double-booking. State machine on booking.
+Movie ticket booking LLD uses a `ShowSeat` junction object to decouple permanent physical seat layouts (`Seat`) from dynamic showtime availability and transient locking states (`AVAILABLE`, `LOCKED`, `BOOKED`).

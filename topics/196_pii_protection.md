@@ -1,65 +1,38 @@
 # PII Protection
-
 > **Category:** Security
 
 ---
 
-PII (Personally Identifiable Information) = **data that identifies a person**: name, email,
-SSN, phone, IP address, biometrics, location.
+### Overview
+**Personally Identifiable Information (PII)** protection involves technical controls, tokenization, anonymization, and data isolation strategies designed to safeguard sensitive personal data (e.g., SSN, email, phone numbers, home address) and comply with privacy regulations (GDPR, CCPA, HIPAA).
 
-### Why protect
-- **Privacy regulations**: GDPR (EU), CCPA (California), HIPAA (health), PCI (cards).
-- **User trust**: leaks damage brand.
-- **Fines**: GDPR up to 4% of global revenue.
+### PII Data Isolation Architecture (Vault Pattern)
 
-### Principles
-1. **Minimize**: collect only what you need.
-2. **Anonymize / pseudonymize**: replace with IDs where possible.
-3. **Encrypt**: at rest + in transit.
-4. **Access control**: only those who need it.
-5. **Audit**: track who accessed what.
-6. **Retain minimally**: delete when no longer needed.
-7. **Honor deletion**: GDPR right to erasure.
+```
+[ Application Service ] ---> Writes PII Data ---> [ Isolated PII Vault DB ]
+        |                                                 |
+        | Generates Unique Token                           | Encrypts with KMS
+        v                                                 v
+[ General App Database ] <--- Stores Token (UUID) <-------+
+(Contains NO Raw PII)
+```
 
-### Techniques
+### Anonymization & Protection Techniques
 
-#### Pseudonymization
-- Replace PII with a token; mapping stored separately.
-- Reversible with access to vault.
-- Reduces risk if main DB leaks.
+| Technique | Description | Reversible? | Primary Use Case |
+|---|---|---|---|
+| **Tokenization** | Replaces PII with non-sensitive surrogate tokens (UUIDs) | Yes (via Token Vault) | Credit Card Processing (PCI-DSS), User ID masking |
+| **Pseudonymization** | Replaces direct identifiers with artificial identifiers | Yes (with secret key) | Analytics data pipelines, GDPR compliance |
+| **Data Masking** | Hides parts of sensitive fields (e.g., `XXXX-XXXX-1234`) | No | Customer support UI, non-prod environments |
+| **Differential Privacy** | Adds mathematical noise to statistical queries | No | Global analytics without exposing individuals |
 
-#### Anonymization
-- Irreversibly remove identifying info.
-- Hard to do well (re-identification possible with correlated data).
+### Regulatory & Data Lifecycle Requirements
 
-#### Encryption
-- Field-level encryption for sensitive columns.
-- Tokenization for PCI.
-
-#### Data masking
-- Show partial data to support agents (`**** **** **** 1234`).
-
-#### Differential privacy
-- Add noise to aggregates so individuals can't be identified.
-- Used by Apple, Census.
-
-### Access control
-- **RBAC**: only roles that need PII can access.
-- **Audit logs**: track every read.
-- **Just-in-time access**: temporary elevated permissions.
-
-### Lifecycle
-- **Collection**: consent, purpose limitation.
-- **Storage**: encrypted, access-controlled.
-- **Use**: minimal access.
-- **Deletion**: scheduled, on request.
-
-### Compliance
-- Map data flows.
-- Data Processing Agreements with vendors.
-- Data residency (EU data in EU).
-- Breach notification within 72 hours (GDPR).
+| Requirement | Description | Technical Implementation |
+|---|---|---|
+| **Right to be Forgotten** | User request to delete all personal records | Soft deletion -> Async purge job across DBs and search indexes |
+| **Data Residency** | PII must not leave specified geographic boundaries | Multi-region database partitioning (e.g., CockroachDB row-level loc) |
+| **Field-Level Encryption** | Encrypt PII fields in database before write | Client-side envelope encryption with user-scoped KMS keys |
 
 ### Key takeaway
-PII protection = minimize, encrypt, control access, audit, delete. Pseudonymize where you can.
-Comply with regulations (GDPR, CCPA). Treat PII as a liability, not just an asset.
+Protect PII by isolating sensitive fields into a dedicated **PII Vault**, replacing raw records with **tokens** in general application databases, and enforcing **field-level encryption** and strict audit trails.

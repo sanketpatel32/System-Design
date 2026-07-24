@@ -4,58 +4,53 @@
 
 ---
 
-Object storage = **flat namespace of objects (files) in buckets**, accessed via HTTP API.
-Built for internet scale.
+Object storage manages data as **discrete objects in a flat namespace**, combining raw data payloads, customizable metadata, and a unique global key. Data is accessed via HTTP REST APIs.
 
-### How it works
+### System Architecture
+
+Object storage decouples metadata management from data storage nodes. Data is split into chunks, protected with erasure coding, and replicated across storage racks.
+
 ```
-Bucket: my-files
-  /photos/cat.jpg          (object key = path)
-  /photos/dog.jpg
-  /docs/report.pdf
++-----------------------------------------------------------------------------------+
+|                             Client / Web Application                              |
++-----------------------------------------------------------------------------------+
+                                          | HTTP REST (GET / PUT / DELETE)
+                                          v
++-----------------------------------------------------------------------------------+
+|                            API Gateway / Load Balancer                            |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                |                                                   |
+                v                                                   v
+    +-----------------------+                           +-----------------------+
+    | Metadata Service DB   |                           | Storage Nodes (Data)  |
+    | (Key -> Chunk Mapping)|                           | Erasure-Coded Chunks  |
+    +-----------------------+                           +-----------------------+
 ```
-- No real directories — keys just contain slashes.
-- Each object: data + metadata + version + ACL.
-- Access via HTTP: `GET/PUT/DELETE https://bucket.s3.amazonaws.com/key`.
 
-### Properties
-- **HTTP-native**: REST API.
-- **Massive scale**: trillions of objects, exabytes.
-- **Eventually consistent** (mostly strong now in S3).
-- **Durable**: 11 nines (data replicated across AZs).
-- **Cheap**: $0.023/GB/month for S3 standard.
+### Core Abstractions
 
-### Use cases
-- **User uploads** (images, videos, documents).
-- **Backups** and archives.
-- **Static website hosting**.
-- **Data lake** (raw data for analytics).
-- **ML training datasets**.
+- **Bucket**: Top-level container acting as a namespace (e.g., `my-app-media`).
+- **Key**: Unique string identifier representing the object path (e.g., `images/2026/user_101.jpg`).
+- **Object**: Immutable binary payload plus HTTP headers and user metadata.
 
-### Storage classes (lifecycle)
-| Class | Use | Cost |
-|-------|-----|------|
-| Standard | Hot | $0.023/GB |
-| Infrequent Access (IA) | Occasional | $0.0125/GB |
-| Glacier | Archive | $0.004/GB |
-| Glacier Deep Archive | Long-term | $0.00099/GB |
+### Object Storage API Matrix
 
-Lifecycle rules move data: hot → IA → Glacier automatically.
+| Operation | HTTP Method | Request Payload | Response / Consistency |
+| :--- | :--- | :--- | :--- |
+| **PutObject** | `PUT /bucket/key` | Binary Payload + Metadata | Strong consistency (S3/GCS) |
+| **GetObject** | `GET /bucket/key` | None | 200 OK + Payload Stream |
+| **DeleteObject**| `DELETE /bucket/key`| None | 204 No Content |
+| **ListObjects** | `GET /bucket?prefix=p`| Query Params | XML/JSON Object Index List |
 
-### Pros
-- ✅ **Infinite scale**.
-- ✅ **Cheap**.
-- ✅ **Durable** (11 nines).
-- ✅ **HTTP API** — universal.
-- ✅ **Lifecycle / tiering** built-in.
+### Key Trade-offs & Capabilities
 
-### Cons
-- ❌ **No POSIX** — no rename, no partial write.
-- ❌ **Eventual consistency** (older S3; mostly strong now).
-- ❌ **Latency** — tens of ms (not for DBs).
-- ❌ **Listing** large buckets is slow.
+- ✅ **Infinite Horizontal Scale**: Flat architecture allows scaling to exabytes across distributed commodity hardware.
+- ✅ **Cost-Effective**: Highly efficient erasure coding reduces storage overhead compared to 3x replication.
+- ❌ **Immutability Constraint**: Objects cannot be modified in-place; updating 1 byte requires rewriting the entire object.
+- ❌ **Higher Initial Latency**: REST API overhead leads to 10–50 ms response times compared to block storage.
 
 ### Key takeaway
-Object storage (S3, GCS, Azure Blob) is the **default for internet-scale data**. Cheap, durable,
-HTTP-accessible. Use it for user uploads, backups, archives, data lakes. Don't use it for
-databases.
+
+Object storage offers **massive scale, high durability, and low cost** for immutable unstructured data accessed over HTTP REST APIs.

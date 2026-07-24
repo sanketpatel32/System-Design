@@ -1,52 +1,35 @@
-# Write Through Cache
+# Write-Through Cache
 
 > **Category:** Caching
 
 ---
 
-Write-through = **the app writes to cache and DB synchronously, in that order**. Cache is
-always consistent with DB.
+A **Write-Through Cache** is a caching strategy where write operations update the cache and the underlying persistent database synchronously in a single atomic transaction. The application write operation completes only after both storage layers acknowledge the update.
 
-### Flow
+### Pattern workflow
+
 ```
-write(key, value):
-    cache.set(key, value)   # 1. update cache
-    db.update(key, value)   # 2. update DB (synchronously)
-    return
+ [Application] ------ 1. Issue Write Request ------> [Write-Through Cache]
+                                                           |
+                                                   2. Synchronous Write
+                                                           v
+ [Client Confirmation] <--- 3. Acknowledge --- [Primary Database]
 ```
 
-### Pros
-- ✅ **Strong consistency** — cache always matches DB.
-- ✅ **No stale reads** — read sees the latest write.
-- ✅ Simple reasoning.
+### Core characteristics & mechanics
 
-### Cons
-- ❌ **Higher write latency** — must wait for both cache and DB.
-- ❌ **Cache churn** — even rarely-read data gets cached.
-- ❌ **Failure handling** — what if cache write fails after DB write? Or vice versa?
+1. **Synchronous Updates**: Write operations update the cache and database sequentially or in a unified transaction before returning success to the caller.
+2. **Data Consistency**: Ensures the cache always reflects the latest database state, eliminating stale read windows.
+3. **Write Latency Overhead**: Write latency equals the combined write times of the cache and database layers.
 
-### Failure scenarios
-- DB write fails: rollback cache write (or never happened).
-- Cache write fails: DB has new value, cache has old. Until TTL, reads are stale.
-  → Typically: retry, then log/alert.
+### Write-Through vs Write-Back vs Cache-Aside
 
-### When to use
-- Read-heavy workloads where staleness is unacceptable.
-- Data that changes infrequently (writes are rare, latency is OK).
-- Banking / configuration / inventory.
-
-### When NOT to use
-- Write-heavy workloads (write latency doubles).
-- Paths where the cached data is rarely read.
-
-### vs Cache-aside
-| | Cache-aside | Write-through |
-|--|-------------|---------------|
-| Write | Update DB, delete cache | Update cache + DB |
-| Staleness | Possible (until TTL) | None |
-| Write latency | One DB write | Cache + DB writes |
+| Strategy | Cache Update Timing | Database Update Timing | Consistency | Write Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| **Write-Through** | Immediate (Sync) | Immediate (Sync) | High | Higher (Sync DB write overhead) |
+| **Write-Back (Behind)**| Immediate (Sync) | Delayed Async Batch | Temporary Lag | Ultra-low (App doesn't wait for DB) |
+| **Cache-Aside** | App invalidates/updates | App writes directly to DB | Eventual | Standard DB write latency |
 
 ### Key takeaway
-Write-through gives **strong consistency** at the cost of write latency. Use it for data where
-staleness is unacceptable and writes are infrequent. For high-write workloads, cache-aside +
-TTL is better.
+
+Write-Through caching maintains strong consistency between cache and database layers by executing synchronous writes to both systems. Use it for critical data workloads where stale reads cannot be tolerated.

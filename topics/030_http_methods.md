@@ -4,43 +4,44 @@
 
 ---
 
-HTTP methods (verbs) declare the intent of a request and whether it's **safe** and
-**idempotent**.
+**HTTP Request Methods** (verbs) specify the intended action to be performed on a target resource defined by a URI. Designing clean RESTful APIs requires adhering strictly to method semantics, safe operation guarantees, and idempotency rules.
 
-### The core set
-| Method | Purpose | Safe? | Idempotent? | Has body? |
-|--------|---------|-------|-------------|-----------|
-| GET    | Read | Yes | Yes | No |
-| POST   | Create | No | No | Yes |
-| PUT    | Replace (full) | No | Yes | Yes |
-| PATCH  | Modify (partial) | No | No* | Yes |
-| DELETE | Remove | No | Yes | No |
-| HEAD   | Read headers only | Yes | Yes | No |
-| OPTIONS | Discover allowed methods | Yes | Yes | No |
+### Method Execution & Resource Lifecycle
 
-\* PATCH isn't strictly idempotent; depends on operation.
+```
++-------------------------------------------------------------------------+
+|                     RESTFUL HTTP METHOD SEMANTICS                       |
++-------------------------------------------------------------------------+
 
-### Definitions
-- **Safe**: doesn't change server state (GET, HEAD, OPTIONS). Cacheable, prefetchable.
-- **Idempotent**: same call repeated has same effect (PUT, DELETE). Safe to retry.
+  [ GET /users/123 ]    ---> Read User Record (Safe & Idempotent)
+  [ POST /users ]       ---> Create New User Record (Non-Idempotent)
+  [ PUT /users/123 ]    ---> Replace Complete User Record (Idempotent)
+  [ PATCH /users/123 ]  ---> Partial Update User Record (Idempotent/Non-Idempotent)
+  [ DELETE /users/123 ] ---> Delete User Record (Idempotent)
+```
 
-### Common conventions
-- `POST /users` — create new user, returns 201.
-- `GET /users/123` — fetch one.
-- `GET /users?limit=20` — list with pagination.
-- `PUT /users/123` — replace user 123 entirely.
-- `PATCH /users/123` — change just the email.
-- `DELETE /users/123` — delete user 123.
+### HTTP Method Properties Matrix
 
-### When POST vs PUT
-- **POST** to a collection URI `/users` — server picks the ID.
-- **PUT** to a specific URI `/users/123` — client picks the ID, idempotent.
+| HTTP Method | Operations | Request Body? | Response Body? | Safe? | Idempotent? | Cacheable? |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **GET** | Retrieve resource data | No | Yes | **Yes** | **Yes** | **Yes** |
+| **POST** | Create new subordinate resource | Yes | Yes | No | **No** | Only with explicit headers |
+| **PUT** | Replace target resource entirely | Yes | Yes | No | **Yes** | No |
+| **PATCH** | Partial resource modifications | Yes | Yes | No | Depends | No |
+| **DELETE** | Remove target resource | Optional | Optional | No | **Yes** | No |
+| **HEAD** | Retrieve HTTP headers only | No | No | **Yes** | **Yes** | **Yes** |
+| **OPTIONS**| Query supported methods (CORS) | No | Yes | **Yes** | **Yes** | No |
 
-### Why it matters
-- Idempotency enables safe retries (big for distributed systems).
-- Safe methods can be cached aggressively.
-- Violating these conventions breaks proxies, CDNs, and clients.
+### Semantics: Safe vs. Idempotent Operations
+
+- **Safe Method**: Calling the endpoint does not modify server state (read-only operations like `GET` and `HEAD`).
+- **Idempotent Method**: Executing a request 1 time or 100 times sequentially leaves the server in the exact same state (e.g., `PUT`, `DELETE`).
+
+### Common API Design Violations
+
+1. **Using GET for State Mutations**: Executing `GET /users/delete?id=123` allows search engine web crawlers to accidentally delete database records.
+2. **Confusing PUT and PATCH**: `PUT` requires sending the full resource payload (replacing omitted fields with `null`), whereas `PATCH` sends only modified fields.
 
 ### Key takeaway
-Honor the verbs. GET should never mutate; PUT should be safe to retry; POST creates. Breaking
-these conventions silently breaks caches and retry logic.
+
+Adhere strictly to HTTP method semantics: use **GET** for safe reads, **POST** for creating resources, **PUT** for complete replacements, **PATCH** for partial edits, and **DELETE** for removals. Enforce **idempotency** on `PUT` and `DELETE`.

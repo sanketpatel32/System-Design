@@ -4,55 +4,47 @@
 
 ---
 
-Design BookMyShow-style system for movie/event tickets.
+A Ticket Booking System manages seat maps, event schedules, pricing tiers, and high-concurrency ticket reservations for concerts, sports events, and transport.
 
-### Requirements
-- **Functional**: browse shows; select seats; book; pay; cancel.
-- **Non-functional**: prevent double-booking; high concurrency for popular shows.
+### System Requirements
+- **Functional Requirements**:
+  - Browse available shows, venues, and interactive seat selection matrices.
+  - Lock selected seats temporarily during user payment (5-10 min TTL).
+  - Confirm ticket issuance and dispatch digital tickets (QR codes).
+- **Non-Functional Requirements**:
+  - Zero Double-Booking: Strict concurrency control over seat states.
+  - Scalability: Support massive burst traffic when tickets for popular events go live.
+  - High Availability: Uninterrupted seat map rendering and payment processing.
 
-### The double-booking problem
-- 100 users try to book the same seat simultaneously.
-- Only 1 should succeed.
-
-### Solutions
-
-#### Seat locking
-- When user selects seat: lock for 5 minutes.
-- Other users see "temporarily held".
-- Lock expires if not paid.
-
-#### Optimistic locking
-- Version field on seat.
-- UPDATE WHERE version = ? → fail if version changed.
-
-#### Atomic update
-```sql
-UPDATE seats SET status = 'booked'
-WHERE show_id = X AND seat_number = Y AND status = 'available'
+### System Architecture
+```
+[ Users / Mobile App ] ---> [ API Gateway ] ---> [ Seat Reservation Service ]
+                                                        |
+                            +---------------------------+---------------------------+
+                            |                                                       |
+                            v                                                       v
+               [ Redis Seat Lock Engine ]                                [ Relational Booking DB ]
+               (Atomic Bitmaps & TTL Lock)                              (PostgreSQL Event Shards)
+                            |                                                       |
+                            +---------------------------+---------------------------+
+                                                        |
+                                                        v
+                                            [ Payment Gateway Webhook ]
 ```
 
-### Architecture
-```
-[Client] -> [Booking API] -> [Show service]
-                              [Seat service (locks)]
-                              [Payment service]
-                              [Notification]
-```
+### Concurrency Strategies for Seat Reservations
+| Strategy | Mechanism | Latency | Scalability |
+|---|---|---|---|
+| **Pessimistic DB Locks** | `SELECT FOR UPDATE` on seat rows | High ($50-100	ext{ ms}$) | Poor under high traffic spikes. |
+| **Redis TTL Distributed Lock** | `SET seat_id user_id NX PX 600000` | Sub-millisecond | Excellent; handles millions of concurrent lock attempts smoothly. |
+| **Redis Bitmaps** | Bit per seat ID in Redis key | Ultra-low | High memory efficiency for large stadiums/venues. |
 
-### Booking flow
-1. Browse shows.
-2. Select seats → hold.
-3. Pay within 5 min.
-4. On success: confirm seats.
-5. On timeout: release seats.
-
-### Data model
-```
-shows (id, movie_id, theater_id, time)
-seats (show_id, seat_number, status, held_by, held_until)
-bookings (id, user_id, show_id, seats, status, total)
-```
+### Seat Lifecycle State Machine
+| State | Trigger | Expiry Action |
+|---|---|---|
+| `AVAILABLE` | Show created / Lock expired | N/A |
+| `LOCKED` | User selects seat & proceeds to payment | Reverts to `AVAILABLE` after TTL (e.g. 10 mins) |
+| `BOOKED` | Payment confirmed webhook | Permanent reservation |
 
 ### Key takeaway
-Ticket booking = seat holding (5 min lock during payment) + atomic seat updates (prevent
-double-book) + payment + confirmation. Atomic UPDATE on seat status prevents race conditions.
+Ticket booking systems protect against double-booking by decoupling transient seat locking (handled via Redis TTL keys) from permanent booking persistence in relational databases after payment confirmation.

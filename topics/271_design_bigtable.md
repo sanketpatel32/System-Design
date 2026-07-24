@@ -4,37 +4,43 @@
 
 ---
 
-Design Bigtable: Google's wide-column distributed DB.
+Google Bigtable is a sparse, distributed, persistent multidimensional sorted map indexed by row key, column key, and timestamp.
 
-### Architecture
-- **Tables** → **tablets** (range partitions).
-- Each tablet served by one tablet server.
-- Tablets balanced via Chubby (lock service).
-- Storage: SSTables on Colossus (GFS successor).
+### System Requirements
+- **Functional Requirements**:
+  - Dynamic multidimensional map lookup: `(row:string, column:string, time:int64) -> string`.
+  - Sequential scan over sorted row key ranges.
+  - Automatic range-based partitioning (Tablets).
+- **Non-Functional Requirements**:
+  - High Availability & Scalability: Scale throughput linearly by adding Tablet Servers.
+  - Low Latency: Single-digit millisecond reads and writes on massive datasets.
+  - High Durability: Backed by distributed file systems (Colossus / GFS).
 
-### Data model
-- **Row key** (sorted).
-- **Column family** :**column qualifier**.
-- **Cells** versioned (timestamps).
+### System Architecture
+```
+[ Bigtable Master Node ] ---> [ Chubby Distributed Lock Service ]
+                                              |
+     +----------------------------------------+----------------------------------------+
+     |                                                                                 |
+     v                                                                                 v
+[ Tablet Server 1 ]                                                           [ Tablet Server 2 ]
+(Serves Tablet Range: A - M)                                                  (Serves Tablet Range: N - Z)
+  | (SSTables + Memtable)                                                       | (SSTables + Memtable)
+  +----------------------------------------+------------------------------------+
+                                           |
+                                           v
+                              [ Shared Storage (Colossus/GFS) ]
+```
 
-### Reads/writes
-- Writes: WAL + memtable → SSTable.
-- Reads: merge memtable + SSTables.
-- Compaction merges SSTables.
+### Data Model & System Components
+$$	ext{Data Model: } (	ext{RowKey}, 	ext{ColumnFamily:Qualifier}, 	ext{Timestamp}) \longrightarrow 	ext{Cell Value}$$
 
-### Sharding
-- Row key ranges → tablets.
-- Tablet split when too big.
-
-### Use cases
-- Time-series.
-- Massive writes.
-- Sparse data.
-
-### vs Cassandra
-- Bigtable: single row transactions, managed.
-- Cassandra: tunable consistency, multi-DC.
+| Component | Technical Role | Fault Tolerance Mechanism |
+|---|---|---|
+| **Bigtable Master** | Assigns tablets to Tablet Servers, detects node joins/leaves | Stateless metadata coordinator; failover handled by Chubby election. |
+| **Tablet Server** | Manages read/write traffic for a set of tablets ($100-200	ext{ MB}$ partitions) | If server dies, Master reassigns tablet range to another server. |
+| **Chubby Lock** | Leader election, tablet location discovery, schema management | Paxos-based distributed lock service. |
+| **Colossus / GFS** | Stores immutable SSTable files and commit logs | Multi-replica distributed object storage. |
 
 ### Key takeaway
-Bigtable = tablets (range-sharded) + SSTables + memtable + Chubby for coordination. Row key
-range queries fast. Optimized for massive write throughput + sparse wide rows.
+Google Bigtable models data as a sorted sparse multidimensional map, decoupling stateless Tablet Servers from persistent Colossus SSTable files to enable sub-10ms performance and fast tablet reassignment.

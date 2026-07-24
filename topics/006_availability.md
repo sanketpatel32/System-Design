@@ -4,35 +4,60 @@
 
 ---
 
-Availability = **the fraction of time a system is operational and serving requests.** Usually
-quoted in "nines".
+Availability is the **percentage of time a system remains operational and accessible** to process user requests successfully over a specified time period. It is commonly measured in "nines" (e.g., 99.9% vs. 99.999%).
 
-### The nines table
-| Availability | Downtime / year | Downtime / week |
-|--------------|-----------------|-----------------|
-| 99%          | 3.65 days       | 1.7 hours       |
-| 99.9%        | 8.76 hours      | 10 min          |
-| 99.99%       | 52.6 min        | 1 min           |
-| 99.999%      | 5.26 min        | 6 s             |
+### High Availability Architecture Topology
 
-### How to improve availability
-1. **Eliminate SPOFs** — every tier needs redundancy.
-2. **Multiple AZs** — survive a data-center outage.
-3. **Multiple regions** — survive a region outage (active-active or active-passive).
-4. **Graceful degradation** — return partial results instead of failing.
-5. **Health checks + failover** — detect and reroute quickly.
-6. **Backpressure + retries with backoff** — don't cascade failures.
-
-### Measured how?
 ```
-Availability = Uptime / (Uptime + Downtime)
-            = 1 - (failed_requests / total_requests)
+                  +-----------------------+
+                  |  Global DNS / Anycast |
+                  +-----------------------+
+                              |
+                +-------------+-------------+
+                |                           |
+                v                           v
+     +--------------------+       +--------------------+
+     | Primary DC / AZ    |       | Secondary DC / AZ  |
+     | Active Load Balancer|      | Active Load Balancer|
+     +--------------------+       +--------------------+
+                |                           |
+        +-------+-------+           +-------+-------+
+        v               v           v               v
+    +-------+       +-------+   +-------+       +-------+
+    | App 1 |       | App 2 |   | App 3 |       | App 4 |
+    +-------+       +-------+   +-------+       +-------+
+        \               /           \               /
+         v             v             v             v
+      +-------------------+       +-------------------+
+      | Master DB (Write) |======>| Read Replica (Sync)|
+      +-------------------+ Replication +-------------+
 ```
 
-### The cost of nines
-Each additional nine roughly **doubles** cost and engineering effort. Going from 99.9% to 99.99%
-requires multi-AZ; 99.999% requires multi-region with automated failover.
+### The "Nines" of Availability
+
+| Availability Level | Downtime per Year | Downtime per Month | Downtime per Day | Typical Systems |
+| :--- | :--- | :--- | :--- | :--- |
+| **99% ("Two Nines")** | 3.65 days | 7.31 hours | 14.4 minutes | Internal batch tools, non-critical dashboards |
+| **99.9% ("Three Nines")** | 8.76 hours | 43.8 minutes | 1.44 minutes | Standard SaaS applications |
+| **99.99% ("Four Nines")** | 52.6 minutes | 4.38 minutes | 8.64 seconds | E-commerce core, payment gateways, APIs |
+| **99.999% ("Five Nines")** | 5.26 minutes | 25.9 seconds | 0.86 seconds | Telecommunication core, financial settlements |
+| **99.9999% ("Six Nines")** | 31.5 seconds | 2.59 seconds | 0.086 seconds | Mission-critical avionics, healthcare equipment |
+
+### Mathematical Definition of Availability
+
+Availability is calculated using **Mean Time Between Failures (MTBF)** and **Mean Time To Repair (MTTR)**:
+
+$$\text{Availability} = \frac{\text{MTBF}}{\text{MTBF} + \text{MTTR}}$$
+
+To maximize availability:
+1. Increase **MTBF**: Build fault-tolerant components, perform rigorous code reviews, and conduct automated testing.
+2. Decrease **MTTR**: Implement automated health checks, self-healing infrastructure, instant failover mechanisms, and automated blue/green deployments.
+
+### Availability Architectures
+
+- **Active-Passive (Failover)**: A primary node handles all traffic while a standby node receives updates. If the primary fails, the heart-beat monitor routes traffic to the secondary.
+- **Active-Active (Multi-Primary)**: Multiple nodes serve traffic concurrently. If one node fails, remaining nodes absorb the load. Requires careful handling of state sync and split-brain resolution.
 
 ### Key takeaway
-Pick the availability target based on **business impact**. Don't build 5-nines for a blog; do for
-payments.
+
+High availability requires eliminating **Single Points of Failure (SPOFs)** through redundancy, automated failover, and proactive health monitoring. Minimizing **Mean Time To Repair (MTTR)** via automation is key to achieving "four nines" (99.99%) or higher uptime.

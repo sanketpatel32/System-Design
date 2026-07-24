@@ -4,56 +4,45 @@
 
 ---
 
-Partitioning = **splitting a logical table into smaller physical pieces**. Can be **within
-one DB** (vertical/horizontal partitioning) or **across many DBs** (sharding).
+**Partitioning** is the process of dividing a database dataset into smaller, distinct sub-tables or partitions to improve query performance, manageability, and maintenance. Partitioning can occur within a single database instance (**Vertical/Horizontal Partitioning**) or across multiple machines (**Distributed Sharding**).
 
-### Two senses of the word
-1. **Logical partitioning** (within one DB) — one table split into pieces, transparent to
-   queries.
-2. **Sharding** — partitioning across separate DB instances (see Sharding topic).
+### Architectural view
 
-### Types of logical partitioning
-
-#### Horizontal partitioning (by rows)
 ```
-orders_2023  -- rows where year=2023
-orders_2024  -- rows where year=2024
-orders_2025  -- rows where year=2025
-```
-- Common for time-series data.
-- Drop old partitions instantly (no slow DELETE).
-- Each partition can have its own indexes.
-
-#### Vertical partitioning (by columns)
-- Split a wide table: hot columns in one table, cold in another.
-- E.g. `users_basic (id, name, email)` + `users_profile (id, bio, avatar, ...)`.
-
-### PostgreSQL declarative partitioning
-```sql
-CREATE TABLE orders (
-    id BIGSERIAL,
-    created_at TIMESTAMP,
-    ...
-) PARTITION BY RANGE (created_at);
-
-CREATE TABLE orders_2024 PARTITION OF orders
-    FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+                        [Original Monolithic Table]
+                        +-------------------------+
+                        | ID | Name | Age | Order |
+                        +-------------------------+
+                                     |
+               +---------------------+---------------------+
+               |                                           |
+      (Horizontal Partitioning)                   (Vertical Partitioning)
+    Split rows by condition                    Split columns by utility
+  +-------------------------+                +---------------+  +--------------+
+  | Partition 1 (Age < 30)  |                | ID | Name     |  | ID | Order   |
+  +-------------------------+                +---------------+  +--------------+
+  | Partition 2 (Age >= 30) |                | (Frequently)  |  | (Infrequent) |
+  +-------------------------+                +---------------+  +--------------+
 ```
 
-### Benefits
-- **Faster queries** — partition pruning skips irrelevant partitions.
-- **Easier maintenance** — drop/archive old partitions.
-- **Parallel scans** — each partition scanned in parallel.
-- **Smaller indexes** — per-partition indexes fit in RAM.
+### Types of partitioning
 
-### Partitioning vs sharding
-| | Partitioning | Sharding |
-|--|--------------|----------|
-| Scope | One DB instance | Multiple DB instances |
-| Network | Local | Cross-network |
-| Cross-partition transactions | Easy | Hard |
-| Use case | Manage large table | Scale beyond one machine |
+1. **Horizontal Partitioning**: Splitting a table by rows. All partitions share the same column schema, but each row resides in a specific partition according to a partition rule (e.g., date range).
+2. **Vertical Partitioning**: Splitting a table by columns. Frequently accessed, small columns are separated into a primary table, while large or infrequently accessed columns (e.g., `BLOB`, `TEXT`, `description`) move to secondary tables.
+
+### Partitioning methods matrix
+
+| Partition Method | Partition Rule Example | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| **Range Partitioning** | `created_at` BY MONTH | Easy date-based pruning; fast archiving | Skewed inserts hit the latest partition |
+| **List Partitioning** | `region` IN ('US', 'EU') | Clean logical isolation by domain | Unmapped list values trigger write errors |
+| **Hash Partitioning** | `hash(id) % 8` | Even data distribution across partitions | Range queries require scanning all partitions |
+| **Composite Partitioning**| Range by Month + Hash by User | Handles large volume with balanced distribution | High operational schema maintenance |
+
+### Partition pruning & performance
+
+The primary performance benefit of horizontal partitioning is **Partition Pruning**: the query optimizer identifies partition boundaries from the `WHERE` clause and scans only relevant partitions, ignoring unneeded data segments entirely.
 
 ### Key takeaway
-**Partition within a DB** to manage large tables (faster queries, easy archival). **Shard across
-DBs** when one machine can't handle the load. They're complementary, not competing.
+
+Partitioning optimizes query performance and storage management by breaking large tables into targeted segments. Use range partitioning for time-series data to leverage partition pruning, and vertical partitioning to separate frequently read columns from heavy binary blobs.

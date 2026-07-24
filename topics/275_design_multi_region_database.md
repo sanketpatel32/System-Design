@@ -1,49 +1,42 @@
-# Design Multi-Region Database
+# Design Multi Region Database
 
 > **Category:** Advanced System Design Problems
 
 ---
 
-Design a database spanning multiple regions for global low-latency + DR.
+A Multi-Region Database spans multiple geographic regions to deliver local low-latency access for global users, business continuity, and regional disaster recovery (DR).
 
-### Requirements
-- **Functional**: read/write from any region; survive region failure.
-- **Non-functional**: low-latency globally; strong or eventual consistency.
+### System Requirements
+- **Functional Requirements**:
+  - Support cross-region reads and writes.
+  - Configurable consistency levels (Strong Multi-Region Consistency vs Eventual Replication).
+  - Automatic failover when an entire cloud region goes offline.
+- **Non-Functional Requirements**:
+  - Low Read Latency: Sub-10ms reads locally in any deployed region.
+  - High Availability: Zero data loss (RPO=0) and near-zero downtime (RTO $< 5	ext{ seconds}$) during regional failure.
+  - Global Partitioning: Comply with data residency laws (e.g. GDPR).
 
-### Strategies
+### System Architecture (Multi-Region Active-Active)
+```
+     [ Region US-East ]                                          [ Region EU-West ]
++---------------------------+                               +---------------------------+
+| [ API App ] -> [ DB Node ]|                               | [ API App ] -> [ DB Node ]|
+|      (Raft Leader)        |                               |     (Raft Follower)       |
++-------------+-------------+                               +-------------+-------------+
+              |                                                           |
+              +-------------------> [ Consensus Network ] <---------------+
+                                    (Paxos / Raft Engine)
+                                              |
+                                              v
+                              [ Global Clock (TrueTime / HLC) ]
+```
 
-#### Single-leader (async replica)
-- Writes to one region; replicate async.
-- Reads from local replica (stale).
-- Simple, low write latency locally.
-
-#### Multi-leader (with conflict resolution)
-- Each region accepts writes.
-- Replicate + resolve conflicts.
-- CRDTs / LWW / app merge.
-
-#### Consensus-based (Spanner, CockroachDB)
-- Paxos / Raft across regions.
-- Strongly consistent globally.
-- Higher write latency (cross-region quorum).
-
-#### Active-Active with partitioning
-- Each region owns certain data (user-by-region).
-- No conflicts within partitions.
-
-### Trade-offs
-| | Single-leader | Multi-leader | Consensus |
-|--|---------------|--------------|-----------|
-| Write latency | Low (local) | Low | High (cross-region) |
-| Conflict | No | Yes | No |
-| Consistency | Eventual | Eventual | Strong |
-| Availability | Lower | Higher | Lower |
-
-### Real-world
-- **DynamoDB Global Tables**: multi-leader, eventual.
-- **Spanner, CockroachDB**: consensus, strong.
-- **Cassandra**: tunable, multi-DC.
+### Multi-Region Topology Matrix
+| Topology Pattern | Write Routing | Read Latency | Conflict Management |
+|---|---|---|---|
+| **Active-Passive (Primary-Standby)** | All writes routed to single Primary region | Low locally; high for cross-region writes | No conflict; synchronous or async replication stream. |
+| **Active-Active (Multi-Primary)** | Writes accepted in any local region | Low everywhere | Requires CRDTs, Vector Clocks, or Last-Write-Wins (LWW). |
+| **Geo-Partitioned (Spanner/Cockroach)** | Writes routed to regional partition consensus leader | Low locally for region-pinned data | Multi-Paxos consensus + TrueTime/HLC atomic timestamps. |
 
 ### Key takeaway
-Multi-region DB: choose **single-leader** (simple, eventual), **multi-leader** (writes anywhere,
-conflicts), or **consensus** (strong, slow writes). Pick based on consistency needs vs latency.
+Multi-region databases balance latency against consistency by using geo-partitioning and consensus protocols (Raft/Paxos) backed by global synchronized clocks (TrueTime/HLC) to guarantee multi-region ACID transactions.

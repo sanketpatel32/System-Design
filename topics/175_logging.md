@@ -4,65 +4,57 @@
 
 ---
 
-Logging = **recording discrete events** that happen in your system, for debugging and
-auditing.
+Logging is the practice of **recording discrete, timestamped application events** to provide an immutable record for debugging, security auditing, and system behavior inspection.
 
-### Why log
-- **Debugging**: what happened before the error?
-- **Auditing**: who did what, when?
-- **Compliance**: regulations require audit trails.
-- **Analytics**: derive metrics from logs.
-- **Security**: detect intrusions.
+### Distributed Log Collection Architecture
 
-### Log levels
-| Level | Use |
-|-------|-----|
-| **DEBUG** | Detailed, dev only |
-| **INFO** | Normal operation |
-| **WARN** | Something unexpected, but recoverable |
-| **ERROR** | Failure, needs attention |
-| **FATAL** | Unrecoverable, process exits |
+```
++-----------------------------------------------------------------------------------+
+|                           App Pods (Microservices A/B/C)                          |
++-----------------------------------------------------------------------------------+
+                                          | Write Structured JSON to stdout
+                                          v
++-----------------------------------------------------------------------------------+
+|                      Log Collectors / DaemonSets (Fluentbit / Vector)             |
++-----------------------------------------------------------------------------------+
+                                          | Stream Events
+                                          v
++-----------------------------------------------------------------------------------+
+|                        Message Buffer (Kafka / Logstash)                          |
++-----------------------------------------------------------------------------------+
+                                          | Ingest
+                                          v
++-----------------------------------------------------------------------------------+
+|                    Search & Analytics Store (Elasticsearch / Loki)                |
++-----------------------------------------------------------------------------------+
+```
 
-### What to log
-- **Requests**: method, path, status, latency, user.
-- **Errors**: stack trace, request ID, user context.
-- **State changes**: "user X upgraded to plan Y."
-- **Background jobs**: start, success, failure.
-- **External calls**: outbound API call + response code.
+### Log Levels & Guidelines
 
-### Structured logging
+| Log Level | Purpose | Example Event | Production Volume |
+| :--- | :--- | :--- | :--- |
+| **DEBUG** | Low-level developer diagnostic details | `Query execution time: 12ms` | Disabled in Prod |
+| **INFO** | Normal business lifecycle milestones | `Order #1042 created for user_99` | High |
+| **WARN** | Degraded state / recoverable issues | `Redis cache timeout; reading DB` | Medium |
+| **ERROR** | Operation failure requiring attention | `Payment gateway 502 connection failed` | Low (Alertable) |
+| **FATAL** | Unrecoverable crash | `Database connection pool exhausted; exiting`| Minimal |
+
+### Structured Logging Best Practices
+
+- **Structured Formats (JSON)**: Always log in structured JSON rather than unstructured plain text to allow search engines to index fields automatically.
+
 ```json
 {
-  "timestamp": "2024-06-01T12:00:00Z",
+  "timestamp": "2026-07-24T12:00:00Z",
   "level": "ERROR",
-  "service": "checkout",
-  "request_id": "abc123",
-  "user_id": 42,
-  "message": "Payment failed",
-  "error": "card_declined",
-  "stack": "..."
+  "service": "payment-service",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "user_id": 9042,
+  "message": "Credit card processing failed",
+  "error_code": "CARD_DECLINED"
 }
 ```
-- Machine-parseable (JSON).
-- Easy to query in ELK, Splunk, Datadog.
-- Include **request ID** for tracing.
-
-### Best practices
-- **One event per line** (for parsers).
-- **Include context**: user, request ID, transaction ID.
-- **Don't log secrets** (passwords, tokens, PII).
-- **Async** to avoid blocking the request path.
-- **Sample** at high volume (don't log every request).
-
-### Aggregation
-- Logs from all services → central store (ELK, Splunk, CloudWatch, Datadog).
-- Searchable, filterable, alertable.
-
-### Retention
-- Hot: 7-30 days (searchable).
-- Cold: archive to S3 for compliance.
 
 ### Key takeaway
-Structured logs (JSON) with **request IDs** and **context** are the foundation of debuggability.
-Log at INFO for normal ops, ERROR for problems. Aggregate centrally. Don't log secrets. Sample
-at high volume.
+
+Emit **structured JSON logs containing correlation trace IDs**, streaming them via lightweight log collectors to centralized search engines like Elasticsearch or Loki.

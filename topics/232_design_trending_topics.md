@@ -1,41 +1,52 @@
 # Design Trending Topics
-
 > **Category:** Search and Recommendation Systems
 
 ---
 
-Design trending topics: identify what's gaining traction now.
+### Overview
+A **Trending Topics System** (e.g., Twitter Trends) detects sudden spikes in topic frequency or hashtag usage over time windows, separating viral news from background baseline traffic.
 
-### Requirements
-- **Functional**: top N trending topics per region/globally; updated frequently.
-- **Non-functional**: real-time; accurate.
+### Architecture Topology Diagram
 
-### Approach
-- Sample stream of events (tweets, searches).
-- Count occurrences in sliding window.
-- Rank by **growth rate** (not absolute count).
-
-### Architecture
 ```
-[Event stream] -> [Sampler] -> [Counter (Redis)] -> [Ranker]
++---------------+     1. Stream Events     +-------------------+
+| Event Stream  | -----------------------> | Kafka Topic       |
++---------------+                          +-------------------+
+                                                     |
+                                                     v 2. Process Sliding Window
+                                           +-------------------+
+                                           | Apache Flink /    |
+                                           | Spark Streaming   |
+                                           +-------------------+
+                                                     |
+                                                     v 3. Count Frequencies
+                                           +-------------------+
+                                           | Count-Min Sketch  |
+                                           | Memory State      |
+                                           +-------------------+
+                                                     |
+                                                     v 4. Top-K Heavy Hitters
+                                           +-------------------+
+                                           | Redis Top-K Cache |
+                                           +-------------------+
 ```
 
-### Sliding window counting
-- Count hashtags / topics in last 1 hour, 24 hours.
-- Compare to baseline (yesterday same hour).
-- Topics with high growth = trending.
+### Heavy Hitters & Frequency Algorithms
 
-### Sampling
-- Sample 1-10% of full stream.
-- Sufficient for trend detection.
+| Algorithm | Space Complexity | Accuracy | Mechanics |
+|---|---|---|---|
+| **Count-Min Sketch** | $O(\epsilon^{-1} \log \delta^{-1})$ | Probabilistic sub-linear estimate | Multi-hash array probabilistic frequency tracker |
+| **Lossy Counting** | $O(\frac{1}{\epsilon} \log(\epsilon N))$ | Guaranteed bound | Fixed bucket interval stream pruning |
+| **Sliding Window Counter**| $O(W)$ | Exact | Tracks precise frequency in sliding time window $W$ |
 
-### Real-time
-- Stream processing (Flink, Spark Streaming).
-- Update rankings every minute.
+### Trending Velocity Score (Z-Score & TF-IDF Derivative)
 
-### Regional trending
-- Partition counts by region.
+$$Z = \frac{x_t - \mu}{\sigma}$$
+
+Where:
+- $x_t$: Current frequency count of hashtag in time window $t$.
+- $\mu$: Expected historical mean frequency of hashtag.
+- $\sigma$: Standard deviation of historical frequency.
 
 ### Key takeaway
-Trending = sample event stream + sliding window counts + rank by growth (not absolute).
-Stream processing for real-time updates. Partition by region for local trends.
+Detect trending topics using **Apache Flink streaming** paired with **Count-Min Sketch** data structures to compute real-time velocity spikes ($Z$-score) with sub-linear memory overhead.

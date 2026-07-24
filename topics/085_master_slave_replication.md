@@ -4,59 +4,46 @@
 
 ---
 
-Master-slave (now often called **primary-replica** or **leader-follower**) replication = one
-node accepts writes, others replicate and serve reads.
+**Master-Slave Replication** (commonly referred to as Primary-Replica Replication) is a data architecture where a single database instance (**Master**) processes all data mutations (`INSERT`, `UPDATE`, `DELETE`), while one or more secondary instances (**Slaves**) process read operations (`SELECT`).
 
-### Topology
+### Architecture & log streaming
+
 ```
-       writes
-Clients ------> [Primary]
-                    |
-                    | replicate (async)
-                    v
-              [Replica 1]
-              [Replica 2]
-              [Replica 3]
-       reads (load balanced)
+                       +-------------------------+
+                       |    Primary / Master     |
+                       |  (Accepts Writes & Reads)|
+                       +-------------------------+
+                                    |
+                        WAL / Binary Log Streaming
+                                    v
+            +-----------------------+-----------------------+
+            |                                               |
+            v                                               v
++-----------------------+                       +-----------------------+
+|  Replica / Slave 1    |                       |  Replica / Slave 2    |
+|   (Read-Only Pool)    |                       |   (Read-Only Pool)    |
++-----------------------+                       +-----------------------+
 ```
 
-### How writes flow
-1. Client sends write to primary.
-2. Primary applies, writes to WAL, commits.
-3. Primary ships WAL records to replicas (async or sync).
-4. Replicas apply the changes.
+### Log streaming mechanisms
 
-### Reads
-- Reads can go to **any** replica.
-- LB round-robins among them.
-- Trade-off: replication lag → potentially stale reads.
+- **Statement-Based Replication**: The Master streams raw SQL statements (`INSERT INTO...`) to Slaves. *Risk: Non-deterministic functions like `NOW()` or `UUID()` evaluate differently on Slaves.*
+- **Row-Based Replication**: The Master streams raw byte-level row modifications. *Ensures exact data parity, but generates larger log payloads.*
+- **Mixed-Based Replication**: Defaults to statement-based, switching to row-based automatically for non-deterministic SQL queries.
 
-### Failover
-- If primary dies, promote a replica.
-- Update connection strings / DNS.
-- **Replication lag = data loss** at the moment of failover (un-replicated writes).
+### Operational Characteristics
 
-### Pros
-- ✅ **Simple** — one writer, easy reasoning.
-- ✅ **Scales reads** — add replicas freely.
-- ✅ **HA** — promote on failure.
+| Component | Master Node | Slave Nodes |
+| :--- | :--- | :--- |
+| **Permitted Operations** | Reads and Writes (`INSERT`, `UPDATE`, `DELETE`, `DDL`) | Read-Only (`SELECT`) queries |
+| **Scaling Capacity** | Vertical hardware scale-up | Horizontal addition of read-only replica nodes |
+| **Node Failure Impact** | Requires failover / election of a new master | Load balancer routes reads to remaining active slaves |
+| **Replication Delay** | Zero (Source of truth) | Subject to network and query execution replication lag |
 
-### Cons
-- ❌ **Write bottleneck** — all writes hit one node.
-- ❌ **Failover complexity** — promoting must be automated.
-- ❌ **Stale reads** — async replication lag.
+### Promoting a Slave on Master Failure
 
-### Real-world
-- Postgres streaming replication.
-- MySQL with read replicas.
-- RDS / Aurora built-in.
-
-### Multi-AZ vs Multi-region
-- **Multi-AZ**: primary in AZ-a, sync replica in AZ-b. Survives AZ loss.
-- **Multi-region**: primary in region-1, async replica in region-2. Survives region loss, with
-  replication lag.
+When the Master node crashes, an automated failover controller (e.g., Orchestrator, Patroni) selects the Slave with the most up-to-date transaction log sequence number (LSN) and promotes it to become the new Primary.
 
 ### Key takeaway
-Primary-replica is the default for OLTP. Scales reads well; doesn't scale writes. Plan failover
-(promotion) carefully and accept that **replication lag = data loss on failover** for async
-setups.
+
+Master-Slave replication simplifies read scaling and provides fault tolerance. Keep write rates within single-master capacity limits, and monitor replication lag to prevent stale reads.

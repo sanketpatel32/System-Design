@@ -1,52 +1,57 @@
 # Authorization
-
 > **Category:** Security
 
 ---
 
-Authorization = **deciding what an authenticated user can do.** "You're Alice, but can you
-edit this article?"
+### Overview
+**Authorization (AuthZ)** is the process of determining whether an authenticated identity has permission to perform a specific action on a specific resource. It answers the security question: *"Are you allowed to do this?"*
 
-### Models
-- **RBAC** (Role-Based): roles (admin, editor, viewer) → permissions.
-- **ABAC** (Attribute-Based): permissions based on attributes (dept, location, time).
-- **ACL**: per-resource access list.
-- **ReBAC** (Relationship-Based): Zanzibar-style, "alice owns doc:1".
+### Authorization Decision Pipeline
 
-### Where to enforce
-- **API gateway**: coarse ("can user hit /admin?").
-- **Service**: fine-grained ("can user edit article 123?").
-- **Data layer**: row-level security (Postgres RLS).
-
-### Common flaws (OWASP)
-- **BOLA** (Broken Object-Level Authorization): user can access other users' objects.
-  - Fix: check ownership on every object access.
-- **Mass assignment**: request includes `role=admin`, app blindly saves.
-  - Fix: whitelist fields.
-- **Forced browsing**: `/users/123` works because user is logged in, but they're not user 123.
-  - Fix: per-resource authorization checks.
-
-### Implementation patterns
-```python
-@require_permission("edit_article")
-def update_article(article_id, user):
-    article = load_article(article_id)
-    if article.author_id != user.id:
-        raise Forbidden()
-    update(article)
+```
++--------------+    1. Request (Subject, Action, Resource)    +-------------------+
+| API Gateway  | -------------------------------------------> | Policy Engine     |
+| / Service    |                                              | (OPA / Cedar)     |
++--------------+                                              +-------------------+
+       ^                                                                |
+       |                                                                | 2. Evaluate Policy
+       |             3. Decision (Allow / Deny)                         v
+       +------------------------------------------------------ +-------------------+
+                                                               | Policy Rules /    |
+                                                               | ACL Data Store    |
+                                                               +-------------------+
 ```
 
-### Decisions
-- **Centralize** authz logic (one service / library).
-- **Deny by default**.
-- **Log denials** (catch attack patterns).
-- **Test authorization** explicitly (not just happy path).
+### Authorization Models Comparison
 
-### Multi-tenant
-- Tenant isolation: user X can only see tenant X's data.
-- Often enforced at the data layer (RLS, query filters).
+| Model | Mechanics | Ideal Use Case | Pros | Cons |
+|---|---|---|---|---|
+| **RBAC** (Role-Based) | Permissions mapped to Roles; Users assigned Roles | Corporate enterprise systems | Simple to manage & audit | Role explosion as conditions grow |
+| **ABAC** (Attribute-Based)| Rules rely on Subject, Resource, Action, & Context (IP, Time) | Fine-grained compliance systems | Extremely flexible & dynamic | Complex rule engine evaluation |
+| **ReBAC** (Relationship-Based)| Access granted based on graph relationships (e.g., Google Zanzibar) | Google Drive, Notion, Social Networks | Scales to billions of object-level permissions | Complex graph storage infrastructure |
+| **ACL** (Access Control List)| Explicit list of permissions per resource | File systems, S3 bucket policies | Direct object permission control | Difficult to audit enterprise-wide |
+
+### API Policy Definition Example (Open Policy Agent - Rego)
+```rego
+package httpapi.authz
+
+default allow = false
+
+# Allow admin users full access
+allow {
+    input.user.role == "admin"
+}
+
+# Allow document owners to read/write their document
+allow {
+    input.method == "GET"
+    input.user.id == input.document.owner_id
+}
+```
+
+### Architecture Enforcement Patterns
+- **PEP (Policy Enforcement Point)**: API Gateway or Middleware intercepting incoming requests.
+- **PDP (Policy Decision Point)**: Microservice or embedded library (e.g., OPA) evaluating authorization policies.
 
 ### Key takeaway
-Authorization is **per-request, per-resource**. After authenticating, check whether the user
-can do this specific action on this specific resource. Don't trust client-side routing or
-hidden fields. OWASP #1 API risk is broken object-level authz.
+**Authorization** grants or denies permissions. Modern microservice architectures decouple enforcement from business logic by establishing a centralized Policy Decision Point using **RBAC** or **ReBAC (Zanzibar model)**.

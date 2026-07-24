@@ -4,54 +4,45 @@
 
 ---
 
-A primary key = **a column (or set of columns) that uniquely identifies each row** in a
-table. Every table should have one.
+A **Primary Key** (PK) is a column or set of columns that uniquely identifies every row in a relational database table. Primary keys enforce entity integrity, prevent duplicate records, and automatically construct the primary clustered index in modern database engines (e.g., InnoDB in MySQL).
 
-### Properties
-- **Unique** — no two rows share the same PK.
-- **NOT NULL** — required.
-- **Immutable** (ideally) — changing PKs is painful.
-- **Indexed** automatically (clustered index in many DBs).
+### System architecture
 
-### Choosing a PK
-
-#### Natural key
-Use a real-world identifier (email, SSN, ISBN).
-- ✅ Meaningful.
-- ❌ Can change (person changes email).
-- ❌ May not actually be unique.
-- ❌ Privacy concerns.
-
-#### Surrogate key
-Auto-generated, meaningless ID.
-- ✅ Never changes.
-- ✅ Guaranteed unique.
-- ✅ Compact (BIGINT, UUID).
-- Examples: `BIGSERIAL`, UUID, Snowflake.
-
-### Surrogate ID strategies
-| Strategy | Pros | Cons |
-|----------|------|------|
-| **Auto-increment** (BIGSERIAL) | Compact, ordered | Centralized, hard in sharded |
-| **UUID v4** | Globally unique, decentralized | 16 bytes, random order (index fragmentation) |
-| **UUID v7 / ULID** | Globally unique + time-ordered | Newer, less tooling |
-| **Snowflake** | Time-ordered, decentralized | Needs coordination (worker ID) |
-| **Composite** (tenant_id, seq) | Natural for sharding | Wider, app complexity |
-
-### Sharded systems
-- Auto-increment doesn't work — each shard would generate the same IDs.
-- Use **UUID** or **Snowflake** for global uniqueness without coordination.
-
-### Composite primary keys
-```sql
-CREATE TABLE enrollments (
-    student_id BIGINT,
-    course_id BIGINT,
-    PRIMARY KEY (student_id, course_id)
-);
 ```
-Useful for junction tables. The PK also serves as a uniqueness constraint.
+                     +-----------------------------------+
+                     |         CLUSTERED B-TREE          |
+                     +-----------------------------------+
+                                    [ PK = 5 ]
+                                   /          \
+                                  /            \
+                       [ PK = 2 ]               [ PK = 8 ]
+                      /          \             /          \
+               [Row: PK=1]   [Row: PK=2]   [Row: PK=7]   [Row: PK=8]
+               (Data Record) (Data Record) (Data Record) (Data Record)
+```
+
+### Primary Key selection types
+
+1. **Natural Key**: Uses pre-existing domain attributes with inherent uniqueness (e.g., Social Security Number, National ID). *Risk: Domain rules change, compromising key stability.*
+2. **Surrogate Key**: An artificially generated unique identifier with no business logic meaning.
+   - **Auto-Incrementing Integer (BIGINT)**: Fast, compact (8 bytes), highly efficient for B-Tree insertions due to sequential append. *Risk: ID enumeration security leaks; single-master bottleneck in distributed systems.*
+   - **UUIDv4 (Random 128-bit)**: Globally unique across distributed nodes without coordination. *Risk: Random insertions cause B-Tree index fragmentation and page splits.*
+   - **UUIDv7 / ULID (Time-Ordered 128-bit)**: Combines timestamp prefixes with random bits. Delivers global uniqueness while maintaining sequential B-Tree append efficiency.
+
+### Primary Key implementation comparison
+
+| Key Strategy | Storage Size | Distributed Unique | B-Tree Insert Efficiency | Security (Non-Enumeration) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Auto-Increment BIGINT** | 8 Bytes | No (Requires central sequence) | Excellent (Sequential append) | Poor (Vulnerable to ID scraping) |
+| **UUIDv4 (Random)** | 16 Bytes | Yes (No coordination) | Poor (Causes page splits & I/O) | Excellent (Cryptographically random) |
+| **UUIDv7 / ULID** | 16 Bytes | Yes (No coordination) | Excellent (Time-ordered append) | High (Contains random entropy) |
+| **Composite Key** | Variable | No | Good to Moderate | N/A |
+
+### Best practices
+
+- **Never use mutable columns** (e.g., user email) as primary keys; updates to primary keys require costly index updates and foreign key cascades.
+- In distributed microservice environments, standardize on time-ordered unique keys such as **UUIDv7** or **Snowflake IDs**.
 
 ### Key takeaway
-Every table needs a PK. Prefer **surrogate keys** (BIGSERIAL, UUID, Snowflake). For distributed
-systems, use UUID or Snowflake to avoid coordination. Don't use natural keys that might change.
+
+Primary keys uniquely identify rows and define clustered index layouts. Choose auto-incrementing integers for single-node systems, and time-ordered keys like UUIDv7 or Snowflake IDs for distributed architectures to avoid B-Tree page splits.

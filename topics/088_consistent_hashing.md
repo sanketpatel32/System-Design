@@ -4,58 +4,44 @@
 
 ---
 
-Consistent hashing = **a key→node mapping where adding/removing a node only moves K/N
-keys**, not K. Fundamental for distributed caches and databases.
+**Consistent Hashing** is a distributed hash algorithm that minimizes key remapping when nodes are added to or removed from a cluster. Unlike traditional modulo hashing (`hash(key) % N`), where changing $N$ remaps nearly all keys, consistent hashing remaps only $K/N$ keys on average, where $K$ is the total number of keys and $N$ is the number of nodes.
 
-### The problem
-Naive modulo: `node = hash(key) % N`. Add one node → almost all keys remap → cache wiped,
-sessions lost.
-
-### Solution
-Imagine a ring of hash values [0, 2³²):
-1. Place each node at `hash(node_id)` on the ring.
-2. Place each key at `hash(key)`.
-3. Each key belongs to the **next node clockwise**.
+### Hash ring architecture
 
 ```
-           N1
-         /    \
-      k3      k1
-       |       |
-      k2 - N2 - N3
+                           Node A (Pos: 1000)
+                              /        \
+                             /          \
+         Keys 9000-1000     /            \ Keys 1001-3000
+                           /              \
+            Node D (Pos: 9000)          Node B (Pos: 3000)
+                           \              /
+                            \            /
+         Keys 6001-9000      \          / Keys 3001-6000
+                              \        /
+                           Node C (Pos: 6000)
 ```
 
-### Why it wins
-- Add node N4 between N1 and N2: only keys between N4 and its predecessor move.
-- Remove node N2: its keys redistribute to N3, others unchanged.
-- Expected **K/N keys move** (not K), preserving locality.
+### How consistent hashing works
 
-### Virtual nodes (vnodes)
-Each physical node placed at **many** points on the ring (e.g. 150 vnodes):
-- Smooths out uneven distribution.
-- Standard in Cassandra, Memcached, DynamoDB.
+1. **The Hash Ring**: The hash function maps both physical servers and data keys to a fixed 360-degree circular integer space (e.g., $0$ to $2^{32} - 1$).
+2. **Key Assignment**: A key is hashed to a point on the ring, then assigned to the first server encountered moving clockwise around the ring.
+3. **Node Addition/Removal**: Adding a new server claims keys only from its immediate clockwise neighbor, leaving all other node assignments untouched.
 
-### Without vs with vnodes
-```
-3 nodes, no vnodes:    |-------A---|---B---|----C-----|  (uneven segments)
-3 nodes, 150 vnodes:   |ACBACBACBACBACBACBACBACBACBAC|  (uniform)
-```
+### Virtual Nodes (VNodes)
 
-### Use cases
-- **Distributed cache**: Memcached, Redis Cluster.
-- **Database**: Cassandra, DynamoDB, Riak (sharding).
-- **Load balancing**: sticky by key.
-- **CDN**: edge selection.
+To prevent hot spots and uneven data distribution caused by non-uniform server placement on the ring, consistent hashing introduces **Virtual Nodes**:
+- Each physical server is mapped to multiple pseudo-positions (e.g., 100–250 virtual tokens) across the ring.
+- Virtual nodes distribute keys evenly across all physical hardware and balance re-distribution when servers fail.
 
-### Replication
-Each key replicated to the **next N nodes clockwise** on the ring → replicas spread evenly,
-failover natural (successor takes over).
+### Hashing algorithm comparison
 
-### Variants
-- **Rendezvous hashing (HRW)** — simpler O(N) but great distribution for small N.
-- **Maglev** (Google) — uses a lookup table; O(1) lookup, minimal movement.
+| Strategy | Node Change Impact | Key Remap Percentage | Hotspot Vulnerability |
+| :--- | :--- | :--- | :--- |
+| **Modulo Hashing (`hash % N`)**| Catastrophic (Remaps almost all keys) | $pprox 100\%$ | High |
+| **Basic Consistent Hashing** | Low (Remaps only adjacent neighbor keys) | $1/N$ | Moderate (Uneven ring spacing) |
+| **Consistent Hashing + VNodes** | Low & Uniformly Distributed | $1/N$ | Minimal (Even balance across ring) |
 
 ### Key takeaway
-Consistent hashing minimizes data movement on cluster changes, making it essential for
-distributed caches and sharded DBs. Always use **vnodes** for even distribution. Standard in
-Cassandra, Redis Cluster, Memcached.
+
+Consistent hashing enables scalable key assignment in distributed systems like Redis Cluster, DynamoDB, and Cassandra. Adding virtual nodes ensures uniform data distribution and prevents hot spots during node membership changes.

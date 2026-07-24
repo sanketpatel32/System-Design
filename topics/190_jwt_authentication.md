@@ -1,61 +1,56 @@
 # JWT Authentication
-
 > **Category:** Security
 
 ---
 
-JWT (JSON Web Token) = **a self-contained, signed token** carrying claims (user ID, roles,
-expiry).
+### Overview
+**JSON Web Token (JWT)** authentication is a stateless mechanism where the server issues a digitally signed JSON payload containing user identity and claims. Because the token is self-contained and verifiable via cryptography, resource servers do not need to perform database lookups to validate identity.
 
-### Structure
-```
-header.payload.signature
-eyJhbGciOi...eyJzdWIi...SflKxw...
-```
-- **Header**: algorithm (HS256, RS256).
-- **Payload**: claims (sub, exp, iat, custom).
-- **Signature**: HMAC or RSA signature over header + payload.
+### Anatomy of a JWT
 
-### Flow
+$$\text{JWT} = \underbrace{\text{Base64URL(Header)}}_{\text{Algorithm \& Type}} \, . \, \underbrace{\text{Base64URL(Payload)}}_{\text{Claims \& Identity}} \, . \, \underbrace{\text{Signature}}_{\text{Cryptographic Verification}}$$
+
 ```
-1. User logs in.
-2. Server validates, creates JWT signed with secret/private key.
-3. Server sends JWT to client.
-4. Client includes JWT in Authorization: Bearer header.
-5. Server verifies signature, extracts claims, identifies user.
++-------------------------------------------------------------------------+
+|                               JWT Structure                             |
++-------------------------------------------------------------------------+
+| Header:    {"alg": "RS256", "typ": "JWT"}                               |
+| Payload:   {"sub": "usr_123", "name": "Alice", "exp": 1700086400}        |
+| Signature: RS256( Base64(Header) + "." + Base64(Payload), PrivateKey )  |
++-------------------------------------------------------------------------+
 ```
 
-### Pros
-- ✅ **Stateless**: server doesn't store sessions.
-- ✅ **Scales**: any instance can verify.
-- ✅ **Mobile-friendly**: token in header, not cookie.
-- ✅ **Decentralized**: multiple services can verify.
+### Stateless Verification Architecture
 
-### Cons
-- ❌ **Can't revoke** easily (until expiry).
-- ❌ **Larger** than session ID.
-- ❌ **Stale claims** (role changes need new token).
-- ❌ **Storage**: client must store securely (XSS risk).
+```
+Client App                                   Auth Server                  Resource API Server
+    |                                             |                                |
+    | --- 1. POST /login (Credentials) ---------> |                                |
+    | <-- 2. Return Signed JWT (PrivKey) -------- |                                |
+    |                                                                              |
+    | --- 3. GET /data (Authorization: Bearer <JWT>) ----------------------------> |
+    |                                                                              | [ Verify Signature ]
+    |                                                                              | [ Check Expire Claim ]
+    | <-- 4. 200 OK (Data Response) ---------------------------------------------- |
+```
 
-### Refresh tokens
-- Access token: short-lived (15 min).
-- Refresh token: long-lived (7 days), used to get new access tokens.
-- Refresh token stored server-side (can be revoked).
-- Limits exposure window if access token leaked.
+### Standard Claims Reference
 
-### Signatures
-- **HS256**: HMAC with shared secret (simple, secret must be shared).
-- **RS256**: RSA, private key signs, public key verifies (better for multi-service).
-- **ES256**: ECDSA (modern, smaller signatures).
+| Claim | Name | Description | Example |
+|---|---|---|---|
+| `iss` | Issuer | Principal issuing the JWT | `https://auth.example.com` |
+| `sub` | Subject | Unique user / entity identifier | `usr_998241` |
+| `exp` | Expiration Time | Unix timestamp after which JWT is invalid | `1700086400` |
+| `iat` | Issued At | Unix timestamp when JWT was generated | `1700000000` |
+| `aud` | Audience | Intended recipient of the JWT | `https://api.example.com` |
 
-### Security best practices
-- Short TTL on access tokens.
-- Don't store in localStorage (XSS) — use httpOnly cookie or secure storage.
-- Always verify signature + expiry.
-- Use refresh tokens for revocability.
-- Don't put sensitive data in payload (it's base64, not encrypted).
+### Revocation & Security Trade-offs
+
+| Mechanism | Implementation | Trade-off |
+|---|---|---|
+| **Short-lived Access Token**| Set `exp` to 5-15 minutes; use Refresh Tokens for renewal | Minimizes window of exposure for stolen tokens |
+| **Redis Blacklist** | Store revoked `jti` (JWT ID) in Redis until expiration | Restores instant revocation, but reintroduces state |
+| **Key Rotation** | Publish Public Key sets via JWKS (`/.well-known/jwks.json`) | Allows non-disruptive cryptographic key rotation |
 
 ### Key takeaway
-JWTs are self-contained signed tokens. Great for stateless APIs and mobile. Use **short-lived
-access tokens + long-lived refresh tokens** to balance usability and revocation. Sign with RS256
-for multi-service. Never store in localStorage.
+**JWT Authentication** provides high horizontal scalability by eliminating session database lookups. Secure designs must use asymmetric algorithms (**RS256/EdDSA**), keep access token lifetimes short (5-15 mins), and expose public key sets via **JWKS**.

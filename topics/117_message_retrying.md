@@ -4,56 +4,50 @@
 
 ---
 
-Retries handle transient failures in consumers — but they must be done carefully to avoid
-infinite loops and side effects.
+**Message Retrying** is the mechanism of re-attempting processing for failed messages in asynchronous messaging architectures. Transient failures (temporary network blips, database lock timeouts, external API rate limits) can be resolved by retrying message delivery using structured backoff policies.
 
-### Why retry
-- Network blips.
-- DB temporarily down.
-- Downstream rate-limited (429).
-- Bug being deployed right now.
+### Retry pipeline architecture
 
-### Retry strategies
-| Strategy | How |
-|----------|-----|
-| **Immediate** | Retry right away |
-| **Fixed delay** | Wait N seconds between attempts |
-| **Exponential backoff** | 1s, 2s, 4s, 8s, 16s, ... |
-| **Exponential + jitter** | Add randomness to avoid thundering herd |
-| **DLQ after N attempts** | Give up, send to dead-letter |
-
-### Exponential backoff + jitter (recommended)
 ```
-delay = min(max_delay, base * 2^attempt) * random(0.5, 1.0)
+                               +-------------------+
+                               |  Incoming Queue   |
+                               +-------------------+
+                                         |
+                                         v
+                               +-------------------+
+                               | Consumer Processing|
+                               +-------------------+
+                                  /             \
+                      Success    /               \ Transient Error
+                                v                 v
+                      +-------------------+   +-------------------+
+                      | ACK & Delete Msg  |   | Retry Queue       |
+                      +-------------------+   | (Exponential      |
+                                              |  Backoff + Jitter)|
+                                              +-------------------+
+                                                        |
+                                           Exceeded Max Retry Limit
+                                                        v
+                                              +-------------------+
+                                              | Dead Letter Queue |
+                                              +-------------------+
 ```
-- Backoff: don't hammer a struggling service.
-- Jitter: spread retries so they don't synchronize.
 
-### Idempotency is mandatory
-- At-least-once delivery → consumers may receive duplicates.
-- Idempotency key → safe to retry.
+### Core retry policies & techniques
 
-### Visibility timeout (SQS)
-- Message becomes invisible after delivery.
-- If not ACK'd in N seconds, it's re-delivered.
-- Sets the upper bound on processing time per attempt.
+1. **Exponential Backoff**: Doubles the delay between consecutive retries (e.g., 1s, 2s, 4s, 8s, 16s) to avoid overwhelming recovering downstream systems.
+2. **Jitter (Randomization)**: Adds random variance to backoff intervals to prevent synchronized retry spikes across worker instances.
+3. **Retry Queues (Delayed Queues)**: Offloads failed messages to dedicated delayed queues so un-failed messages behind them in the primary queue are not blocked (prevents Head-of-Line blocking).
 
-### Retry queues (RabbitMQ)
-- Failed message → retry queue with TTL.
-- After TTL expires → back to main queue.
-- After N attempts → DLQ.
+### Retry Configuration Parameters
 
-### When NOT to retry
-- Permanent failures (invalid input, business rule violation).
-- Send straight to DLQ.
-- Don't retry a 400 (client error).
-
-### Poison messages
-- A message that always fails (bug, malformed).
-- Will retry forever without a cap.
-- Always have **max attempts + DLQ**.
+| Parameter | Recommended Setting | Purpose |
+| :--- | :--- | :--- |
+| **Max Retry Attempts** | 3 – 5 attempts | Prevents infinite retry loops on non-transient bugs |
+| **Initial Backoff Interval**| 500 ms – 1 second | Gives transient network blips time to clear |
+| **Backoff Multiplier** | 2.0 (Exponential) | Scales delay to relieve pressure on failing services |
+| **Jitter Factor** | $\pm 20\%$ random variance | Prevents synchronized thundering herd retries |
 
 ### Key takeaway
-Retry with **exponential backoff + jitter**, cap at N attempts, send failures to a **DLQ**.
-Consumers must be **idempotent** (at-least-once means duplicates). Don't retry permanent
-errors.
+
+Design message retries using exponential backoff with jitter to recover from transient failures without overwhelming downstream dependencies. Route messages that exceed max retry limits to a Dead Letter Queue (DLQ).

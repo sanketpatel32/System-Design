@@ -4,64 +4,40 @@
 
 ---
 
-No single database is best for everything. Pick by **access pattern**, **consistency
-needs**, and **scale**.
+Selecting the right database management system requires evaluating system data access patterns, write/read throughput ratios, latency constraints, consistency requirements, and scaling dimensions. Modern system design relies on **Polyglot Persistence** — employing different specialized databases for different microservices based on domain needs.
 
-### Decision tree
+### Decision matrix taxonomy
+
 ```
-1. Do you need ACID transactions across rows?
-   YES -> Relational (Postgres, MySQL)
-   NO  -> continue
-
-2. Is the data highly connected (graph-like)?
-   YES -> Graph (Neo4j, Dgraph)
-   NO  -> continue
-
-3. Is the workload mostly key lookups?
-   YES -> Key-value (Redis, DynamoDB)
-   NO  -> continue
-
-4. Flexible / nested schema (JSON)?
-   YES -> Document (MongoDB, Couchbase)
-   NO  -> continue
-
-5. Massive write volume (events, logs)?
-   YES -> Wide-column (Cassandra, HBase)
-   NO  -> continue
-
-6. Full-text search / faceted filtering?
-   YES -> Search (Elasticsearch, OpenSearch)
-   NO  -> continue
-
-7. Time-series?
-   YES -> Time-series (InfluxDB, TimescaleDB)
-   NO  -> continue
-
-Default: Relational (Postgres)
+                             [ Data Engine Selection ]
+                                         |
+     +-------------------+---------------+---------------+-------------------+
+     |                   |                               |                   |
+ (Relational/ACID)  (Document/Flexible)              (High Write Log)    (Search/Graph)
+     v                   v                               v                   v
+ PostgreSQL          MongoDB                         Cassandra          Elasticsearch
+ MySQL               DynamoDB                        TimescaleDB        Neo4j
 ```
 
-### Comparison table
-| DB | Type | Strong for | Weak for |
-|----|------|-----------|----------|
-| PostgreSQL | Relational | OLTP, ACID, joins | Massive horizontal scale |
-| MySQL | Relational | OLTP, simple apps | Advanced analytics |
-| MongoDB | Document | Flexible schema | Multi-doc transactions (slower) |
-| Redis | Key-value | Cache, sessions | Persistence, complex queries |
-| DynamoDB | Key-value | Massive scale, ops-free | Joins, complex queries |
-| Cassandra | Wide-column | Time-series, writes | Ad-hoc queries, strong consistency |
-| Neo4j | Graph | Relationships | Anything not graph |
-| Elasticsearch | Search | Full-text, analytics | Source of truth |
-| Snowflake | OLAP | Analytics, BI | OLTP |
-| InfluxDB | Time-series | Metrics, sensors | General purpose |
+### Database Category Decision Matrix
 
-### Polyglot persistence
-Most production systems use **multiple** databases:
-- Postgres for source of truth.
-- Redis for cache.
-- Elasticsearch for search.
-- S3 for files.
-- Kafka for events.
+| Database Type | Primary Engine Examples | Core Strengths | Weaknesses | Ideal System Use Cases |
+| :--- | :--- | :--- | :--- | :--- |
+| **Relational (RDBMS)** | PostgreSQL, MySQL | Strong ACID, complex SQL `JOIN`s, schema safety | Hard to scale writes horizontally | Finance, ERP, Order Processing, Users DB |
+| **Document Store** | MongoDB, Couchbase | Flexible schema, JSON document mapping | Lacks cross-document ACID transactions | Content management, Catalogs, Profiles |
+| **Key-Value** | Redis, DynamoDB | Sub-millisecond latency, extreme $O(1)$ ops | Limited querying capabilities (Primary key only) | Caching, User sessions, Leaderboards |
+| **Wide-Column** | Apache Cassandra, ScyllaDB | Linearly scalable writes, zero single points of failure | Complex query modeling; no JOINs | IoT telemetry, Event logs, Messaging |
+| **Search Engine** | Elasticsearch, OpenSearch | Inverted index, full-text search, fuzzy matching | High memory overhead; eventual consistency | Product catalog search, Log analytics |
+| **Time-Series** | TimescaleDB, InfluxDB | Optimized timestamp indexing, high compression | Unsuited for general transactional updates | Monitoring metrics, Financial tickers |
+| **Graph** | Neo4j, AWS Neptune | Fast multi-hop edge traversal | Specialized query syntax; hard to partition | Social networks, Fraud detection |
+
+### Decision flowchart checklist
+
+1. *Does the workload require ACID guarantees across multi-entity operations?* -> Choose **RDBMS (PostgreSQL)**.
+2. *Is read traffic composed of unstructured text search or fuzzy lookups?* -> Offload reads to **Elasticsearch**.
+3. *Does write traffic consist of continuous sensor readings or timestamp metrics?* -> Choose **Time-Series (TimescaleDB)**.
+4. *Do queries require traversing complex N-hop connections between entities?* -> Choose **Graph DB (Neo4j)**.
 
 ### Key takeaway
-Match the database to the **access pattern**, not the hype. Postgres is the right default for
-most apps. Add specialized DBs (Redis, ES, Cassandra) when an access pattern demands it.
+
+Evaluate database selection based on workload access patterns and scalability needs. Modern architectures adopt polyglot persistence, matching specialized database engines (RDBMS, Document, Key-Value, Search, Time-Series) to specific microservice requirements.

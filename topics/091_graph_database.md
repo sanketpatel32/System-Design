@@ -4,55 +4,35 @@
 
 ---
 
-A graph database stores data as **nodes and relationships (edges)**, optimized for queries
-that traverse connections.
+A **Graph Database** is a non-relational database that uses graph structures with nodes, edges, and properties to represent and store data. Graph databases prioritize relationships between entities, enabling fast traversal of complex multi-hop networks without costly relational SQL `JOIN` operations.
 
-### Data model
+### Property graph architecture
+
 ```
-(Alice) -[:KNOWS]-> (Bob) -[:WORKS_AT]-> (Acme)
-   |
-   | :LIVES_IN
-   v
- (NYC)
+    (User: Alice) --------[FOLLOWS {since: 2024}]-------> (User: Bob)
+          |                                                   |
+          |                                                   |
+    [LIKES {rating: 5}]                                [PURCHASED]
+          |                                                   |
+          v                                                   v
+   (Product: Laptop) <------[CATEGORY: Tech]-------- (Product: Phone)
 ```
 
-Nodes have labels (User, City), edges have types (KNOWS, WORKS_AT), both have properties.
+### Core components of property graphs
 
-### Why graphs
-Some data is **naturally graph-shaped**:
-- Social networks (friend-of-friend).
-- Recommendation (users who bought X also bought Y).
-- Fraud (rings of connected accounts).
-- Routing (maps, network topology).
-- Knowledge graphs.
+1. **Nodes (Vertices)**: Represent domain entities (e.g., Person, Product, Location) containing key-value properties.
+2. **Edges (Relationships)**: Represent directional connections between nodes (e.g., `FOLLOWS`, `PURCHASED`, `FRIEND_OF`) with metadata properties.
+3. **Index-Free Adjacency**: Nodes maintain direct physical pointers to adjacent neighbor nodes on disk/memory. Traversal time depends only on the number of connected edges, not the total graph size.
 
-### Queries graphs are great at
-- "Friends of friends of Alice who live in NYC."
-- "Shortest path from User A to User B."
-- "Find cycles" (fraud rings).
-- "Common neighbors" (recommendations).
+### Graph Database vs Relational Comparison
 
-In SQL these become multi-hop JOINs that get slow fast. In a graph DB, traversal is O(degree),
-not O(joins).
-
-### Query languages
-- **Cypher** (Neo4j): `MATCH (a:User)-[:KNOWS*2]->(fof) RETURN fof`
-- **Gremlin** (TinkerPop / Neptune): traversal-based.
-- **GQL** (new standard, ISO).
-
-### Popular graph DBs
-- **Neo4j** — most popular, full-featured.
-- **Amazon Neptune** — managed, supports Gremlin and SPARQL.
-- **Dgraph** — distributed, GraphQL-native.
-- **ArangoDB** — multi-model (graph + document).
-- **TigerGraph** — large-scale analytics.
-
-### When NOT to use a graph
-- Simple CRUD without relationships.
-- Time-series data.
-- Pure key-value access.
+| Feature | Graph Database (Neo4j, Neptune) | Relational Database (SQL) |
+| :--- | :--- | :--- |
+| **Multi-Hop Traversal**| Fast ($O(1)$ edge pointer traversal per hop) | Slow ($O(N^K)$ performance drop with multi-table JOINs) |
+| **Schema Model** | Dynamic schema; add new edge types freely | Rigid schema; requires DDL migrations to alter relationships |
+| **Query Language** | Cypher, Gremlin, SPARQL | Standard ANSI SQL |
+| **Primary Use Cases**| Social networks, fraud detection, recommendations | Financial ledger, ERP, transactional records |
 
 ### Key takeaway
-Use a graph DB when **relationships are the data** — social, recommendation, fraud, routing.
-Multi-hop queries that are painful in SQL become natural. For simple CRUD, a relational DB is
-simpler.
+
+Graph databases enable fast multi-hop relationship traversals using index-free adjacency. Use graph databases for social networks, recommendation engines, and fraud detection systems where relationships are first-class entities.

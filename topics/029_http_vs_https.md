@@ -4,40 +4,44 @@
 
 ---
 
-HTTPS is **HTTP over TLS** — same application protocol, but the bytes between client and
-server are encrypted and authenticated.
+**HTTP (Hypertext Transfer Protocol)** is an unencrypted Layer 7 application protocol. **HTTPS (HTTP Secure)** encapsulates HTTP requests inside an encrypted **TLS (Transport Layer Security)** wrapper, guaranteeing **Encryption, Data Integrity, and Server Authentication**.
 
-### The difference
+### TLS 1.3 Handshake & Encryption Wrapper
+
 ```
-HTTP    : client --- plaintext --- server      (port 80)
-HTTPS   : client --- TLS tunnel --- server     (port 443)
++-------------------------------------------------------------------------+
+|                      TLS 1.3 ENCRYPTION HANDSHAKE                       |
++-------------------------------------------------------------------------+
+
+  Client                                       Server
+    |                                            |
+    |---- 1. ClientHello (Cipher Specs, ECDHE) ->|
+    |<--- 2. ServerHello + Certificate + Key ----|  (1 RTT Handshake)
+    |
+  [ Client Validates Cert Root CA ]
+  [ Both Derive Symmetric Session Key ]
+    |                                            |
+    |==== 3. Encrypted HTTP Request (AES-GCM) ==>|
+    |<=== 4. Encrypted HTTP Response ===========|
 ```
 
-### Why HTTPS
-1. **Confidentiality** — ISP / coffee-shop Wi-Fi can't read your traffic.
-2. **Integrity** — packets can't be tampered with in transit.
-3. **Authentication** — certificate proves you reached the real `bank.com`, not an imposter.
+### Feature & Protocol Comparison
 
-### TLS handshake (1.2)
-```
-ClientHello (proposed ciphers, random)
-ServerHello (chosen cipher, cert, random)
-Key exchange (RSA / ECDHE)  -> shared secret
-Finished (encrypted) -> ready
-```
-2 round trips before first HTTP byte. TLS 1.3 reduces to 1 RTT (or 0-RTT with resumption).
+| Dimension | HTTP (Cleartext) | HTTPS (TLS Encrypted) |
+| :--- | :--- | :--- |
+| **Protocol Layer** | Layer 7 Application Protocol | Layer 7 HTTP wrapped over TLS Layer 6/5 |
+| **Default Port** | Port `80` | Port `443` |
+| **Security Guarantees** | None (Vulnerable to Man-in-the-Middle) | **Encryption**, **Authentication**, **Integrity** |
+| **Handshake Overhead** | 1 RTT (TCP 3-Way Handshake) | 2 RTT (TCP + TLS 1.3 Handshake = 1 RTT overall) |
+| **Certificate Cost** | None | SSL/TLS Certificate required (Let's Encrypt / CA) |
+| **SEO & Browser Impact**| Marked "Not Secure", penalized by Google | Mandatory standard, higher search ranking |
 
-### Modern best practice
-- **HTTPS everywhere** — HSTS header forces HTTPS, browsers reject downgrade.
-- **TLS 1.3** — faster, more secure, mandatory PFS.
-- **Cert management** — Let's Encrypt (free, auto-renewing), ACM (managed).
-- **OCSP stapling** — server bundles revocation status to avoid extra round trips.
+### Three Core Security Guarantees of HTTPS
 
-### Performance
-- TLS adds ~1-2 RTT latency on first connection.
-- **Connection reuse** (keep-alive, HTTP/2 multiplexing) amortizes this.
-- **Session resumption / 0-RTT** skips handshake on repeat visits.
+1. **Confidentiality (Encryption)**: Asymmetric cryptography (ECDSA/RSA) negotiates a symmetric session key (AES-256-GCM) so eavesdroppers cannot read payload traffic.
+2. **Integrity (Tamper Prevention)**: Cryptographic hash HMAC signatures verify data has not been modified or injected during transit.
+3. **Authentication (Identity Verification)**: Public Key Infrastructure (PKI) digital certificates issued by trusted Certificate Authorities (CAs) verify server identity.
 
 ### Key takeaway
-There's no excuse for HTTP today. Always design for HTTPS from day one — let's Encrypt for free
-certs, ACM for managed certs, and HTTP/2+ for performance.
+
+Always enforce **HTTPS** across production web applications. Use **TLS 1.3** for 1-RTT connection setup, configure **HSTS headers** to force encrypted traffic, and automate certificate renewals via Let's Encrypt.

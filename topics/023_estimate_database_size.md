@@ -4,44 +4,61 @@
 
 ---
 
-Database size estimates drive disk provisioning, replication cost, and sharding decisions.
+Estimating **Database Size and Sharding Requirements** determines whether a system can run on a single primary database instance or requires horizontal **database sharding** across multiple data nodes based on write throughput and storage limits.
 
-### Formula
+### Database Scale Partitioning Decision Pipeline
+
 ```
-DB size = rows × avg_row_size × (1 + index_overhead) × replication_factor
++-------------------------------------------------------------------------+
+|                DATABASE PARTITIONING DECISION PIPELINE                  |
++-------------------------------------------------------------------------+
+
+  [ Total Daily Writes & Storage Growth ]
+                     |
+                     v
+  +-----------------------------------------------------------------------+
+  | Evaluate Single Primary Limits:                                        |
+  | - Max Write Throughput (~5,000 TPS for SQL)                           |
+  | - Max NVMe Storage (~4 TB to 8 TB per node)                           |
+  +-----------------------------------------------------------------------+
+                     |
+         +-----------+-----------+
+         | (Exceeds Limits)      | (Within Limits)
+         v                       v
+  [ Database Sharding Required ]  [ Single Primary + Read Replicas ]
+  (Partition by user_id/key)      (Divert reads to replicas)
 ```
 
-### Row size rules of thumb
-| Data | Bytes |
-|------|-------|
-| Short URL record | 100-300 B |
-| User profile | 1-2 KB |
-| Tweet/post | 500 B |
-| Order row (e-commerce) | 1 KB |
-| Log/event row | 200-500 B |
-| Image metadata | 500 B |
+### Database Scaling Limits Reference Table
 
-### Index overhead
-- **Primary index**: included in row size.
-- **Secondary indexes**: each adds ~10-30% of base size.
-- A typical OLTP table with 3-4 indexes is **2-3x** its raw row size.
+| DB Metric / Bound | Single Relational Node (PostgreSQL/MySQL) | Distributed NoSQL (Cassandra/DynamoDB) |
+| :--- | :--- | :--- |
+| **Max Write Throughput** | 2,000 - 10,000 TPS | Unlimited (Linear scale per shard) |
+| **Max Storage per Node**| 4 TB - 16 TB (NVMe SSD limit) | 2 TB - 4 TB per shard recommended |
+| **Read Capacity** | High (via 5-10 Read Replicas) | High (via read routing) |
+| **Primary Bottleneck** | Write IOPS contention, WAL lock sync | Cross-shard JOINs, global indexes |
 
-### Worked example — URL shortener
-- 100M new URLs/day, retention 10 years
-- 100M × 365 × 10 = 365B rows
-- × 200B = 73 TB raw
-- × 2.5 (indexes) = 182 TB
-- × 3 (replicas) = **~550 TB total**
+### Step-by-Step Sharding & DB Sizing Walkthrough
 
-### When to shard
-- **< 1 TB**: single Postgres/MySQL is fine.
-- **1-10 TB**: consider sharding by tenant / time.
-- **> 10 TB**: definitely sharded or use a distributed DB (Cassandra, Spanner).
+1. **Calculate Write Throughput**:
+   - Given $\text{Peak Write QPS} = 25,000\,\text{Write QPS}$.
+   - Single MySQL primary max write throughput $= 5,000\,\text{TPS}$.
 
-### Compression
-- Postgres TOAST + LZ4: ~50% on text blobs.
-- Columnar storage (BigQuery, ClickHouse): 5-10x on analytical data.
+$$\text{Minimum Write Shards Required} = \frac{25,000\,\text{Write QPS}}{5,000\,\text{TPS/node}} = 5\,\text{Write Shards}$$
+
+2. **Calculate 5-Year Database Storage Horizon**:
+   - Daily write data $= 100\,\text{GB/day}$.
+   - 5-year total storage $= 100\,\text{GB} \times 365 \times 5 = 182.5\,\text{TB}$.
+
+3. **Determine Shard Node Count Based on Storage Limit**:
+   - If maximum recommended storage per database shard node $= 2\,\text{TB}$:
+
+$$\text{Minimum Storage Shards Required} = \frac{182.5\,\text{TB}}{2\,\text{TB/shard}} \approx 92\,\text{Shards}$$
+
+4. **Select Final Shards Count**:
+   - Take the maximum of Write Shards (5) vs Storage Shards (92).
+   - Round up to power of 2 for easy hash ring partitioning: **128 Database Shards**.
 
 ### Key takeaway
-DB size = **rows × row_size × 2.5 (indexes) × 3 (replicas)**. When the result crosses ~1 TB per
-shard, plan for partitioning.
+
+Compare total write TPS and 5-year storage projections against single-node database limits (~5,000 TPS write, ~2-4 TB storage). If limits are exceeded, design for **horizontal database sharding** using a consistent hash partition key.

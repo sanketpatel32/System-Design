@@ -4,47 +4,47 @@
 
 ---
 
-Read replicas = **asynchronous copies of the primary database** that serve read traffic. The
-cheapest way to scale read-heavy workloads.
+**Read Replicas** are copy instances of a primary database designed specifically to serve read-only queries. Writes are directed exclusively to the primary node, which asynchronously or synchronously propagates state updates to all read replicas, distributing read traffic and offloading the primary database.
 
-### Topology
+### System architecture
+
 ```
-       writes
-Client ------> [Primary] --replicate--> [Replica 1]
-                                \----> [Replica 2]
-                                \----> [Replica 3]
-       reads
-Client ------> [Replica N]   (load balanced)
+                     +-----------------------------------+
+                     |         Application Tier          |
+                     +-----------------------------------+
+                         /             |             \
+               Writes   /         Reads|              \ Reads
+                       v               v               v
+            +--------------+   +--------------+   +--------------+
+            | Primary DB   |   | Read Replica |   | Read Replica |
+            |  (Write/Read)|   |   (Node 1)   |   |   (Node 2)   |
+            +--------------+   +--------------+   +--------------+
+                   |                   ^                   ^
+                   |  Async / Sync     |                   |
+                   +--- Replication ---+-------------------+
 ```
 
-### Why
-- **Offload reads** — most apps are read-heavy (10:1).
-- **Scale reads horizontally** — add replicas, spread load.
-- **Analytics** — run heavy queries on a replica, not the primary.
-- **HA** — promote a replica if the primary dies.
+### Replication mechanisms
 
-### Replication lag
-- Replication is **asynchronous** (in most setups) for performance.
-- Typical lag: milliseconds to seconds.
-- After a write, reads from replicas may be **stale** for a brief window.
+1. **Asynchronous Replication**: Primary acknowledges writes immediately after writing locally without waiting for replicas. Replicas fetch updates via transaction logs (WAL). *High performance, but risks replication lag and stale reads.*
+2. **Synchronous Replication**: Primary waits for at least one replica to commit the write before returning success to the client. *Guarantees consistency, but write latency equals the slowest replica's network round-trip.*
+3. **Semi-Synchronous Replication**: Primary waits for at least one replica to acknowledge log receipt (without full disk commit) before responding.
 
-### Read-your-writes consistency
-User posts a comment → refreshes → comment missing (read went to a replica behind by 200ms).
-Fixes:
-- Read from **primary** for X seconds after the user's write.
-- Use **session stickiness** at the LB.
-- Use **synchronous replication** (slower, lower availability).
+### Read replica configuration & routing
 
-### When replicas don't help
-- **Write-heavy** workloads — writes still go to one primary.
-- **Strong consistency** requirements — replicas are stale.
-- **Cross-shard queries** — replicas mirror one shard's data.
+| Architecture Component | Description | Trade-Off / Risk |
+| :--- | :--- | :--- |
+| **Read/Write Router** | Middleware (ProxySQL, PgBouncer) routing SQL statements by command (`SELECT` vs `INSERT/UPDATE`) | Single point of failure unless load balanced |
+| **Replication Lag** | Delay between primary commit and replica update | Stale reads (user updates profile, refreshes, sees old info) |
+| **Failover / Promotion** | Promoting replica to primary if primary fails | Risk of split-brain if health checks misfire |
+| **Geographic Distribution** | Placing read replicas near global users | Cross-region replication latency and ingress costs |
 
-### Promotion (failover)
-- Primary dies → promote a replica (RDS does this in 30s-2min).
-- Replication lag = **data loss** on failover (the un-replicated writes).
+### Mitigating replication lag issues
+
+- **Read-Your-Own-Writes Consistency**: Route reads from a user who just modified data to the primary node for a fixed window (e.g., 5 seconds) before switching back to replicas.
+- **Monotonic Read Consistency**: Ensure a client's queries always hit the same replica so they never observe time move backward.
+- **Replica Health Checks**: Automatically remove replicas from the load balancing pool if their replication lag exceeds acceptable limits (e.g., > 2 seconds).
 
 ### Key takeaway
-Read replicas are the **first** scaling move for read-heavy apps. Plan for replication lag
-(read-your-writes, sticky sessions) and use one as a failover candidate. They don't scale
-writes — for that you need sharding.
+
+Read replicas provide an effective mechanism for scaling read-heavy applications. To handle eventual consistency and stale reads, implement read-your-own-writes mechanisms and active replica lag monitoring.

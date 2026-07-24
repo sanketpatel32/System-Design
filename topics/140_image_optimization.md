@@ -4,61 +4,41 @@
 
 ---
 
-Image optimization = **delivering images in the right format, size, and quality** for each
-client. Reduces bandwidth and improves load times.
+Image Optimization reduces image payload sizes, converts legacy formats to modern codecs, and dynamically resizes imagery based on user device viewports to accelerate web page loading speeds.
 
-### Why
-- Images are the **largest** fraction of page weight (often 60%+).
-- Mobile users on slow connections suffer most.
-- Bandwidth costs real money (egress).
+### Dynamic Image Optimization Pipeline
 
-### Techniques
-
-#### 1. Modern formats
-| Format | Savings vs JPEG | Browser support |
-|--------|-----------------|-----------------|
-| WebP   | 25-35%          | Modern browsers |
-| AVIF   | 50%             | Newer browsers |
-| JPEG XL | 60%            | Emerging |
-| JPEG   | baseline        | All |
-| PNG    | Lossless        | All (graphics) |
-
-Use `<picture>` with multiple `<source>` to deliver the best the browser supports.
-
-#### 2. Responsive images
-```html
-<img srcset="img-200.jpg 200w, img-500.jpg 500w, img-1000.jpg 1000w"
-     sizes="(max-width: 600px) 200px, 500px"
-     src="img-500.jpg">
 ```
-Browser picks the best size — doesn't download a 4K image for a 200px display.
-
-#### 3. Lazy loading
-```html
-<img src="img.jpg" loading="lazy">
-```
-Defer offscreen images until user scrolls. Saves bandwidth.
-
-#### 4. Compression
-- Lossy: 70-80% quality usually indistinguishable.
-- Lossless for graphics / screenshots.
-
-#### 5. CDN on-the-fly
-- Cloudflare, Cloudinary, Imgix: transform images at the edge.
-- `?width=500&format=webp` — server resizes and converts.
-
-### Workflow
-```
-1. User uploads raw image to S3.
-2. Lambda creates variants: thumbnail, medium, large, WebP, AVIF.
-3. CDN serves appropriate variant per request.
-4. Client uses <picture> to pick.
++--------+        1. HTTP GET /img.jpg?w=400&format=webp        +---------------+
+| Client | ---------------------------------------------------> | Edge CDN PoP  |
++--------+                                                      +---------------+
+    ^                                                                   |
+    | 4. Cache Hit (Optimized WebP Image)                               v 2. Cache Miss
+    +---------------------------------------------------------- +-----------------------+
+                                                                | Image Processing Edge |
+                                                                | (Resizes & Converts)  |
+                                                                +-----------------------+
+                                                                            | 3. Fetch Original
+                                                                            v
+                                                                +-----------------------+
+                                                                | Original S3 Bucket    |
+                                                                +-----------------------+
 ```
 
-### Measuring
-- Lighthouse, PageSpeed Insights.
-- Target: images < 100KB on mobile.
+### Image Codec & Format Matrix
+
+| Format | Compression Type | Transparency | Animation | Size vs JPEG | Best Use Case |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **JPEG** | Lossy | No | No | Baseline (100%) | Legacy Fallback Photographs |
+| **PNG** | Lossless | Yes | No | 150 - 200% | Vector Icons, Screenshots, Text |
+| **WebP** | Lossy / Lossless | Yes | Yes | ~65 - 75% | Modern Web & Mobile Images |
+| **AVIF** | Lossy / Lossless | Yes | Yes | ~50 - 60% | Ultra-High Quality Compressed Media |
+
+### Key Optimization Rules
+
+- **Responsive Images (`srcset`)**: Provide `srcset` hints allowing browser viewports to request exact resolution dimensions (e.g., 320w, 640w, 1024w).
+- **EXIF Metadata Stripping**: Remove camera model, geolocation, and timestamp headers to save 10-20% byte payload size.
 
 ### Key takeaway
-Image optimization = **modern formats (WebP/AVIF) + responsive sizes + lazy loading + CDN
-on-the-fly transforms**. Cuts bandwidth 50-80% and dramatically improves mobile UX.
+
+Optimize images by **dynamically converting media to modern formats (WebP/AVIF)**, stripping metadata, and resizing assets at the edge based on client viewport parameters.

@@ -4,59 +4,40 @@
 
 ---
 
-A distributed lock = **a mutual exclusion primitive across multiple nodes**, ensuring only
-one process at a time does something.
+A Distributed Lock is a synchronization mechanism that guarantees **mutual exclusion across multiple independent node instances**, ensuring only one process can access a shared resource at any given time.
 
-### Use cases
-- **Leader election** (lock = "I'm the leader").
-- **Preventing double-execution** of scheduled jobs.
-- **Serializing updates** to a shared resource.
-- **Migration coordination**.
+### Distributed Lock Lifecycle & Fencing Tokens
 
-### Implementations
-
-#### ZooKeeper / etcd
-- Create an ephemeral node: `/locks/my-lock`.
-- First creator wins.
-- Others watch; if node disappears, retry.
 ```
-create ephemeral node /locks/my-lock
-  if success: I hold the lock
-  else: watch /locks/my-lock; if it disappears, try again
++----------+      1. Acquire Lock (TTL=10s)       +-----------------------+      Generates Token: 42     +-------------------+
+| Worker A | -----------------------------------> | Distributed Lock Manager| --------------------------> | Lock Key (Active)|
++----------+                                      | (Redis / etcd)        |                             +-------------------+
+     |                                            +-----------------------+                                       |
+     | 2. Execute DB Write with Fencing Token: 42                                                                 |
+     +------------------------------------------------------------------------------------------------------------+
+     |                                                                                                            v
+     | (GC Pause / Network Lag > 10s -> Lock Expires!)                                                +-------------------+
+     |                                                                                                | Target Database   |
+     | 3. Late Write Attempt (Token: 42)                                                              | (State DB)        |
+     v                                                                                                +-------------------+
++----------+      Rejection! DB accepts only token > 42                                                           |
+| Worker B | -----------------------------------------------------------------------------------------------------+
+  Acquires Lock (Token: 43)
 ```
 
-#### Redis `SET NX EX`
-```
-SET lock:key "owner_id" NX EX 30
-```
-- Atomic create-if-not-exists with TTL.
-- Release: Lua script checking owner_id (don't release others' locks).
+### Distributed Lock Implementations
 
-#### Database
-- `INSERT INTO locks (key, owner, expires_at) ... ON CONFLICT DO NOTHING`.
-- Less efficient but works.
+| Implementation | Engine | Lock Primitive | Pros | Cons / Risks |
+| :--- | :--- | :--- | :--- | :--- |
+| **etcd / ZooKeeper** | Strongly Consistent Consensus | Ephemeral Sequential Nodes / Leases | Highly Reliable, Auto-cleanup on disconnect | Higher Latency (Consensus overhead) |
+| **Redis Redlock** | Multi-node In-Memory Cache | `SET key value NX PX 30000` across 5 nodes | Fast, Low Latency | Clock drift vulnerabilities |
+| **DB Row Lock** | Relational DB | `SELECT ... FOR UPDATE` | Simple, No extra infrastructure | DB Lock Contention |
 
-### The fencing problem
-```
-1. Client 1 acquires lock (TTL 30s).
-2. Client 1 pauses (GC, network) for 40s.
-3. Lock expires; Client 2 acquires.
-4. Both think they hold the lock → both write → corruption.
-```
-Solution: **fencing tokens**.
-- Each lock acquisition gets a monotonically increasing token.
-- Storage rejects writes with stale tokens.
+### Key Engineering Guardrails
 
-### Redlock (controversial)
-- Redis algorithm that uses N independent Redis nodes.
-- Acquire on majority.
-- Author (Martin Kleppmann) argues it's not safe under GC pauses + clock drift.
-
-### When NOT to use
-- If you need correct mutual exclusion, **don't use Redis alone** — use ZK/etcd with fencing.
-- If you can avoid locks entirely (idempotent operations, atomic DB ops), do that.
+- **Fencing Tokens**: Always pass a monotonic counter with lock acquisitions. Storage resources check and reject stale lower-token numbers to prevent race conditions caused by process pauses (e.g., Garbage Collection pauses).
+- **Atomic Release via Lua**: Releasing a Redis lock must verify token ownership inside an atomic Lua script to avoid deleting another worker's new lock.
 
 ### Key takeaway
-Distributed locks are tricky. Use **ZooKeeper/etcd with fencing tokens** for correctness.
-Redis `SET NX EX` works for non-critical cases. Beware GC pauses and clock drift — they break
-naive lock implementations.
+
+Use distributed locks for **mutual exclusion**, protecting writes with short TTLs and **monotonic fencing tokens** to prevent state corruption during process pauses.

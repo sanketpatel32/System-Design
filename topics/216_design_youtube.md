@@ -1,49 +1,63 @@
 # Design YouTube
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design YouTube: upload, transcode, stream, search, recommend.
+### Overview
+**YouTube** is a video-sharing platform handling high-volume video ingestion, multi-bitrate adaptive streaming, global CDN caching, view counting, and real-time search and recommendations.
 
-### Requirements
-- **Functional**: upload videos; adaptive streaming; search; recommendations; comments.
-- **Non-functional**: massive bandwidth; low-latency global playback.
+### Transcoding & Streaming Pipeline
 
-### Architecture
 ```
-[Uploader] -multipart-> [S3 raw] -trigger-> [Transcoder] -> [HLS variants]
-                                                            |
-[Viewer] -> [CDN] <-origin- [S3 processed]
++--------+     1. Upload Raw Video (chunked)     +-------------------+
+| Client | ------------------------------------> | Ingestion Gateway |
++--------+                                       +-------------------+
+                                                           |
+                                                           v 2. Store Raw File
+                                                 +-------------------+
+                                                 | Raw Storage (S3)  |
+                                                 +-------------------+
+                                                           |
+                                                           v 3. Kafka Video Transcode Event
+                                                 +-------------------+
+                                                 | Transcoding Engine| (FFmpeg Workers)
+                                                 | (HLS / DASH)      |
+                                                 +-------------------+
+                                                           |
+                                                           v 4. Push Multi-Bitrate Chunks
++--------+     5. Adaptive Bitrate Manifest      +-------------------+
+| Client | <------------------------------------ | Video CDN         |
++--------+        (.m3u8 / .mpd manifest)        +-------------------+
 ```
 
-### Upload
-- Multipart (large files).
-- Pre-signed URLs (offload from app).
+### Adaptive Bitrate Streaming Protocols (HLS / DASH)
+Video files are split into small 2 - 6 second chunk files (`.ts` or `.m4s`) encoded at multiple bitrates (1080p, 720p, 480p).
 
-### Transcoding
-- Multiple resolutions (240p to 4K).
-- HLS segments + playlists.
-- GPU acceleration.
-
-### Streaming
-- **Adaptive bitrate**: client picks quality.
-- **CDN caches segments** globally.
-
-### Search
-- Elasticsearch on video metadata + transcripts.
-
-### Recommendations
-- Collaborative filtering + content-based + deep learning.
-- Trained on watch history, likes, similar users.
-
-### Data model
 ```
-videos (id, user_id, title, description, duration, view_count)
-video_variants (video_id, resolution, hls_url)
-comments (video_id, user_id, text)
+Master Manifest (.m3u8)
+├── 1080p_manifest.m3u8 -> [chunk_0.ts, chunk_1.ts, chunk_2.ts]
+├── 720p_manifest.m3u8  -> [chunk_0.ts, chunk_1.ts, chunk_2.ts]
+└── 480p_manifest.m3u8  -> [chunk_0.ts, chunk_1.ts, chunk_2.ts]
+```
+
+### Scalable View Counter Architecture
+Directly incrementing a database counter on every video play crashes under viral loads.
+- **Solution**: Aggregate views in **Redis buffers**, flushing batch updates to Cassandra every 10 seconds:
+
+$$\text{Client Play Event} \longrightarrow \text{Kafka} \longrightarrow \text{Redis } \texttt{INCRBY video:123:views 500} \longrightarrow \text{DB Batch Write}$$
+
+### Video Metadata Model (Cassandra Sharded by `video_id`)
+```json
+{
+  "video_id": "v_99812a",
+  "uploader_id": "usr_441",
+  "title": "System Design Interview Guide",
+  "duration_seconds": 1820,
+  "manifest_url": "https://cdn.youtube.com/v_99812a/master.m3u8",
+  "thumbnails": { "default": "...", "hq": "..." },
+  "views_count": 1420900
+}
 ```
 
 ### Key takeaway
-YouTube = multipart upload → S3 → transcoder → HLS → CDN → adaptive streaming player.
-Recommendations via ML. Bandwidth dominates cost — CDN + compression are mandatory.
+YouTube scales video delivery using **Adaptive Bitrate Streaming (HLS/DASH)** via global **CDNs**, and offloads view-count write traffic using asynchronous **Redis/Kafka batch aggregators**.

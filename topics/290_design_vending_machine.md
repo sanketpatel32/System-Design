@@ -4,49 +4,32 @@
 
 ---
 
-LLD: model a vending machine.
+Object-Oriented Low-Level Design (LLD) for a Vending Machine using the State Design Pattern to handle item selection, coin/cash payment validation, change calculation, and item dispensing.
 
-### Requirements
-- Display items, prices.
-- Accept coins / notes.
-- Dispense item + change.
-- Handle out-of-stock, insufficient money.
+### System Requirements & State Machine
+- Manage inventory across multiple item racks.
+- Accept coins/notes, validate currency, and calculate change.
+- Support State pattern transitions: `IdleState` $ightarrow$ `HasMoneyState` $ightarrow$ `DispenseState` $ightarrow$ `RefundState`.
 
-### Classes
+### State Machine Lifecycle Diagram
 ```
-class VendingMachine:
-    state  # IDLE, HAS_MONEY, DISPENSING
-    inventory
-    current_balance
-
-class State:  # abstract
-    insert_money(amount)
-    select_product(id)
-    dispense()
-    cancel()
-
-class IdleState(State): ...
-class HasMoneyState(State): ...
-class DispensingState(State): ...
-
-class Inventory:
-    products  # id -> (product, count)
-
-class Product:
-    id
-    name
-    price
+    +------------+    Insert Coin    +---------------+
+    | Idle State | ----------------> | HasMoneyState |
+    +------------+                   +---------------+
+          ^                                  | Select Item
+          |                                  v
+    +------------+  Dispense Item    +---------------+
+    | Refund/Done| <---------------- | DispenseState |
+    +------------+                   +---------------+
 ```
 
-### State pattern
-- Each state encapsulates behavior.
-- Transitions: IDLE → HAS_MONEY → DISPENSING → IDLE.
-
-### Operations
-- `insert_money(amount)`: add to balance, transition state.
-- `select_product(id)`: validate stock, balance; dispense.
-- `dispense()`: deduct inventory, return change.
+### State Pattern Class Structure
+| State Class | Allowed Actions | Transition Trigger |
+|---|---|---|
+| `IdleState` | `selectItem()`, `insertCoin()` | Money inserted $ightarrow$ `HasMoneyState` |
+| `HasMoneyState` | `insertCoin()`, `pressButton()`, `cancel()` | Button pressed & valid funds $ightarrow$ `DispenseState` |
+| `DispenseState` | `dispenseItem()` | Dispense complete $ightarrow$ `IdleState` |
+| `RefundState` | `refundMoney()` | Transaction canceled $ightarrow$ `IdleState` |
 
 ### Key takeaway
-Vending machine LLD = **State pattern** (IdleState, HasMoneyState, DispensingState). Inventory
-class for products. State transitions drive behavior. Clean encapsulation.
+Vending machine LLD uses the State Design Pattern to encapsulate state-specific behavior into isolated classes (`IdleState`, `HasMoneyState`, `DispenseState`), preventing massive conditional logic blocks.

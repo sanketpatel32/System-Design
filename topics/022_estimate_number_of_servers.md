@@ -4,44 +4,60 @@
 
 ---
 
-Server count drives your cost, availability, and ops complexity. It's a derived number — start
-from RPS.
+Estimating the **Number of Application Servers** determines compute capacity (CPU cores, RAM memory, worker processes) required to handle peak incoming request throughput (Peak QPS) while maintaining low latency SLAs.
 
-### Formula
+### Server Compute Load Distribution
+
 ```
-servers = ceil(peak_RPS / per_server_RPS) × redundancy_factor
++-------------------------------------------------------------------------+
+|                  LOAD BALANCED SERVER FLEET TOPOLOGY                    |
++-------------------------------------------------------------------------+
+
+                             [ Ingress Traffic ]
+                               (Peak 60,000 QPS)
+                                       |
+                                       v
+                          +-------------------------+
+                          |   LOAD BALANCER TIER    |
+                          +-------------------------+
+                                       |
+       +-------------------------------+-------------------------------+
+       |                               |                               |
+       v                               v                               v
++--------------+                +--------------+                +--------------+
+| App Server 1 |                | App Server 2 |                | App Server N |
+| (1,000 QPS)  |                | (1,000 QPS)  |                | (1,000 QPS)  |
++--------------+                +--------------+                +--------------+
+  (Sized for 60 Servers + 30% Headroom = 78 Servers Fleet)
 ```
 
-### Per-server capacity (rules of thumb)
-| Tier | Single instance |
-|------|-----------------|
-| Stateless API (CPU-bound) | ~5-10k RPS |
-| Stateless API (I/O-bound, async) | ~10-50k RPS |
-| DB (read replica) | ~5-10k QPS |
-| Cache (Redis) | ~100k ops/sec |
+### Compute Sizing Benchmarks
 
-### Worked example
-- Peak RPS = 100k
-- Each API server handles 5k RPS
-- 100k / 5k = **20 servers**
-- × 1.3 safety margin = 26
-- Spread across 3 AZs → round up to **27 servers** (9 per AZ)
+| Workload Type | Single Server QPS Capacity | Primary Bottleneck | Example Tech Stack |
+| :--- | :--- | :--- | :--- |
+| **Lightweight I/O Bound** | 5,000 - 10,000 QPS | Network NIC, Epoll event loop | Go, Node.js, Netty, Nginx |
+| **Standard REST API** | 1,000 - 2,000 QPS | CPU context switching, DB I/O | Java Spring Boot, Python FastAPI |
+| **Heavy Computational** | 100 - 500 QPS | CPU processing, cryptography | Image encoding, ML inference |
 
-### Always provision for redundancy
-- **N+1** within an AZ (one can fail).
-- **Multi-AZ** (one AZ can fail).
-- **Multi-region** for high availability (active-active or active-passive).
+### Step-by-Step Server Fleet Sizing Walkthrough
 
-### Why over-provision
-- Autoscaling lag (1-5 min).
-- Garbage collection spikes.
-- Noisy neighbors on shared cloud.
-- Deployments need rolling capacity.
+1. **Determine Peak QPS Requirement**:
+   - Given $\text{Peak QPS} = 60,000\,\text{QPS}$.
 
-### Cost sanity check
-- 27 c5.2xlarge ≈ 27 × $0.34/hr × 730 hr/month ≈ **$6,700/month**.
-- Multiply across all tiers: API, worker, cache, DB, LB, NAT — total infra bill.
+2. **Estimate Single Application Server Capacity**:
+   - Assume a standard 8-core, 16 GB RAM server handling a typical REST API service can comfortably serve **1,000 QPS** at p99 latency < 50ms.
+
+3. **Calculate Baseline Server Count**:
+
+$$\text{Baseline Server Count} = \frac{\text{Peak QPS}}{\text{Capacity per Server}} = \frac{60,000\,\text{QPS}}{1,000\,\text{QPS/server}} = 60\,\text{Servers}$$
+
+4. **Apply Safety Buffer (+30% Headroom for CPU Spikes / AZ Outage)**:
+
+$$\text{Total Server Fleet} = 60 \times 1.30 = 78\,\text{Servers}$$
+
+5. **Multi-AZ Distribution**:
+   - Divide 78 servers across 3 Availability Zones (AZs) $= 26\text{ servers per AZ}$.
 
 ### Key takeaway
-Server count = **peak RPS / per-server RPS × redundancy**. Always round up and spread across
-AZs.
+
+Calculate total server count by dividing **Peak QPS** by single-node QPS throughput capacity. Add a **30-50% safety margin** to handle CPU utilization spikes and maintain high availability during server failures or AZ outages.

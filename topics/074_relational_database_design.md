@@ -4,54 +4,50 @@
 
 ---
 
-Relational DB design = **modeling data as tables (relations) with rows and columns**,
-following normalization rules and integrity constraints.
+**Relational Database Design** is the process of structuring data into tables, defining attributes, establishing primary/foreign key relationships, and applying normalization principles to minimize redundancy and maintain data integrity.
 
-### Core concepts
-- **Table** (relation): a set of rows, each with the same columns.
-- **Row** (tuple): one record.
-- **Column** (attribute): one field with a type.
-- **Primary key**: uniquely identifies a row.
-- **Foreign key**: references a row in another table.
-- **Index**: speeds up queries on a column.
+### Architecture blueprint
 
-### Design steps
-1. **Identify entities** (User, Order, Product).
-2. **Identify relationships** (one-to-many, many-to-many).
-3. **Create a table per entity**.
-4. **Add foreign keys** for relationships.
-5. **Junction tables** for many-to-many.
-6. **Normalize** (1NF, 2NF, 3NF).
-7. **Add indexes** for query patterns.
-8. **Denormalize selectively** for performance.
-
-### Example: e-commerce
 ```
-users (id PK, name, email)
-orders (id PK, user_id FK, total, created_at)
-products (id PK, name, price)
-order_items (id PK, order_id FK, product_id FK, qty, price)
+  +------------------+         1:N Relationship        +------------------+
+  |      USERS       | ------------------------------->|      ORDERS      |
+  +------------------+                                 +------------------+
+  | PK  id           |                                 | PK  id           |
+  |     email        |                                 | FK  user_id      |
+  |     created_at   |                                 |     total_amount |
+  +------------------+                                 +------------------+
+            |                                                   |
+            |                 N:M (Junction Table)              |
+            +---------------------> +-----------------+ <-------+
+                                    |   ORDER_ITEMS   |
+                                    +-----------------+
+                                    | PK/FK  order_id |
+                                    | PK/FK  item_id  |
+                                    |        quantity |
+                                    +-----------------+
 ```
 
-### Data types (Postgres)
-- `BIGSERIAL` auto-incrementing ID.
-- `VARCHAR(n)`, `TEXT`.
-- `INTEGER`, `BIGINT`, `NUMERIC(p,s)`.
-- `TIMESTAMP`, `DATE`.
-- `BOOLEAN`.
-- `JSONB` (indexed JSON for semi-structured).
-- `UUID` for globally unique IDs.
+### Essential design stages
 
-### Constraints
-- `NOT NULL`, `UNIQUE`, `CHECK`, `DEFAULT`.
-- `FOREIGN KEY ... REFERENCES ...` with `ON DELETE CASCADE` / `SET NULL`.
+1. **Conceptual Design**: Identify domain entities (e.g., User, Order, Product) and relationships using Entity-Relationship (ER) diagrams.
+2. **Logical Design**: Translate entities into relational tables, specify data types, define constraints (`NOT NULL`, `UNIQUE`, `CHECK`), and assign primary keys.
+3. **Normalization**: Apply normal forms (1NF, 2NF, 3NF) to eliminate insertion, update, and deletion anomalies.
+4. **Physical Tuning**: Define index strategies (B-Tree, Hash), select storage engines, and introduce controlled denormalization for performance-critical queries.
 
-### Indexing strategy
-- Index columns used in `WHERE`, `JOIN`, `ORDER BY`.
-- Don't over-index (slows writes).
-- Composite indexes for multi-column filters.
+### Relationship types & representation
+
+| Relationship | Description | Relational Representation |
+| :--- | :--- | :--- |
+| **One-to-One (1:1)** | A user has one profile | Foreign key in either table with `UNIQUE` constraint |
+| **One-to-Many (1:N)** | A user has multiple orders | Foreign key on the "Many" table (`orders.user_id`) |
+| **Many-to-Many (N:M)** | Orders contain multiple products; products belong to multiple orders | Junction/Bridge table containing foreign keys referencing both primary tables |
+
+### Data Integrity Constraints
+
+- **Entity Integrity**: Every table must have a unique, non-null Primary Key.
+- **Referential Integrity**: Foreign key values must match existing primary key values in the referenced table or be explicitly `NULL`.
+- **Domain Integrity**: Attribute values must satisfy predefined types, checks, and constraints (e.g., `age INTEGER CHECK (age >= 0)`).
 
 ### Key takeaway
-Model entities as tables, relationships as foreign keys, many-to-many via junction tables.
-Normalize for correctness; denormalize selectively for hot paths. Index for the queries you
-actually run.
+
+Sound relational database design relies on clear entity modeling, enforced referential integrity through foreign keys, and normalized tables to prevent data redundancy and update anomalies.

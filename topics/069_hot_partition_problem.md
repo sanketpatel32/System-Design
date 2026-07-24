@@ -4,43 +4,51 @@
 
 ---
 
-A hot partition = **one shard/partition receives disproportionately more traffic** than the
-others, becoming a bottleneck while siblings sit idle.
+The **Hot Partition Problem** (or Hotspotting) occurs in partitioned and sharded systems when traffic or data volume is unevenly distributed, causing a single partition or shard to experience significantly higher load than others. This creates severe performance bottlenecks, high latencies, resource exhaustion, and potential node outages.
 
-### Causes
-- **Skewed key distribution** — one celebrity user generates 1000x normal traffic.
-- **Bad shard key** — e.g. sharding by country where 80% of users are in the US.
-- **Time-based patterns** — current-day partition gets all writes (logs, metrics).
-- **Auto-incrementing IDs** in hash modulo — uneven with certain N.
-- **Sequential keys** — all new orders hit the latest range shard.
+### System architecture
 
-### Symptoms
-- One node at 95% CPU while others idle.
-- Latency spikes correlated with one key.
-- Replication lag on one replica.
-- Uneven disk usage across shards.
+```
+                     +-----------------------------------+
+                     |       Shard Router / Proxy        |
+                     +-----------------------------------+
+                         /             |             \
+               Shard 1  /     Shard 2  |              \ Shard 3
+               (90% Req)               (5% Req)        (5% Req)
+                       v               v                v
+                +--------------+  +--------------+  +--------------+
+                | HOT SHARD 🔥 |  | Cool Shard   |  | Cool Shard   |
+                | (CPU 99%)    |  | (CPU 5%)     |  | (CPU 5%)     |
+                +--------------+  +--------------+  +--------------+
+```
 
-### Solutions
-| Cause | Fix |
-|-------|-----|
-| Celebrity user | Split their data into sub-shards (Justin Bieber → 1000 sub-keys) |
-| Bad key | Re-shard with better key (high-cardinality, even) |
-| Time skew | Pre-split by hour/minute; rotate quickly |
-| Auto-increment | Use UUID / Snowflake for even hashing |
-| Range hotspot | Consistent hashing + vnodes |
+### Common causes of hot partitions
 
-### Mitigation techniques
-- **Consistent hashing with many vnodes** — evens out distribution.
-- **Sub-sharding** a hot key into many smaller keys.
-- **Write coalescing** — buffer writes to hot key, flush in batches.
-- **Read-through cache** — absorb hot-key reads before they hit the DB.
-- **Rebalancing** — move data so the hot shard is split.
+1. **Celebrity / High-Traffic Entities**: A single user or tenant (e.g., a social account with tens of millions of followers) generating vast write or read volumes mapped to one shard.
+2. **Monotonically Increasing Keys**: Sharding by date or timestamp, causing all current writes to hit only the most recent shard while older shards sit idle.
+3. **Poor Shard Key Selection**: Selecting low-cardinality shard keys (e.g., `country` or `gender`) that concentrate large amounts of data on specific partitions.
 
-### Real-world example
-- Twitter's "Justin Bieber problem" — one user's timeline triggered fan-out to millions of
-  recipients. Solution: special-cased celebrity accounts (pull-on-read instead of push-on-write).
+### Mitigation strategies matrix
+
+| Strategy | Mechanism | Best Used For | Trade-offs |
+| :--- | :--- | :--- | :--- |
+| **Key Salting / Suffixing** | Appending a random prefix/suffix (e.g., `celebrity_id_N`) | High-write celebrity entities | Scatter-gather required to aggregate reads |
+| **Read Caching** | Layering Redis/CDN in front of hot partitions | High-read celebrity profiles | Cache invalidation complexity |
+| **Consistent Hashing + Virtual Nodes** | Rebalancing data across virtual node ring | Uneven hardware allocation | Operational overhead during rebalancing |
+| **Dynamic Resharding / Split** | Dynamically splitting a hot shard into sub-shards | Range-partitioned storage | Expensive runtime data migration |
+
+### Code pattern: Shard key salting for writes
+
+```
+// Instead of writing to fixed shard: shard_key = user_id
+// Append a random salt between 1 and 10 to split writes:
+salted_shard_key = user_id + "_" + random(1, 10);
+db.write(salted_shard_key, payload);
+
+// Read path: Query all 10 salted keys concurrently and aggregate:
+results = parallel_scatter_gather(user_id + "_1", ..., user_id + "_10");
+```
 
 ### Key takeaway
-Hot partitions defeat sharding's purpose — you scale N× but the bottleneck stays. Pick a
-**high-cardinality, evenly-distributed shard key**. For unavoidable celebrities, sub-shard or
-cache. Monitor per-shard load continuously.
+
+Avoid hot partitions by selecting high-cardinality shard keys, avoiding sequential timestamp keys, and using key salting or dedicated caching layers for celebrity entities.

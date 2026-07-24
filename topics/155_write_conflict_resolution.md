@@ -4,62 +4,45 @@
 
 ---
 
-Write conflicts = **two replicas accepted writes for the same key concurrently**, then need
-to merge.
+Write Conflict Resolution is the set of strategies used in multi-leader or leaderless distributed databases to **reconcile concurrent modifications** made to the same record across different replicas.
 
-### When it happens
-- Multi-master / leaderless setups (DynamoDB, Cassandra).
-- Network partition splits writers.
-- Offline edits syncing later.
+### Concurrent Write Conflict Scenario
 
-### Resolution strategies
-
-#### 1. Last-Write-Wins (LWW)
-- Use timestamp; newest wins.
-- Simple, lossy (one write discarded).
-- Vulnerable to clock skew.
-
-#### 2. Vector clocks + app resolution
-- System detects conflict.
-- Returns both versions to app.
-- App decides (e.g. merge fields, prompt user).
-
-#### 3. CRDTs (Conflict-free Replicated Data Types)
-- Data structures that always merge deterministically.
-- Counters (G-Counter, PN-Counter), sets (OR-Set), maps.
-- Used in Riak, Yjs, Automerge.
-
-#### 4. Application logic
-- Custom merge function per data type.
-- E.g. shopping cart: union of items.
-
-#### 5. Version vectors + dotted
-- More precise than vector clocks; smaller.
-
-### LWW in practice
 ```
-A writes x=1 at t=10.
-B writes x=2 at t=11.
-LWW: x=2 wins.
-But if A's clock was ahead: A writes at t=15 (wrongly).
-Result: x=1 wins, even though it's older.
+                    +--------------------+
+                    | Initial State (v0) |
+                    +--------------------+
+                              |
+         +--------------------+--------------------+
+         | Concurrent Write A                      | Concurrent Write B
+         v                                         v
++--------------------+                    +--------------------+
+| Node 1: "Alice"    |                    | Node 2: "Bob"      |
+| Vector: [1, 0]     |                    | Vector: [0, 1]     |
++--------------------+                    +--------------------+
+         |                                         |
+         +--------------------+--------------------+
+                              v
+                   +----------------------+
+                   | Conflict Detected!   |
+                   | Neither vector dominates|
+                   +----------------------+
 ```
-Clock skew breaks LWW.
 
-### CRDT example (PN-Counter)
-- Each node tracks increments and decrements separately.
-- Merge: take element-wise max of increment vectors and decrement vectors.
-- Always converges, no conflict.
+### Conflict Resolution Strategies Matrix
 
-### When to use which
-| Pattern | Resolution |
-|---------|------------|
-| Eventual, simple | LWW |
-| Application-aware | Vector clocks + app merge |
-| Always-merge | CRDTs |
-| Strong consistency | Single leader, no conflicts |
+| Strategy | Mechanism | Data Loss Risk | Resolution Location | Example Systems |
+| :--- | :--- | :--- | :--- | :--- |
+| **Last-Write-Wins (LWW)** | Overwrites based on highest physical timestamp | High (Clock skew drops valid writes)| Database Engine | Apache Cassandra, DynamoDB |
+| **Vector Clocks / Sibling Merge**| Retains concurrent siblings for app merge | Zero | Client / Application Code | Riak, Amazon Dynamo |
+| **CRDTs (Conflict-free Replicated Data Types)**| Math commutativity (PN-Counters, LWW-Element-Set) | Zero | Database Engine / Automata | Redis Enterprise, Riak KV |
+| **Custom Application Resolvers**| Executes custom domain merge script | Zero | Application Middleware | Figma, Google Docs (OT) |
+
+### CRDT Types & Behavior
+
+- **State-based CRDTs (CvRDT)**: Replicas exchange full state arrays and merge them monotonically (e.g., set union).
+- **Operation-based CRDTs (CmRDT)**: Replicas transmit commutative operations (e.g., increment/decrement) over reliable networks.
 
 ### Key takeaway
-Conflicts arise in multi-master / leaderless systems. Choose resolution by use case: **LWW** for
-simple, **CRDTs** for automatic merge, **app merge** when you know the semantics. Avoid conflicts
-altogether with single-leader when possible.
+
+Resolve write conflicts using **CRDTs or application-level merges** whenever possible; avoid Last-Write-Wins (LWW) if data loss caused by clock drift is unacceptable.

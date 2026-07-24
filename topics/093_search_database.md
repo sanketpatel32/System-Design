@@ -4,58 +4,41 @@
 
 ---
 
-A search database (search engine) is optimized for **full-text search and relevance-ranked
-queries**. Relational DBs do `LIKE '%word%'` — slow and inaccurate.
+A **Search Database** (or Search Engine) is a non-relational database specialized for full-text search, fuzzy matching, ranking, and complex multi-field filtering. Search engines operate using **Inverted Indexes**, mapping terms to matching document IDs for fast text lookups.
 
-### Why a search DB
-- **Full-text search** with tokenization, stemming, stopwords.
-- **Relevance ranking** (TF-IDF, BM25).
-- **Faceted navigation** (filter by category, brand, price).
-- **Fuzzy matching** (typos, synonyms).
-- **Highlighting** of matched terms.
-- **Autocomplete** / suggestions.
+### Inverted Index architecture
 
-### How it works
-1. **Inverted index**: maps each word → list of documents containing it.
-   ```
-   "laptop" -> [doc1, doc5, doc12, ...]
-   ```
-2. **Tokenizer**: splits text into words, normalizes (lowercase, stem).
-3. **Scorer**: ranks results by relevance.
-
-### Popular options
-| | Notes |
-|--|-------|
-| **Elasticsearch** | Industry standard, Lucene-based |
-| **OpenSearch** | ES fork, Apache-licensed |
-| **Apache Solr** | Lucene-based, enterprise |
-| **Meilisearch** | Lightweight, fast, easy |
-| **Typesense** | Similar to Meilisearch |
-| **Algolia** | Hosted, premium |
-| Postgres FTS | Built-in (tsvector), less powerful |
-
-### Architecture pattern
 ```
-[Postgres] --CDC (Debezium)--> [Elasticsearch] --< search API
-(source of truth)              (search index)
+Raw Documents:
+Doc 1: "System Design Caching"
+Doc 2: "Caching System Performance"
+
+Inverted Index Structure:
++---------------+------------------------+
+| Term / Word   | Posting List (Doc IDs) |
++---------------+------------------------+
+| Caching       | [ Doc 1, Doc 2 ]       |
+| Design        | [ Doc 1 ]              |
+| Performance   | [ Doc 2 ]              |
+| System        | [ Doc 1, Doc 2 ]       |
++---------------+------------------------+
 ```
-The relational DB remains source of truth; ES is a derived read model updated via CDC.
 
-### Use cases
-- E-commerce product search.
-- Document/content search.
-- Log search (ELK stack).
-- Autocomplete / typeahead.
-- Geospatial queries (ES geo support).
+### Core text search pipeline
 
-### Trade-offs
-- ✅ Excellent search.
-- ✅ Fast at scale.
-- ❌ Eventually consistent (derived index).
-- ❌ Memory-hungry (indices live in RAM).
-- ❌ Operational complexity (clusters, shards, replicas).
+1. **Document Ingestion & Analysis**: Text fields pass through analyzers that execute tokenization, lowercasing, stop-word removal (e.g., removing "and", "the"), and stemming (e.g., reducing "running" to "run").
+2. **Inverted Index Construction**: Generates a sorted dictionary of terms mapped to posting lists containing document IDs, positions, and frequencies.
+3. **Relevance Scoring (BM25 / TF-IDF)**: Ranks matching results based on Term Frequency (how often a term appears in a document) and Inverse Document Frequency (how rare the term is across the entire index).
+
+### Search Engine vs Database Comparison
+
+| Feature | Search Engine (Elasticsearch, OpenSearch) | Relational Database (SQL) |
+| :--- | :--- | :--- |
+| **Primary Search Index**| Inverted Index | B+Tree Index |
+| **Query Matching** | Relevance scoring, fuzzy search, synonyms | Exact match (`=`) or wildcards (`LIKE '%term%'`) |
+| **Write Consistency** | Eventual consistency (Refresh interval $pprox 1$s) | Immediate consistency |
+| **Best Used For** | Product catalog search, log monitoring, autocomplete | Transactional writes, ACID operations |
 
 ### Key takeaway
-When users need real search (relevance ranking, faceting, fuzziness), use a search DB
-(Elasticsearch / OpenSearch). Index from your source-of-truth DB via CDC. Don't try to do real
-search in SQL.
+
+Search databases power full-text search and fuzzy query matching using inverted indexes and relevance scoring. Integrate search databases alongside primary datastores using Change Data Capture (CDC) to offload read-intensive search traffic.

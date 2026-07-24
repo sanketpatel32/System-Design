@@ -1,43 +1,42 @@
 # Design Analytics Platform
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-Design a system to ingest, store, and analyze event data (product analytics, like Mixpanel).
+An Enterprise Analytics Platform ingests, processes, stores, and queries massive streams of user interaction events, product metrics, and business intelligence metrics at scale.
 
-### Requirements
-- **Functional**: ingest events; query (funnels, retention); dashboards.
-- **Non-functional**: high write throughput; sub-second queries.
+### System Requirements
+- **Functional Requirements**:
+  - High-throughput ingestion of client event streams (clickstream, impressions, transactions).
+  - Real-time aggregation (sliding windows) and batch historical analytical queries.
+  - Funnel analysis, retention reports, and custom ad-hoc segmentation.
+- **Non-Functional Requirements**:
+  - High Scalability: Handle millions of events per second with sub-second ingestion latency.
+  - Fast Analytical Query Response: Sub-second response time for OLAP queries over billions of rows.
+  - Fault Tolerance: Zero event loss guarantee via persistent message buffers.
 
-### Architecture
+### System Architecture
 ```
-[Apps] -> [Collector] -> [Kafka] -> [Stream processor] -> [Warehouse]
-                                              |
-                                              v
-                                         [Real-time DB (ClickHouse)]
-                                              |
-                                              v
-                                         [Dashboard API]
+[ Client SDKs / Web App ] ---> [ Ingestion API Gateway ] ---> [ Kafka Event Stream ]
+                                                                     |
+                           +-----------------------------------------+-----------------------------------------+
+                           |                                                                                   |
+                           v                                                                                   v
+             [ Real-Time Stream Processor ]                                                          [ Batch Processing Engine ]
+             (Apache Flink / Spark Streaming)                                                         (Apache Spark / Spark SQL)
+                           |                                                                                   |
+                           v                                                                                   v
+             [ OLAP Columnar Database ]                                                               [ Data Warehouse / Lake ]
+             (ClickHouse / Apache Pinot)                                                              (Snowflake / Databricks)
 ```
 
-### Ingestion
-- SDK in app sends events.
-- Collector batches, validates.
-- Kafka buffers.
-
-### Storage
-- **Columnar** (ClickHouse, BigQuery, Redshift): fast aggregations.
-- **Time-based partitions**: drop old easily.
-
-### Query
-- Funnels (sequence of events).
-- Retention (cohort analysis).
-- Aggregations (counts, sums).
-
-### Real-time
-- Stream processor (Flink) computes live metrics.
+### OLAP Data Engine Comparison
+| Storage Engine | Architecture | Best Use Case | Query Latency |
+|---|---|---|---|
+| **ClickHouse** | Column-oriented, vectorized execution | Ultra-fast aggregation on raw log & event data | $< 100	ext{ ms}$ |
+| **Apache Pinot** | Segment-based, real-time indexing | User-facing real-time analytical dashboards | Sub-50ms |
+| **Snowflake** | Cloud data warehouse (decoupled storage/compute) | Ad-hoc SQL queries & complex enterprise reporting | Seconds to Minutes |
 
 ### Key takeaway
-Analytics platform = event ingestion (Kafka) → columnar warehouse (ClickHouse/BigQuery) →
-dashboard API. Columnar stores give 10-100x faster aggregations than row stores.
+Modern analytics platforms use decoupled ingestion (Kafka), real-time streaming engines (Flink), and columnar OLAP stores (ClickHouse/Pinot) to serve fast analytical queries over massive event volumes.

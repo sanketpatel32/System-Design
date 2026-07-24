@@ -4,42 +4,53 @@
 
 ---
 
-Design eBay-style auction system.
+An Online Auction System (e.g. eBay live auctions) manages real-time bidding, item countdown timers, reserve prices, and instant leaderboards while guaranteeing strict bid ordering.
 
-### Requirements
-- **Functional**: list items; bid; real-time updates; auto-bid; settle.
-- **Non-functional**: low-latency bid updates; prevent bid sniping.
+### System Requirements
+- **Functional Requirements**:
+  - Accept user bids with atomic verification against current highest bid.
+  - Real-time broadcast of highest bid and winner updates to all active participants.
+  - Support automatic proxy bidding (auto-bidding up to user limit).
+- **Non-Functional Requirements**:
+  - Strict Serialization: Zero race conditions when multiple users bid simultaneously on the same item.
+  - Low Latency: Sub-50ms bid processing and broadcast.
+  - High Reliability: Durable audit logs of every placed bid.
 
-### Architecture
+### System Architecture
 ```
-[Bidder] -> [API] -> [Bid service]
-                       [Real-time pub/sub]
-                       [Auction end scheduler]
+[ Bidders Mobile App ] ---> [ Auction Gateway ]
+                                   |
+                                   v
+                    [ Atomic Bid Processing Engine ]
+                    (Redis Lua Script / In-Memory Lock)
+                                   |
+        +--------------------------+--------------------------+
+        |                                                     |
+        v                                                     v
+[ Redis Leaderboard & State ]                         [ Bid DB (PostgreSQL) ]
+(Current Max Bid & Winner ID)                         (Immutable Bid Audit Log)
+        |                                                     |
+        +--------------------------+--------------------------+
+                                   |
+                                   v
+                    [ WebSocket Broadcast Cluster ]
+                    (Pushes New Max Bid to Bidders)
 ```
 
-### Bid flow
-1. Bidder submits bid.
-2. Validate (higher than current).
-3. Store bid.
-4. Broadcast new bid via WebSocket.
-5. Other bidders see update.
+### Atomic Redis Lua Bid Verification
+```lua
+local auction_key = KEYS[1]
+local new_bid = tonumber(ARGV[1])
+local bidder_id = ARGV[2]
 
-### Anti-sniping
-- Auction extends by N minutes if a bid comes in near end.
-
-### Auto-bid
-- User sets max.
-- System auto-bids up to max in increments.
-
-### Auction end
-- Scheduler triggers at end time.
-- Highest bidder wins.
-- Notifications.
-
-### Concurrency
-- Multiple bids simultaneously.
-- Atomic update: `UPDATE auctions SET current_bid = X WHERE id = Y AND current_bid < X`.
+local current_bid = tonumber(redis.call('HGET', auction_key, 'max_bid') or '0')
+if new_bid > current_bid then
+    redis.call('HSET', auction_key, 'max_bid', new_bid, 'winner_id', bidder_id)
+    return 1
+else
+    return 0
+end
+```
 
 ### Key takeaway
-Auction system = bid service + real-time WebSocket broadcast + scheduler for auction end + atomic
-bid updates (prevent race). Anti-sniping extends auction on late bids.
+Online auction systems enforce atomic bid ordering via Redis Lua scripts, broadcasting updated highest bids to connected participants over WebSockets while logging immutable bid history in relational storage.

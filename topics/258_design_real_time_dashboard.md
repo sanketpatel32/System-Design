@@ -1,41 +1,42 @@
-# Design Real-Time Dashboard
+# Design Real Time Dashboard
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-Design a real-time dashboard (live metrics, sub-second updates).
+A Real-Time Dashboard platform aggregates live stream data and renders continuously updating charts, counters, and metrics to end-user clients with sub-second latency.
 
-### Requirements
-- **Functional**: live updates; multiple charts; filtering.
-- **Non-functional**: <1s latency from event to dashboard.
+### System Requirements
+- **Functional Requirements**:
+  - Continuously push updated metrics and analytics charts to active web/mobile clients.
+  - Perform sliding-window data aggregations (e.g., last 1 min, 5 mins, 1 hour).
+  - Support multi-tenant customization and dynamic metric queries.
+- **Non-Functional Requirements**:
+  - Sub-Second End-to-End Latency: From event occurrence to client dashboard render.
+  - High Concurrent Client Connections: Support 100,000+ simultaneous WebSocket subscriptions.
+  - Efficient Bandwidth Utilization: Push delta updates rather than full dashboard state.
 
-### Architecture
+### System Architecture
 ```
-[Events] -> [Stream processor (Flink)] -> [Materialized views] -> [WebSocket]
+[ Event Producers ] ---> [ Ingestion Queue (Kafka) ] ---> [ Stream Aggregator (Flink / Storm) ]
+                                                                    |
+                          +-----------------------------------------+-----------------------------------------+
+                          |                                                                                   |
+                          v                                                                                   v
+              [ In-Memory Cache (Redis) ]                                                         [ WebSocket Gateway Layer ]
+              (Latest Window State)                                                            (Push Updates to Clients)
+                                                                                                              |
+                                                                                                              v
+                                                                                                    [ Dashboard Client UI ]
 ```
 
-### Stream processing
-- Flink / Spark Streaming / Kafka Streams.
-- Compute aggregates in real time.
-
-### Materialized views
-- Pre-computed aggregations.
-- Updated on each event.
-- Fast dashboard reads.
-
-### WebSocket push
-- Server pushes updates to browser.
-- No polling.
-
-### Sampling
-- For high-volume events: sample.
-- Real-time doesn't need exact counts.
-
-### Time windows
-- Last 1 min, 5 min, 1 hour, 24 hours.
-- Sliding window aggregations.
+### Real-Time Push Technologies & Aggregation Windows
+| Technology / Pattern | Protocol / Mechanism | Latency | Bandwidth Overhead |
+|---|---|---|---|
+| **WebSockets** | Full-duplex TCP connection | $< 10	ext{ ms}$ | Low (header overhead paid once on handshake). |
+| **Server-Sent Events (SSE)** | Single-direction HTTP streaming | $< 50	ext{ ms}$ | Very low; native browser auto-reconnect. |
+| **Tumbling Window Aggregator** | Fixed non-overlapping time windows | Batch bounded | Ideal for predictable periodic dashboard counters. |
+| **Sliding Window Aggregator** | Overlapping moving time windows | Continuous stream | Superior real-time trend visualization. |
 
 ### Key takeaway
-Real-time dashboard = stream processor (Flink) → materialized views → WebSocket push.
-Pre-compute aggregations to keep dashboard reads fast. Sample for very high event volumes.
+Real-time dashboards connect stream aggregators (Flink) directly to WebSocket/SSE gateway layers, pushing incremental metric deltas to connected clients while maintaining rolling window aggregates in Redis.

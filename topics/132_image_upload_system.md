@@ -4,68 +4,53 @@
 
 ---
 
-Design a system for users to upload, store, and serve images.
+An Image Upload System ingests image files from clients, validates and optimizes them asynchronously, stores original and processed variants in object storage, and serves them via CDN.
 
-### Requirements
-- Functional: upload, view, delete images.
-- Non-functional: low-latency reads globally, durability, handle large files.
+### System Architecture
 
-### Architecture
 ```
-[Client] -> [API Gateway] -> [Upload Service]
-                                  |
-                                  v
-                            Generate pre-signed URL
-                                  |
-                                  v
-[Client] -direct upload-> [S3 bucket]
-                              |
-                              | S3 event
-                              v
-                          [Lambda]
-                              |
-                              v
-                       [Image processor]
-                       (resize, thumbnails, EXIF strip)
-                              |
-                              v
-                       [S3 (original + derived)]
-                              |
-                              v
-                       [Metadata DB]
-                       (id, user_id, sizes, urls, tags)
-
-[Client] -read-> [CDN] -origin-> [S3]
++--------+       1. Request Signed URL       +--------------------+       2. Write Metadata       +---------------+
+| Client | --------------------------------> | API Gateway / App  | ----------------------------> | Metadata DB   |
++--------+                                   +--------------------+                               +---------------+
+    |                                                  |
+    | 3. Direct Upload (PUT)                           v 4. Push Processing Event
+    v                                        +--------------------+
++------------------------------------+       | Message Queue      |
+| S3 Raw Storage Bucket (Original)   |       | (Kafka / SQS)      |
++------------------------------------+       +--------------------+
+    |                                                  |
+    | Event Notification                               v
+    +------------------------------------->  +--------------------+       Store Optimized   +---------------+
+                                             | Image Workers      | ----------------------> | S3 Web Bucket |
+                                             | (Resize, WebP, Watermark)                   +---------------+
+                                             +--------------------+                                |
+                                                                                                   v
+                                                                                           +---------------+
+                                                                                           | CDN Edge Node |
+                                                                                           +---------------+
 ```
 
-### Upload flow
-1. Client requests upload URL from API.
-2. App authenticates, generates pre-signed URL.
-3. Client uploads directly to S3.
-4. S3 event triggers Lambda.
-5. Lambda creates thumbnails (e.g. 100x100, 500x500), writes back to S3.
-6. Lambda inserts metadata in DB.
+### Async Processing Pipeline Steps
 
-### Read flow
-1. Client requests image (e.g. `/img/abc_500x500.jpg`).
-2. CDN serves from edge (cache hit) or origin S3 (cache miss).
-3. Subsequent reads are cache hits — fast.
+1. **Pre-signed Direct Upload**: Client requests upload URL. Server validates user quota and issues presigned S3 URL. Data bypasses web app servers.
+2. **Virus & Malware Scanning**: Lambda / Worker container scans uploaded file buffer before trigger downstream tasks.
+3. **Thumbnail & Format Generation**: Asynchronously generates multiple resolutions (1080p, 720p, 480p, thumbnail) and converts formats (JPEG/PNG to WebP/AVIF).
+4. **Metadata & CDN Registration**: Image metadata (dimensions, EXIF scrubbed data, hash digest, image URLs) is indexed in DB and cached at CDN edges.
 
-### Key components
-- **S3** for object storage (original + variants).
-- **CDN** (CloudFront) for global low-latency reads.
-- **Metadata DB** (Postgres / DynamoDB) for searchable info.
-- **Image processor** (Lambda / Fargate) for thumbnails, format conversion.
-- **Pre-signed URLs** for direct upload.
+### Image Optimization Matrix
 
-### Optimizations
-- **WebP/AVIF** conversion (30-50% smaller).
-- **Adaptive thumbnails** (responsive images).
-- **Lazy EXIF stripping** (privacy).
-- **Virus scan** on upload.
-- **Watermarking** for premium content.
+| Variant / Format | Compression / Codec | Target Resolution | Relative Size | Ideal Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **Original Raw** | Uncompressed / PNG | Source | 100% | Archival / Download |
+| **Web Display** | WebP (Quality 80) | 1920x1080 | ~25-30% | Desktop Web Banners |
+| **Mobile Display** | AVIF / WebP | 720x1280 | ~15-20% | Mobile Feed Items |
+| **Thumbnail** | WebP | 150x150 | ~3-5% | User Avatars / Grid Preview |
+
+### Reliability & Resilience Strategies
+
+- **Deduplication**: Generate SHA-256 hash of raw image payload; skip re-encoding if hash exists in object storage.
+- **Circuit Breaking**: Fall back to serving un-optimized originals directly from S3 if processing worker queue backs up.
 
 ### Key takeaway
-Image upload = **client → pre-signed URL → S3 → async processor → CDN**. Offload upload
-bandwidth via pre-signed URLs; offload read bandwidth via CDN; store metadata in a DB for
-queries.
+
+Design image upload systems using **presigned URLs for direct object store ingest** combined with **asynchronous worker queues** for image transformation and CDN distribution.

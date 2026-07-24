@@ -4,37 +4,48 @@
 
 ---
 
-DAU (Daily Active Users) is the starting number for almost every capacity estimate — QPS,
-storage, bandwidth, server count all derive from it.
+Estimating **Daily Active Users (DAU)** and **Monthly Active Users (MAU)** is the foundational starting point for back-of-the-envelope estimations in System Design. DAU provides the operational baseline from which all downstream capacity requirements—QPS, bandwidth, database storage, and server counts—are derived.
 
-### How to estimate
-- **Bottom-up**: count from population — "1B smartphone users in target market, 30% are in our
-  demographic, 50% adoption → 300M MAU → ~30% open daily → 90M DAU."
-- **Top-down from press releases**: "Company X reported 250M DAU."
-- **From device/geo**: population × internet penetration × target segment.
+### User Traffic Estimation Flow
 
-### Sanity check rules of thumb
-| Product | Typical DAU |
-|---------|-------------|
-| WhatsApp | ~2B (huge) |
-| Instagram | ~1B |
-| Twitter/X | ~250M |
-| Uber rides/day | ~15M |
-| Netflix streams | ~200M |
-| A typical startup | 10k–1M |
-
-### Once you have DAU
 ```
-MAU  ≈ DAU × 2.5   (industry average)
-WAU  ≈ DAU × 1.5
-Peak concurrent ≈ DAU × 10%   (peak hour)
-Peak QPS ≈ peak concurrent × avg actions/min / 60
++-------------------------------------------------------------------------+
+|                      USER TRAFFIC ESTIMATION FLOW                       |
++-------------------------------------------------------------------------+
+
+  [ Total Registered Users ] ---> (e.g., 500 Million)
+             |
+             v (Engagement Ratio DAU/MAU ~ 50%)
+  [ Monthly Active Users (MAU) ] ---> (e.g., 200 Million)
+             |
+             v (Daily Active Factor ~ 50% of MAU)
+  [ Daily Active Users (DAU) ]   ---> (e.g., 100 Million DAU)
+             |
+             v (Actions per user/day ~ 20 operations)
+  [ Daily Total Requests ]      ---> (e.g., 2 Billion requests/day)
 ```
 
-### Example
-Twitter: 250M DAU, avg 5 tweets/day/user → 1.25B tweets/day. Spread over 16 active hours:
-~22k tweets/sec average, ~3x at peak → ~65k tweets/sec peak.
+### Typical DAU/MAU Ratios Across Industry Domains
+
+| Product Category | DAU / MAU Ratio | Typical User Actions / Day | Industry Examples |
+| :--- | :--- | :--- | :--- |
+| **Social Media & Messaging** | 50% - 70% (High Engagement) | 20 - 50 actions | WhatsApp, Twitter/X, Instagram |
+| **E-Commerce & Retail** | 10% - 20% (Periodic Use) | 5 - 10 actions | Amazon, eBay, Shopify stores |
+| **Ride Sharing & Delivery** | 15% - 30% (Demand Driven) | 2 - 4 actions | Uber, DoorDash, Lyft |
+| **B2B Productivity SaaS** | 40% - 60% (Workday Heavy) | 50 - 100 actions | Slack, Jira, Notion |
+| **Media Streaming** | 25% - 40% (Evening Peak) | 3 - 8 actions | Netflix, YouTube, Spotify |
+
+### Step-by-Step Estimation Walkthrough
+
+1. **Start with MAU or Total User Base**: If given 300 Million MAU for a global application:
+2. **Apply DAU/MAU Engagement Factor**: 
+
+$$\text{DAU} = \text{MAU} \times 0.50 = 300\,\text{M} \times 0.50 = 150\,\text{Million DAU}$$
+
+3. **Calculate Total Requests per Day**: If an average user performs 10 read/write operations daily:
+
+$$\text{Total Daily Requests} = 150\,\text{M DAU} \times 10\,\frac{\text{requests}}{\text{user}} = 1.5\,\text{Billion Requests/Day}$$
 
 ### Key takeaway
-DAU is the anchor. Every other estimate — RPS, storage, cost — multiplies from it. Get the DAU
-range right (order of magnitude), and the rest follows.
+
+DAU forms the foundation for all capacity calculations. Multiply MAU by the engagement factor (typically 50% for consumer platforms) to establish DAU, then derive total daily requests to drive server, database, and bandwidth planning.

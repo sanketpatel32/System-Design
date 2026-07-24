@@ -4,54 +4,31 @@
 
 ---
 
-LLD: model an ATM.
+Object-Oriented Low-Level Design (LLD) for an Automated Teller Machine (ATM) system using the State Pattern to handle user authentication, account queries, cash dispensing, and transaction logging.
 
-### Requirements
-- Card auth (PIN).
-- Withdraw, deposit, balance.
-- Cash dispensing.
-- Receipt.
+### System Requirements & Component Architecture
+- Support hardware peripherals: Card Reader, Cash Dispenser, Keypad, Display Screen, Printer.
+- State Machine transitions: `IdleState` $ightarrow$ `HasCardState` $ightarrow$ `AuthenticatedState` $ightarrow$ `DispensingState`.
+- Support cash dispenser algorithm for optimal bill denomination breakdown.
 
-### Classes
+### ATM Hardware & Software System Architecture
 ```
-class ATM:
-    state  # IDLE, CARD_INSERTED, PIN_ENTERED, TRANSACTION
-    cash_dispenser
-    card_reader
-    printer
-    bank_service
-
-class State:  # abstract
-    insert_card(card)
-    enter_pin(pin)
-    select_transaction(type)
-    withdraw(amount)
-
-class IdleState, CardInsertedState, PinEnteredState, TransactionState ...
-
-class Account:
-    balance
-    withdraw(amount)
-    deposit(amount)
-
-class Card:
-    number
-    account
+[ ATM Keypad / Screen ] ---> [ ATM Main Controller ] <---> [ Bank Host Gateway ]
+                                     |
+    +--------------------------------+--------------------------------+
+    | (State Pattern Controller)                                      |
+    v                                                                 v
+[ Card Reader Hardware ]                                  [ Cash Dispenser ]
+(Reads Magstripe/Chip)                                    (Dispenses 100/500/2000 notes)
 ```
 
-### State pattern
-- States: Idle, CardInserted, PinEntered, Transaction.
-- Transitions drive flow.
-
-### Withdraw flow
-1. Insert card → CardInserted.
-2. Enter PIN → PinEntered (validate via bank).
-3. Select withdraw → Transaction.
-4. Enter amount.
-5. Validate balance.
-6. Dispense cash, update account, print receipt.
-7. Return to Idle.
+### Class Responsibilities & State Matrix
+| Class | Role | Attributes / Methods |
+|---|---|---|
+| `ATM` | Central context object | `currentState`, `cashDispenser`, `bankService`, `changeState()` |
+| `CardReader` | Hardware abstraction for card reads | `readCard()`, `ejectCard()` |
+| `CashDispenser` | Manages bill inventory & dispensing | `dispenseCash(amount)`, `hasSufficientCash()` |
+| `BankService` | Remote banking API gateway | `authenticatePin()`, `withdraw()`, `getBalance()` |
 
 ### Key takeaway
-ATM LLD = **State pattern** (Idle, CardInserted, PinEntered, Transaction). Hardware components
-(card reader, dispenser, printer). Bank service for account access.
+ATM low-level design applies the State Pattern to handle hardware user flows cleanly while isolating physical hardware abstractions (`CashDispenser`, `CardReader`) from remote banking network calls.

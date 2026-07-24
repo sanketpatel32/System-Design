@@ -125,67 +125,131 @@ a:hover {
 /* Prose (rendered markdown body) */
 .prose-atlas {
   color: rgb(var(--ink-rgb));
-  line-height: 1.7;
+  line-height: 1.75;
   font-size: var(--text-lg);
 }
+.prose-atlas h1,
 .prose-atlas h2,
 .prose-atlas h3,
 .prose-atlas h4 {
-  margin-top: var(--space-6);
-  margin-bottom: var(--space-3);
+  margin-top: 2rem;
+  margin-bottom: 0.85rem;
   color: rgb(var(--ink-rgb));
   font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
-.prose-atlas h2 { font-size: var(--text-2xl); }
+.prose-atlas h1 { font-size: var(--text-3xl); }
+.prose-atlas h2 { font-size: var(--text-2xl); border-bottom: 1px solid var(--rule); padding-bottom: 0.5rem; }
 .prose-atlas h3 { font-size: var(--text-xl); }
-.prose-atlas p,
-.prose-atlas ul,
-.prose-atlas ol {
-  margin-block: var(--space-3);
-  color: rgb(var(--ink-rgb) / 0.9);
+.prose-atlas h4 { font-size: var(--text-base); }
+
+.prose-atlas p {
+  margin-block: 1rem;
+  color: rgb(var(--ink-rgb) / 0.92);
+  line-height: 1.75;
 }
+
 .prose-atlas ul,
 .prose-atlas ol {
-  padding-left: 1.25rem;
+  margin-block: 1rem;
+  padding-left: 1.5rem;
+  color: rgb(var(--ink-rgb) / 0.92);
+}
+.prose-atlas ul {
+  list-style-type: disc;
+}
+.prose-atlas ol {
+  list-style-type: decimal;
 }
 .prose-atlas li {
-  margin-block: var(--space-2);
+  margin-block: 0.4rem;
+  padding-left: 0.25rem;
 }
 .prose-atlas li::marker {
   color: rgb(var(--accent-rgb));
+  font-weight: 600;
 }
 .prose-atlas strong {
   color: rgb(var(--ink-rgb));
   font-weight: 600;
 }
 .prose-atlas a {
+  color: rgb(var(--accent-2-rgb));
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgb(var(--accent-rgb) / 0.5);
+  text-decoration-color: rgb(var(--accent-rgb) / 0.4);
+  transition: color var(--dur-fast) var(--ease-out), text-decoration-color var(--dur-fast) var(--ease-out);
 }
+.prose-atlas a:hover {
+  color: rgb(var(--accent-rgb));
+  text-decoration-color: rgb(var(--accent-rgb));
+}
+
 .prose-atlas code {
   font-family: var(--font-mono);
-  font-size: 0.85em;
-  background: rgb(var(--paper-3-rgb));
-  padding: 0.1em 0.4em;
+  font-size: 0.875em;
+  background: rgb(var(--paper-3-rgb) / 0.7);
+  border: 1px solid rgb(var(--rule-rgb) / 0.6);
+  padding: 0.15em 0.45em;
   border-radius: var(--radius-sm);
-  color: rgb(var(--ink-rgb));
+  color: rgb(var(--accent-2-rgb));
 }
 .prose-atlas pre {
-  margin: var(--space-4) 0;
-  padding: var(--space-4);
+  margin: 1.5rem 0;
+  padding: 1.25rem;
   background: rgb(var(--paper-2-rgb));
   border: 1px solid var(--rule);
   border-radius: var(--radius-md);
   overflow-x: auto;
+  box-shadow: var(--shadow-xs);
 }
 .prose-atlas pre code {
   background: none;
+  border: none;
   padding: 0;
+  color: rgb(var(--ink-rgb));
 }
+
 .prose-atlas blockquote {
-  border-left: 3px solid rgb(var(--accent-rgb));
-  padding-left: var(--space-4);
-  color: rgb(var(--ink-2-rgb));
-  font-style: italic;
+  margin-block: 1.5rem;
+  border-left: 4px solid rgb(var(--accent-rgb));
+  background: rgb(var(--accent-rgb) / 0.06);
+  padding: 1rem 1.25rem;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  color: rgb(var(--ink-rgb) / 0.95);
+  font-style: normal;
 }
+.prose-atlas blockquote p {
+  margin: 0;
+}
+
+/* Markdown Tables */
+.prose-atlas table {
+  width: 100%;
+  margin-block: 1.5rem;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+.prose-atlas th {
+  background: rgb(var(--paper-3-rgb) / 0.7);
+  color: rgb(var(--ink-rgb));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--text-xs);
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--rule);
+}
+.prose-atlas td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgb(var(--rule-rgb) / 0.6);
+  color: rgb(var(--ink-rgb) / 0.9);
+  vertical-align: top;
+  line-height: 1.6;
+}
+.prose-atlas tr:hover td {
+  background: rgb(var(--paper-3-rgb) / 0.3);
+}
+

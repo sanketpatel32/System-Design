@@ -4,57 +4,46 @@
 
 ---
 
-A composite index = **an index on multiple columns**. Crucial for queries that filter by
-more than one field.
+A **Composite Index** (also known as a concatenated or multi-column index) is an index built on multiple columns of a database table. Composite indexes optimize queries that filter, join, or sort on multiple attributes simultaneously.
 
-### Syntax
-```sql
-CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+### Leftmost Prefix Rule architecture
+
+```
+                     Composite Index Key: (Country, City, Age)
+                                        |
+                 +----------------------+----------------------+
+                 |                                             |
+     Queries that USE the index:                  Queries that CANNOT use index:
+     - WHERE Country = 'USA'                      - WHERE City = 'NYC'
+     - WHERE Country = 'USA' AND City = 'NYC'     - WHERE Age = 30
+     - WHERE Country = 'USA' AND City = 'NYC'     - WHERE City = 'NYC' AND Age = 30
+       AND Age = 30                               (Violates Leftmost Prefix Rule)
 ```
 
-### The golden rule: **column order matters**
-The index is useful for queries that filter **left-to-right** on its columns.
+### The Leftmost Prefix Rule
 
-```sql
--- Index: (user_id, status)
+Database query optimizers utilize composite indexes based on the **Leftmost Prefix Rule**: an index defined on columns `(A, B, C)` can serve queries filtering by:
+- `A`
+- `A, B`
+- `A, B, C`
 
-WHERE user_id = 1                       -- ✅ uses index
-WHERE user_id = 1 AND status = 'PAID'   -- ✅ uses index fully
-WHERE status = 'PAID'                   -- ❌ index NOT usable (leftmost missing)
-WHERE user_id = 1 AND total > 100       -- ⚠️ partial use (user_id part only)
-```
+However, the index **cannot** optimize queries filtering strictly by `B`, `C`, or `B, C` because the index keys are sorted primarily by column `A`, secondarily by `B`, and tertiarily by `C`.
 
-### Analogy
-Think of a phone book sorted by (LastName, FirstName):
-- Find all "Smith" — works.
-- Find all "Smith, John" — works.
-- Find all "John" (any last name) — must scan the whole book.
+### Column ordering strategies
 
-### When to use
-- Multi-column filters (`WHERE a = ? AND b = ?`).
-- Filter + sort (`WHERE user_id = ? ORDER BY created_at`).
-- Covering index (add columns to avoid table lookup).
+1. **Equality columns first**: Place columns evaluated with equality conditions (`=`) before range conditions (`>`, `<`, `LIKE`). Range conditions prevent subsequent index columns from being utilized for index lookups.
+2. **High-Cardinality first**: Place columns with high selectivity (large number of distinct values) earlier in the index prefix.
+3. **Covering Queries**: Include selected output columns at the tail of the index to enable **Covering Index** execution, eliminating physical table lookups.
 
-### Selectivity rule of thumb
-- Order columns from **most selective to least** *if no range condition*.
-- For range conditions, put equality columns first, then the range.
+### Single-Column vs Composite Index Matrix
 
-### Example: orders
-```sql
--- Most queries: WHERE user_id = ? AND status = ?
--- user_id is highly selective (millions of distinct).
--- status has few values (PAID, SHIPPED, ...).
--- So (user_id, status) is correct.
-```
-
-### Covering index
-```sql
-CREATE INDEX idx ON orders(user_id) INCLUDE (total, status);
--- Query SELECT total FROM orders WHERE user_id = 1 can be served
--- entirely from the index, without touching the table.
-```
+| Query Pattern | Two Separate Indexes on `(A)` and `(B)` | Single Composite Index on `(A, B)` |
+| :--- | :--- | :--- |
+| **`WHERE A = 1 AND B = 2`** | Moderately fast (Requires index merge step) | Extremely fast (Direct single-pass traversal) |
+| **`WHERE A = 1 ORDER BY B`**| Slow (Requires filesort for B) | Fast (Results pre-sorted by B within A) |
+| **`WHERE A = 1`** | Fast | Fast (Uses Leftmost Prefix) |
+| **`WHERE B = 2`** | Fast | Unusable (Index skipped) |
 
 ### Key takeaway
-Composite indexes follow **leftmost-prefix** rule: a query must filter on the leading columns.
-Put selective/equality columns first, range/sort columns after. Use covering indexes for hot
-queries.
+
+Design composite indexes based on query access patterns, following the Leftmost Prefix Rule. Order columns by putting equality filters first, range filters second, and high-cardinality attributes early in the key list.

@@ -4,61 +4,43 @@
 
 ---
 
-CDN cache invalidation = **ensuring edge caches don't serve stale content** after origin
-updates.
+CDN Cache Invalidation is the process of removing or purging stale cached assets from global edge servers before their explicit `Cache-Control` Time-To-Live (TTL) expires.
 
-### Approaches
+### Cache Invalidation Mechanisms
 
-#### 1. TTL (time-to-live)
-- Each cached object has an expiry.
-- After TTL, edge refetches from origin.
-- Simple, but allows staleness up to TTL.
-
-#### 2. Purge
-- Explicit API call to invalidate.
-- Two flavors:
-  - **URL purge**: invalidate specific URL.
-  - **Wildcard / surrogate key purge**: invalidate groups ("all /products/*").
-- Fastly is famous for sub-second surrogate-key purges.
-
-#### 3. Versioned URLs
-- New version = new URL.
-- `/app.v123.js` → `/app.v124.js`.
-- Old URL stays cached (no invalidation needed).
-- Standard for hashed assets (Webpack, Vite).
-
-#### 4. Soft purge
-- Mark as stale, but serve stale while refetching.
-- Avoids latency spike on hard purge.
-
-### The invalidation problem
-> "There are only two hard things in CS: cache invalidation and naming things."
-
-- Long TTL → stale data.
-- Short TTL → more origin hits.
-- Purge is global → can thundering-herd the origin.
-
-### Best practices
-- **Versioned URLs** for static assets (immutable, infinite TTL).
-- **Short TTL** for content that changes (60s for product pages).
-- **Purge on update** for things that must be fresh immediately.
-- **Soft purge** to avoid spikes.
-
-### Cloudflare example
 ```
-POST /zones/{id}/purge_cache
-{ "files": ["https://example.com/img/cat.jpg"] }
++-----------------------------------------------------------------------------------+
+|                             Developer / CI/CD Pipeline                            |
++-----------------------------------------------------------------------------------+
+                                          | Purge Command (API / Dashboard)
+                                          v
++-----------------------------------------------------------------------------------+
+|                             CDN Management Control Plane                          |
++-----------------------------------------------------------------------------------+
+                                          | PubSub Broadcast (Sub-second Fanout)
+                                          v
+        +---------------------------------+---------------------------------+
+        |                                 |                                 |
+        v                                 v                                 v
++-----------------+               +-----------------+               +-----------------+
+| Edge PoP: US    |               | Edge PoP: EU    |               | Edge PoP: APAC  |
+| (Purges /app.js)|               | (Purges /app.js)|               | (Purges /app.js)|
++-----------------+               +-----------------+               +-----------------+
 ```
 
-### Trade-offs
-| Approach | Pros | Cons |
-|----------|------|------|
-| TTL only | Simple | Stale data |
-| Purge | Fresh | Operations overhead |
-| Versioned | Immutable | Need to update references |
-| Soft purge | No spike | Briefly stale |
+### Invalidation Strategies Matrix
+
+| Strategy | Mechanism | Propagation Speed | Cost / Origin Impact | Best For |
+| :--- | :--- | :--- | :--- | :--- |
+| **Hard Purge** | Explicitly deletes asset from edge cache | Fast (1-5 seconds) | High origin load spike | Security hotfixes, leak containment |
+| **Soft Purge (Stale-While-Revalidate)**| Marks asset stale; serves stale while fetching origin | Fast | Low (Throttled origin fetch) | Regular content updates |
+| **Cache Busting (URL Versioning)** | Appends file hash (`app.v2f8a.js`) | Instant (New URL) | Zero purge cost | Production JS/CSS assets |
+
+### Cache Control Header Standards
+
+- `Cache-Control: public, max-age=31536000, immutable`: Used for cache-busted static assets.
+- `Cache-Control: no-cache, s-maxage=3600`: Requires edge servers to revalidate with origin using `ETag` or `If-Modified-Since` headers.
 
 ### Key takeaway
-For immutable assets (hashed JS/CSS), use **versioned URLs with infinite TTL** — never
-invalidate. For dynamic content, use short TTL or **purge on update**. Prefer **soft purge** to
-avoid thundering herds on origin.
+
+Prefer **URL versioning (cache busting)** over manual CDN purges for static assets. Use soft purges with `stale-while-revalidate` when dynamic content updates require immediate global invalidation.

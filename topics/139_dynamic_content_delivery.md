@@ -4,54 +4,36 @@
 
 ---
 
-Dynamic content = **responses generated per-request** (user-specific data, search results,
-recommendations). Harder to cache than static.
+Dynamic Content Delivery optimizes the transmission of **non-cacheable or personalized API responses** using CDN edge networks to accelerate network handshakes, TCP routing, and edge computation.
 
-### Why CDN it
-- Even uncacheable responses benefit from:
-  - **TLS termination** at edge.
-  - **Connection reuse** (keep-alive to origin).
-  - **Compression** at edge.
-  - **DDoS / WAF** protection.
-  - **Routing** (geo, weighted).
+### Dynamic Acceleration Architecture
 
-### What can be cached
-- **Public dynamic content**: news homepage (cache for 60s).
-- **Personalized but bounded**: user's profile (cache with `Vary: Authorization`).
-- **API responses with explicit TTL**: stock quotes (1s TTL).
+```
++--------+          1. Edge Connection (Fast TLS Handshake)          +---------------+
+| Client | --------------------------------------------------------> | Edge PoP Node |
++--------+                                                           +---------------+
+                                                                             |
+                                                                             | 2. Persistent TCP Connection /
+                                                                             |    Optimized IP Route (BGP)
+                                                                             v
+                                                                     +---------------+
+                                                                     | Origin Server |
+                                                                     +---------------+
+```
 
-### Cache strategies for dynamic
+### Dynamic Optimization Techniques
 
-#### 1. Short TTL
-- `Cache-Control: max-age=60` → stale up to 60s.
-- Acceptable for many apps (news, listings).
+| Acceleration Layer | Optimization Technique | Benefit |
+| :--- | :--- | :--- |
+| **Connection Layer** | TLS Termination at Edge PoP | Eliminates multi-RTT TLS handshake latency to origin |
+| **Transport Layer** | Persistent TCP Keep-Alive Pools | Eliminates slow-start phase between edge and origin |
+| **Routing Layer** | BGP Anycast & Private Backbone Routing| Bypasses public internet congestion |
+| **Compute Layer** | Edge Worker Composition (ESR/ESI) | Stitches cached shell HTML with dynamic API fragments |
 
-#### 2. Stale-while-revalidate
-- `Cache-Control: max-age=60, stale-while-revalidate=600`
-- After TTL: serve stale + refetch in background.
-- User gets fast stale response; cache stays fresh.
+### Dynamic Caching Strategies
 
-#### 3. Edge-side includes (ESI)
-- Compose page from cacheable + uncacheable fragments.
-- Edge assembles them.
-- Cache the static parts; only fetch dynamic.
-
-#### 4. Edge compute (Workers, Lambda@Edge)
-- Personalize at edge (read cookie, modify response).
-- Avoid origin round trip entirely.
-
-### What NOT to cache
-- Authenticated, sensitive responses (banking).
-- Real-time data (stock ticker, live scores) — unless 1s TTL OK.
-- User-specific dashboards (highly dynamic).
-
-### Trade-offs
-- ✅ Lower latency via edge TLS / compression / keep-alive.
-- ✅ Cache public dynamic content with short TTL.
-- ❌ Personalized content needs care (Vary, edge compute).
-- ❌ Wrong caching leaks data between users.
+- **Edge Side Includes (ESI)**: Allows edge servers to stitch static HTML page templates with dynamic personalized user fragments (`<esi:include src="/api/user"/>`).
 
 ### Key takeaway
-Even dynamic APIs benefit from CDN: edge TLS, keep-alive, compression, DDoS. For cacheable
-dynamic content, use short TTL + `stale-while-revalidate`. For personalization, use edge
-compute (Workers) to avoid origin hits.
+
+Dynamic content delivery accelerates non-cacheable APIs by **terminating TLS at edge PoPs** and multiplexing origin traffic over pre-established, optimized backbone routes.

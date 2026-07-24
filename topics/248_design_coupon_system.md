@@ -4,51 +4,45 @@
 
 ---
 
-Design a coupon/promo system.
+A Coupon and Promotional System manages discount rules, campaign budgets, user redemptions, and real-time coupon validation during cart calculation and checkout.
 
-### Requirements
-- **Functional**: create coupons; redeem; track usage; per-user limits.
-- **Non-functional**: prevent abuse; high availability.
+### System Requirements
+- **Functional Requirements**:
+  - Support diverse discount types (percentage, fixed amount, buy-N-get-M, free shipping).
+  - Enforce complex targeting rules (minimum order value, category constraints, first-time user, max redemptions per user/global).
+  - Validate and lock coupons atomically during checkout to prevent budget overruns.
+- **Non-Functional Requirements**:
+  - Low Latency: Validate coupons in $< 15\text{ ms}$ during cart rendering.
+  - High Concurrency: Prevent over-redemption when thousands of users apply a limited coupon code simultaneously.
+  - Fraud Prevention: Detect code abuse, dictionary attacks, and multi-account exploiting.
 
-### Architecture
+### System Architecture
 ```
-[Cart checkout] -> [Coupon service] -> validate -> apply
-                                        |
-                                        v
-                                   [DB (coupons, redemptions)]
-```
-
-### Coupon rules
-- **Code**: unique.
-- **Type**: percentage / fixed / free shipping.
-- **Conditions**: min order, specific products, first-time user.
-- **Limits**: total redemptions, per-user redemptions, expiry.
-
-### Validation
-- Code valid + not expired.
-- User hasn't used (per-user limit).
-- Conditions met (min order, eligible products).
-- Total redemptions not exhausted.
-
-### Concurrency
-- Atomic decrement of remaining redemptions:
-```sql
-UPDATE coupons SET remaining = remaining - 1
-WHERE code = X AND remaining > 0
+[ Cart / Checkout Service ] ---> [ Coupon API Gateway ]
+                                         |
+                                         v
+                            [ Coupon Rule Engine (Drools/Lua) ]
+                                         |
+                       +-----------------+-----------------+
+                       |                                   |
+                       v                                   v
+             [ Redis Redemption Counters ]        [ Coupon Rules DB ]
+             (Atomic Incr & User Bitmaps)          (PostgreSQL / DynamoDB)
 ```
 
-### Fraud prevention
-- Per-IP limit.
-- Per-account limit.
-- CAPTCHA on bulk redemption attempts.
+### Redemption Guarantee & Rules Matrix
+| Rule Type | Technical Validation | Fraud Protection Mechanism |
+|---|---|---|
+| **Global Budget Limit** | Redis atomic counter `INCRBY` against budget cap | Circuit breaker trips when budget reaches zero. |
+| **Per-User Usage Limit** | Redis SET / Bitmaps indexed by `user_id` | Atomic `SADD` check before coupon approval. |
+| **Minimum Order Amount** | In-memory evaluation against cart subtotal | Exclude shipping/taxes from subtotal calculation. |
+| **Category/Item Scope** | Set intersection between cart item IDs and allowed IDs | In-memory set comparison in Rule Engine. |
 
-### Data model
-```
-coupons (code, type, value, conditions, max_total, max_per_user, expires_at)
-redemptions (coupon_code, user_id, order_id, redeemed_at)
-```
+### API Specification
+| Endpoint | Method | Description | Key Parameters |
+|---|---|---|---|
+| `/v1/coupons/validate` | POST | Test coupon eligibility for cart | `code`, `user_id`, `cart_subtotal`, `items: [...]` |
+| `/v1/coupons/reserve` | POST | Lock single redemption slot for checkout | `code`, `user_id`, `order_id` |
 
 ### Key takeaway
-Coupon system = rules engine (type, conditions, limits) + atomic redemption counter + per-user
-tracking. Use atomic UPDATE for remaining count. Fraud prevention: per-IP, per-account
-limits.
+Coupon systems rely on rule engines coupled with Redis atomic counters and per-user bitmaps to evaluate rules rapidly while strictly enforcing global redemption limits under high concurrency.

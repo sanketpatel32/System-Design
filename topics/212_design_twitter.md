@@ -1,46 +1,58 @@
 # Design Twitter / X
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Twitter: post tweets, follow, timeline, search, trends.
+### Overview
+**Twitter / X** is a real-time microblogging platform enabling users to broadcast short text messages (tweets), retweets, media, and follow social graphs with low feed latency.
 
-### Requirements
-- **Functional**: post tweet (text/image/video); follow; timeline; search; trending.
-- **Non-functional**: low-latency timeline; massive write/read scale.
+### Capacity Estimation & Traffic Patterns
+- **DAU**: 300 Million.
+- **Tweet Volume**: 500M tweets per day (~5,800 tweets/sec average; peak ~25,000 tweets/sec).
+- **Timeline Read Volume**: 30B timeline requests per day (~350,000 reads/sec).
+- **Read/Write Ratio**: Extremely read-heavy (~60:1 Read:Write).
 
-### Estimation
-- 250M DAU, 500M tweets/day, 10:1 read ratio.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[Client] -> [API] -> [Tweet service]
-                     [Timeline service (fanout)]
-                     [Graph service]
-                     [Search service (Elasticsearch)]
-                     [Trends service]
++---------------+     1. POST /v1/tweets     +-------------------+
+| Client App    | -------------------------> | API Gateway       |
++---------------+                            +-------------------+
+        ^                                              |
+        | 4. GET /v1/timeline                          v 2. Ingestion
+        |                                    +-------------------+
+        |                                    | Tweet Service     |
+        |                                    +-------------------+
+        |                                              |
+        v                                              v 3. Fanout Event
++-------------------+     Feed Invalidation    +-------------------+
+| Timeline Service  | <--------------------- | Fanout Service    |
++-------------------+                        | (KSQL / Redis)    |
+        |                                    +-------------------+
+        v Read Timeline Cache                          |
++-------------------+                                  v Save Metadata
+| Redis Timeline    |                        +-------------------+
+| In-Memory Cache   |                        | Manhattan DB /    |
++-------------------+                        | PostgreSQL Shards |
+                                             +-------------------+
 ```
 
-### Timeline generation (the core problem)
-- **Fanout-on-write** for normal users: post → push to all followers' timeline caches.
-- **Fanout-on-read** for celebrities (100M+ followers): pull their tweets when reading timeline.
-- Hybrid: pre-built timeline + celebrity tweets pulled at read.
+### Social Graph Data Model (Distributed Graph DB / MySQL Shards)
 
-### Tweet storage
-- **Postgres** for tweet metadata.
-- **Cassandra** for massive scale (Twitter's actual choice).
+| Table | Partition Key | Key Fields |
+|---|---|---|
+| `tweets` | `tweet_id` (Snowflake ID) | `author_id`, `text`, `media_urls`, `created_at` |
+| `follows` | `follower_id` | `followee_id`, `created_at` |
+| `timelines` | `user_id` | `tweet_id` (Array of recent 800 tweet IDs in Redis) |
 
-### Search
-- **Elasticsearch** inverted index.
-- Search within user's follows (filtered) or globally.
+### Distributed Unique ID Generation (Snowflake ID)
+64-bit integer guaranteeing global sorting by time without central database coordination:
 
-### Trending topics
-- Sample stream of tweets.
-- Count hashtag occurrences over time windows.
-- Top N per region.
+$$\underbrace{1\text{ bit}}_{\text{Unused}} \, \vert \, \underbrace{41\text{ bits}}_{\text{Timestamp (ms)}} \, \vert \, \underbrace{10\text{ bits}}_{\text{Datacenter/Worker ID}} \, \vert \, \underbrace{12\text{ bits}}_{\text{Sequence Number}}$$
+
+### Key Architectural Challenges & Solutions
+1. **Celebrity Fanout Problem (Celebrity Spike)**: A tweet from an author with 100M followers requires 100M Redis cache writes. **Solution**: Skip fanout for users with $> 100\text{k}$ followers. Merge celebrity tweets into the user timeline at read time.
+2. **Timeline Cache Size**: Store only `tweet_ids` (64-bit integers) in Redis arrays capped at the latest 800 items per active user. Hydrate tweet contents in batch (`MGET`) on frontend render.
 
 ### Key takeaway
-Twitter's hard problem is **timeline fanout at celebrity scale**. Hybrid model: fanout-on-write
-for normal users, fanout-on-read for celebrities. Cassandra for write throughput, Redis for
-pre-built timelines.
+Twitter uses **Snowflake 64-bit IDs** for time-ordered data partitioning and solves the celebrity fanout problem using a **Hybrid Push-Pull Feed Generation Model**.

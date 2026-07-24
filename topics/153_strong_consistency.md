@@ -4,60 +4,38 @@
 
 ---
 
-Strong consistency (linearizability) = **every read returns the latest write, no stale
-reads.** The strictest consistency model.
+Strong Consistency (Linearizability) guarantees that **every read operation receives the most recent write**, making a distributed cluster behave as if it were executing on a single atomic machine.
 
-### The promise
-- Operations appear to happen **in some order**, one at a time.
-- A read always returns the most recent write's value (or a newer one).
-- All clients see the same order.
+### Strong Consistency Read/Write Enforcement
 
-### Why strong consistency
-- **Banking**: balance must reflect latest deposit.
-- **Inventory**: must not sell the same item twice.
-- **Auth**: revoked tokens must be honored immediately.
-- **Configuration**: changes apply immediately.
+```
++----------+      1. Write Update (v=5)      +-------------------+      2. Synchronous Replicate     +-------------------+
+| Client A | ------------------------------> | Primary / Leader  | ---------------------------------> | Replica Node      |
++----------+                                 +-------------------+                                   +-------------------+
+                                                       |                                                       |
+                                                       |<------------------------------------------------------|
+                                                       | 3. All ACKs Received                                  |
+                                                       v                                                       |
+                                             +-------------------+                                             |
+| Client B | <------------------------------ | Return Write OK   |                                             |
++----------+   4. Read Request (Guaranteed v=5) +-------------------+                                             v
+```
 
-### How to achieve
+### Strong vs Eventual Consistency Comparison
 
-#### 1. Single leader
-- All writes go through one node.
-- Reads from leader see all writes.
-- Trade-off: leader is bottleneck + SPOF.
+| Dimension | Strong Consistency (Linearizable) | Eventual Consistency |
+| :--- | :--- | :--- |
+| **Read Guarantee** | Always latest state guaranteed | May return stale data temporarily |
+| **Write Performance** | Slower (Synchronous Replication / 2PC) | Fast (Local Memory / Async ACK) |
+| **Availability (CAP)**| Sacrifices Availability during partitions (CP)| Sacrifices Consistency during partitions (AP)|
+| **Complexity** | Simple mental model for app developer | Complex application conflict resolution |
+| **Example Systems** | Spanner, CockroachDB, etcd, PostgreSQL | Cassandra, DynamoDB, Redis |
 
-#### 2. Quorum
-- `R + W > N` ensures read quorum and write quorum overlap.
-- Read sees the latest write.
+### Key Protocols Enabling Strong Consistency
 
-#### 3. Consensus (Raft, Paxos)
-- Leader replicates log to followers.
-- Write committed when quorum ACKs.
-- Reads served from leader or quorum.
-
-#### 4. Two-phase commit
-- Coordinator ensures all participants commit or all abort.
-- Atomic across systems.
-
-### Cost
-- **Higher latency**: every write needs quorum round trip.
-- **Lower availability**: in a partition, must refuse writes (CAP).
-- **Lower throughput**: writes serialized.
-
-### Real-world
-- **Spanner**: globally strongly consistent via TrueTime + Paxos.
-- **etcd, ZooKeeper**: small data, strong consistency via Raft.
-- **CockroachDB, YugabyteDB**: SQL with strong consistency.
-- **Postgres/MySQL single-node**: inherently strong.
-
-### Strong vs eventual
-| | Strong | Eventual |
-|--|--------|----------|
-| Read sees latest | Always | Maybe not |
-| Latency | Higher | Lower |
-| Availability | Lower | Higher |
-| Use case | Money, locks, config | Feeds, counts |
+- **Consensus Consensus (Raft / Paxos)**: Multi-node majority approval before committing writes.
+- **Synchronous Master-Replica Replication**: Delaying client ACKs until all backup nodes write to disk.
 
 ### Key takeaway
-Strong consistency = no stale reads, achieved via **leader + quorum + consensus**. Costs latency
-and availability. Use for transactional data (banking, inventory, config) where staleness is
-unacceptable.
+
+Strong consistency provides **linearizable read-after-write guarantees** at the expense of higher write latency and reduced availability during network partitions.

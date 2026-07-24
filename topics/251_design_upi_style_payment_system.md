@@ -4,45 +4,42 @@
 
 ---
 
-Design a UPI-like (Unified Payments Interface) system: instant bank-to-bank transfers via
-virtual payment addresses.
+A Unified Payments Interface (UPI) system enables instant, real-time peer-to-peer (P2P) and peer-to-merchant (P2M) bank transfers directly between bank accounts using virtual payment addresses (VPA / UPI ID) without exposing bank account numbers.
 
-### Requirements
-- **Functional**: link bank account; create VPA (name@bank); transfer to VPA; QR code payment.
-- **Non-functional**: real-time (<10s); 24/7; highly available.
+### System Requirements
+- **Functional Requirements**:
+  - Resolve Virtual Payment Addresses (VPA) to bank account details instantly.
+  - Execute 2-Factor authentication (Device binding + MPIN) for fund transfers.
+  - Coordinate real-time Inter-Bank Settlement via NPCI Central Switch.
+- **Non-Functional Requirements**:
+  - High Availability: 99.999% uptime with sub-2 second end-to-end processing.
+  - Scalability: Support 500,000+ transactions per second during peak hours.
+  - Zero Double-Spend: Strict transaction isolation across remitter and beneficiary banks.
 
-### Architecture
+### System Architecture
 ```
-[User app] <-> [UPI API] <-> [Bank APIs (via NPCI)]
-                              [VPA resolver]
-                              [Ledger]
+[ Payer Mobile App ] ---> [ Payer PSP Service ] ---> [ NPCI Central Switch ]
+                                                           |
+                      +------------------------------------+------------------------------------+
+                      |                                                                         |
+                      v                                                                         v
+           [ Remitter Bank (Debit) ]                                                [ Beneficiary Bank (Credit) ]
+           (Auth & Account Balance)                                                 (Account Credit Engine)
 ```
 
-### Components
-- **VPA service**: maps `alice@okbank` → bank account.
-- **Bank integration**: each bank exposes APIs.
-- **NPCI switch**: routes between banks.
-- **Auth**: mobile PIN (MPIN) + device binding.
+### Transaction Flow & Settlement Machine
+| Step | Phase | Action | Failure / Retry Handling |
+|---|---|---|---|
+| **1** | VPA Lookup | Resolve `user@upi` to Bank IFSC & Account Hash | Return 404 if VPA inactive. |
+| **2** | Debit Auth | Remitter Bank authenticates MPIN & debits account | Reverse transaction if MPIN invalid or insufficient balance. |
+| **3** | Central Routing | NPCI switch forwards credit advice to Beneficiary Bank | Queue in NPCI switch for async retry if Beneficiary PSP down. |
+| **4** | Credit Posting | Beneficiary Bank credits account & returns confirmation | If credit fails after debit, trigger auto-reversal within SLA. |
 
-### Transfer flow
-1. Sender enters recipient VPA + amount.
-2. App resolves VPA → bank account.
-3. Sender authenticates (MPIN).
-4. Debit sender bank, credit recipient bank.
-5. Both apps notified.
-
-### QR payments
-- Merchant displays QR (encodes VPA).
-- Customer scans → VPA + amount → pay.
-
-### Idempotency
-- Transaction reference ID.
-- Banks dedup.
-
-### 24/7
-- Banks must be online always.
-- NPCI switch HA.
+### Key API Specifications
+| Endpoint | Method | Description | Key Parameters |
+|---|---|---|---|
+| `/v1/upi/vpa/resolve` | POST | Resolve VPA to masked beneficiary name | `vpa_id` |
+| `/v1/upi/pay` | POST | Initiate UPI debit-credit transfer | `payer_vpa`, `payee_vpa`, `amount`, `encrypted_mpin`, `txn_ref` |
 
 ### Key takeaway
-UPI = VPA resolver + bank APIs + NPCI switch + auth (MPIN). Real-time settlement between banks.
-QR encodes VPA for merchant payments. Idempotency via transaction reference.
+UPI-style payment architectures connect mobile PSP apps to a central switch (NPCI) and core banking solutions, using 2-Factor device/MPIN authentication and asynchronous auto-reversals for instant inter-bank settlement.

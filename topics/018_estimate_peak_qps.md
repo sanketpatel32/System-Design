@@ -4,36 +4,60 @@
 
 ---
 
-Peak QPS = **the maximum queries-per-second** you must serve. It sizes your autoscaling,
-provisioning, and database headroom.
+**Peak Queries Per Second (Peak QPS)** estimates maximum traffic spikes caused by real-world usage patterns (e.g., morning check-ins, breaking news events, Flash Sales, or push notifications). Infrastructure must be provisioned for **Peak QPS**, not Average QPS, to prevent outages during traffic spikes.
 
-### How to compute
-1. Compute **average QPS** from DAU.
-2. Apply a **peak multiplier** (typically 2x–10x).
-3. Add a **safety margin** (~30%) for unexpected spikes.
+### Traffic Spike vs. Average Load Visualization
 
-### Example — URL shortener
-- 100M new URLs/day, 10x redirects → 1B reads/day
-- Avg read QPS = 1B / 86400 ≈ 11.6k
-- Peak multiplier 3x → 35k QPS
-- +30% safety → **~45k peak QPS**
+```
++-------------------------------------------------------------------------+
+|                    AVERAGE vs. PEAK QPS PROFILE                         |
++-------------------------------------------------------------------------+
 
-### Why peak matters
-- DB connections, memory, CPU all sized to peak, not average.
-- Cloud autoscaling takes 1-5 minutes to spin up; if you provision to average, you'll 500 during
-  the spike.
-- **Connection pools** are sized to peak concurrency, which equals peak RPS × per-request latency
-  (Little's Law).
+  QPS
+   ^
+80k|                                        /\  <-- Peak QPS Spike (80k QPS)
+   |                                       /  \     (Flash Sale / Push Notif)
+40k|                   /\                 /    \
+   |  ----------------/--\---------------/------\-----------------------
+20k|  (Average QPS = 20k QPS)           /        \
+   +--------------------------------------------------------------------> Time
+      00:00        08:00              12:00      18:00         24:00
+```
 
-### Spiky vs steady
-- **Steady** (background jobs, batch) → size to average.
-- **Spiky** (web traffic, notifications) → size to peak × 1.3.
+### Traffic Multiplier Benchmarks Across Industries
 
-### Mitigation strategies
-- **Queue + workers** to flatten spikes (absorb in Kafka, process at steady rate).
-- **CDN + cache** to cut origin peak.
-- **Pre-warmed autoscaling** for known events (Black Friday, Super Bowl).
+| Industry Domain | Typical Peak Multiplier | Cause of Traffic Spike | Standard Peak Handling Strategy |
+| :--- | :--- | :--- | :--- |
+| **Social Media / Messaging** | $2\times - 3\times$ | Evening active usage, breaking news | Elastic Auto-scaling, Edge CDNs |
+| **Food Delivery / Mobility** | $3\times - 5\times$ | Lunch & dinner hours, sudden rain | Pre-warmed server fleets, surge pricing |
+| **E-Commerce Flash Sales** | $5\times - 10\times$ | Product drop countdown timers | Queueing systems (Kafka), Rate Limiting |
+| **Ticketing / Live Events** | $10\times - 50\times$ | Concert ticket sales release | Virtual Waiting Rooms, Static Caching |
+
+### Peak QPS Calculation Formulas
+
+1. **Calculate Average QPS**:
+
+$$\text{Average QPS} = \frac{\text{Daily Total Requests}}{86,400}$$
+
+2. **Apply Traffic Peak Multiplier**:
+
+$$\text{Peak QPS} = \text{Average QPS} \times \text{Peak Multiplier}$$
+
+### Concrete Numerical Walkthrough
+
+- **Given**: $100\,\text{Million DAU}$, average $20$ requests/user/day.
+- **Total Daily Requests**: $100\,\text{M} \times 20 = 2\,\text{Billion requests/day}$.
+- **Average QPS**: $\frac{2,000,000,000}{100,000} = 20,000\,\text{QPS}$.
+- **Peak Multiplier**: Assume $3\times$ traffic multiplier for peak evening hours.
+
+$$\text{Peak QPS} = 20,000\,\text{QPS} \times 3 = 60,000\,\text{Peak QPS}$$
+
+- If Read:Write ratio is $4:1$ (80% reads, 20% writes):
+
+$$\text{Peak Read QPS} = 60,000 \times 0.80 = 48,000\,\text{QPS}$$
+
+$$\text{Peak Write QPS} = 60,000 \times 0.20 = 12,000\,\text{QPS}$$
 
 ### Key takeaway
-Average QPS is for cost; peak QPS is for capacity. Always provision for **peak × safety margin**,
-and use async/queue patterns to flatten what you can.
+
+Never size system capacity for Average QPS. Provision application compute, load balancers, and database write throughput to support **Peak QPS** (typically **$2\times$ to $5\times$ Average QPS** depending on traffic patterns).

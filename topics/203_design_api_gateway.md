@@ -1,51 +1,49 @@
 # Design API Gateway
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design an API Gateway: a single entry point handling routing, auth, rate limiting, and more.
+### Overview
+An **API Gateway** acts as a single entry point reverse proxy for microservice applications, encapsulating internal service architecture and delivering routing, SSL termination, rate limiting, authentication, load balancing, and telemetry aggregation.
 
-### Requirements
-- **Functional**: route requests to backends; auth; rate limit; transform.
-- **Non-functional**: low-latency; high-throughput; HA.
+### Architectural Component Topology
 
-### Architecture
 ```
-[Client] -> [API Gateway]
-              |
-              +-> Auth (validate JWT)
-              +-> Rate limit (Redis)
-              +-> Route (/users -> user-svc, /orders -> order-svc)
-              +-> Transform (rewrite, aggregate)
-              +-> Log/metrics
-              v
-           [Backend services]
++---------------+
+| Client Apps   |
++---------------+
+        |
+        v HTTP/2, HTTPS
++-------------------------------------------------------------------------+
+|                               API GATEWAY                               |
+|                                                                         |
+|  [ TLS Termination ] --> [ Rate Limiter ] --> [ Authentication/AuthZ ] |
+|                                                      |                  |
+|  [ Metrics & Logging ] <-- [ Request Router ] <------+                  |
++-------------------------------------------------------------------------+
+        |                                |                                |
+        v gRPC                           v REST                           v WebSockets
++---------------+                +---------------+                +---------------+
+| Auth Service  |                | Order Service |                | Push Service  |
++---------------+                +---------------+                +---------------+
 ```
 
-### Components
-1. **TLS termination**.
-2. **Routing** (URL → backend).
-3. **Authentication** (JWT, API key).
-4. **Rate limiting** (Redis-backed).
-5. **Request/response transformation**.
-6. **Logging + metrics**.
-7. **Caching** for GETs.
-8. **Aggregation** (BFF pattern).
+### Core API Gateway Functional Capabilities
 
-### Scaling
-- Stateless → clone horizontally.
-- Per-instance rate limit counters + shared Redis for global accuracy.
-- Connection pooling to backends.
+| Feature Component | Implementation Responsibility |
+|---|---|
+| **Request Routing** | Routes `/api/v1/orders/*` to Order microservice cluster based on path/headers. |
+| **Authentication / JWT** | Validates incoming JWT tokens at edge, passing verified user claims (`X-User-Id`) to internal services. |
+| **Protocol Translation** | Translates client HTTP/JSON requests into internal high-performance gRPC Protobuf payloads. |
+| **Resilience & Circuit Breaking** | Implements retries, timeouts, and circuit breakers (Resilience4j/Envoy) to isolate service failures. |
 
-### HA
-- Multi-AZ deployment.
-- Health checks + failover.
-- Backpressure to backends.
+### Gateway Technology Comparison
 
-### Real-world
-- Kong, Tyk, AWS API Gateway, Apigee, Envoy + Istio.
+| Gateway Framework | Processing Model | Performance | Ecosystem |
+|---|---|---|---|
+| **Envoy / NGINX** | Event-driven C++ asynchronous | Extremely High (Sub-ms latency) | Kubernetes ingress standard (Istio/Kong) |
+| **Spring Cloud Gateway** | Reactive Non-blocking (Project Reactor) | High | Java / Spring Boot microservices |
+| **Kong (Lua / OpenResty)**| NGINX core with Lua plugins | Very High | Dynamic plugin marketplace |
 
 ### Key takeaway
-API Gateway centralizes cross-cutting concerns: auth, rate limit, routing, observability.
-Keep it thin — don't put business logic. Stateless → clone for scale. Multi-AZ for HA.
+An **API Gateway** decouples client applications from internal microservices. Use asynchronous event-driven proxies (**Envoy / NGINX / Kong**) to execute edge concerns (TLS, AuthN, Rate Limiting) without introducing microservice bottlenecks.

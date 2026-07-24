@@ -4,48 +4,42 @@
 
 ---
 
-LLD: model chess game.
+Object-Oriented Low-Level Design (LLD) for a 2-Player Chess Game enforcing piece movement rules, turn management, check/checkmate detection, and move validation.
 
-### Requirements
-- Board, pieces, players.
-- Legal moves per piece type.
-- Check, checkmate.
-- Game state.
+### System Requirements & Board Model
+- $8 	imes 8$ grid board representation.
+- Piece polymorphism (`Pawn`, `Rook`, `Knight`, `Bishop`, `Queen`, `King`).
+- Special moves: Castling, En Passant, Pawn Promotion.
+- Game loop with turn switching and move history undo/redo log.
 
-### Classes
+### Class Diagram Architecture
 ```
-class Piece:  # abstract
-    color
-    position
-    is_legal_move(to) -> bool
-
-class King, Queen, Rook, Bishop, Knight, Pawn(Piece): ...
-
-class Board:
-    cells[8][8]
-    pieces[]
-    move(piece, to)
-
-class Player:
-    color
-    make_move()
-
-class Game:
-    board
-    players[]
-    current_turn
-    state  # ACTIVE, CHECK, CHECKMATE, DRAW
++-------------------+          +-------------------+          +-------------------+
+|     ChessGame     | 1     1  |       Board       | 1    64  |       Cell        |
++-------------------+ --------> +-------------------+ --------> +-------------------+
+| - board: Board    |          | - cells: Cell[][] |          | - row: int        |
+| - players: Player[2]|        | + getCell(x,y)    |          | - col: int        |
+| - turn: Color     |          +-------------------+          | - piece: Piece    |
+| + makeMove(move)  |                                         +-------------------+
++-------------------+                                                   ^
+                                                                        |
+                                                              +-------------------+
+                                                              |   Piece (Abstract)|
+                                                              +-------------------+
+                                                              | + isValidMove()   |
+                                                              +-------------------+
+                                                                ^  ^  ^  ^  ^  ^
+                                                                |  |  |  |  |  |
+                                                              [R][N][B][Q][K][P]
 ```
 
-### Move validation
-- Per-piece rules (Knight L-shape, Bishop diagonal, etc.).
-- Check own king isn't in check after move.
-- Castling, en passant, promotion.
-
-### Patterns
-- **Strategy** (per piece for move validation).
-- **State** (game state).
+### Piece Polymorphism Specifications
+| Piece Class | Movement Rules | Special Conditions |
+|---|---|---|
+| `Pawn` | 1 step forward (2 steps on first move), diagonal capture | En Passant, Promotion. |
+| `Knight` | L-shaped jump ($2 	imes 1$ or $1 	imes 2$) | Can jump over other pieces. |
+| `Rook` | Horizontal / Vertical straight lines | Castling. |
+| `King` | 1 step in any direction | Cannot move into check; Castling. |
 
 ### Key takeaway
-Chess LLD = Piece hierarchy (King, Queen, ...) + Board + Player + Game. Strategy per piece for
-move validation. State pattern for game flow (active / check / checkmate).
+Chess LLD relies on object polymorphism for piece move validation (`Piece.canMove(board, start, end)`), isolating move rules while delegating turn control and checkmate evaluation to `ChessGame`.

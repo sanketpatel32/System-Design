@@ -4,39 +4,37 @@
 
 ---
 
-At-least-once = **the message will definitely be delivered, but possibly more than once.**
+**At-Least-Once Delivery** is a message delivery guarantee where a message broker guarantees that a message will be delivered to a consumer one or more times. Under this guarantee, no messages are lost, but consumers may receive duplicate deliveries due to network retries, timeouts, or consumer crashes.
 
-### How it works
-- Broker persists the message.
-- Consumer ACKs after processing.
-- If ACK is lost (network, crash), broker redelivers.
+### Duplicate delivery scenario
 
-### Trade-off
-- ✅ **No message loss** (durable + redelivery).
-- ❌ **Duplicates** possible → consumers must be idempotent.
+```
+ [Producer] -------- Publish Msg --------> [Message Broker] -------- Deliver Msg --------> [Consumer Node]
+                                                ^                                                |
+                                                |                                                v
+                                            No ACK Received                             [Process Payment]
+                                         (Network Timeout)                                       |
+                                                |                                                v
+ [Producer] <--- Duplicate Redelivery ----------+ <--- ACK Lost over Network --- [Crash / Timeout]
+```
 
-### When to use
-- Most common delivery semantic.
-- When losing a message is worse than duplicates.
-- Notifications, emails, analytics.
+### Mechanics & failure scenarios
 
-### Examples
-- **SQS standard**: at-least-once (some duplicates).
-- **Kafka** default: at-least-once (consumers must be idempotent).
-- **RabbitMQ**: at-least-once with manual ACK.
+1. **Consumer Acknowledgment Flow**: The broker holds a message until the consumer processes it and sends back an ACK.
+2. **Duplicate Trigger**: If the consumer processes the message but crashes, experiences a GC pause, or loses network connectivity before sending the ACK back, the broker's visibility timeout expires and it redelivers the message to another consumer instance.
 
-### How to make safe
-- Make consumers idempotent (idempotency key).
-- DB unique constraints.
-- State machine rejects out-of-order / duplicate transitions.
+### Delivery Guarantees Spectrum
 
-### Failure scenarios
-- Consumer crashes after processing, before ACK → redelivered → processed again.
-- Network drops ACK → redelivered.
-- Broker restarts after write, before replication → potential loss (mitigated with sync
-  replication).
+| Delivery Guarantee | Message Loss Risk | Duplicate Risk | System Overhead / Complexity |
+| :--- | :--- | :--- | :--- |
+| **At-Most-Once** | High (Messages dropped if worker fails) | Zero | Low (Fire-and-forget; no ACKs) |
+| **At-Least-Once** | Zero | Moderate to High | Moderate (Default model for Kafka/SQS/RabbitMQ) |
+| **Exactly-Once** | Zero | Zero | High (Requires 2PC / distributed transactions) |
+
+### Designing for At-Least-Once Delivery
+
+Because At-Least-Once delivery is the default operational mode for robust message brokers (AWS SQS, Apache Kafka, RabbitMQ), application developers **must build idempotent consumers** to handle duplicate deliveries gracefully without causing inconsistent state.
 
 ### Key takeaway
-At-least-once is the **pragmatic default** — no loss, but possible duplicates. Design consumers
-to be **idempotent** so duplicates are harmless. Most systems (Kafka, SQS, RabbitMQ) work this
-way.
+
+At-Least-Once delivery guarantees no message loss by retrying unacknowledged messages, but may deliver duplicates. Pair At-Least-Once delivery brokers with idempotent consumers to achieve effectively exactly-once processing semantics.

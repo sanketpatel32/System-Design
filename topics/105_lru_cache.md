@@ -4,79 +4,47 @@
 
 ---
 
-LRU (Least Recently Used) cache evicts the **least recently accessed** entry when full. The
-most common eviction policy.
+An **LRU (Least Recently Used) Cache** is a cache eviction structure that discards the least recently accessed items first when memory capacity is reached. It operates on the principle of temporal locality: items accessed recently are likely to be accessed again in the near future.
 
-### Why LRU
-- **Locality of reference**: recently-accessed data is likely to be accessed again soon.
-- Simple, predictable, fast (O(1) operations).
-
-### Data structure
-- **Hash map**: key → node (O(1) lookup).
-- **Doubly linked list**: ordered by recency (O(1) move-to-front + remove-from-tail).
+### Data structure architecture
 
 ```
-hash: {key: node}
-list: [most recent] <-> ... <-> [least recent]
+                         HashMap (O(1) Key Lookups)
+                +-------------------------------------------+
+                | Key "A" -> Node(A)                        |
+                | Key "B" -> Node(B)                        |
+                +-------------------------------------------+
+                                      |
+                                      v
+                      Doubly Linked List (O(1) Recency Ordering)
+          +------+    <--->    +------+    <--->    +------+
+  HEAD -> |  C   |             |  A   |             |  B   | <- TAIL
+          | (MRU)|             |      |             | (LRU)|
+          +------+    <--->    +------+    <--->    +------+
+         (Most Recent)                           (Least Recent / Next to Evict)
 ```
 
-### Operations
-```
-get(key):
-    if key in hash:
-        move node to front of list
-        return node.value
-    return None
+### Data structure design ($O(1)$ operations)
 
-put(key, value):
-    if key in hash:
-        update node, move to front
-    else:
-        if full: evict tail (LRU)
-        create node, prepend to list
-```
+To achieve $O(1)$ time complexity for both `get(key)` and `put(key, value)` operations, an LRU cache combines two data structures:
 
-### In Python
-```python
-from functools import lru_cache
+1. **Doubly Linked List**: Maintains item access ordering. The head represents the **Most Recently Used (MRU)** item, while the tail represents the **Least Recently Used (LRU)** item.
+2. **Hash Map**: Maps keys directly to doubly linked list nodes, enabling $O(1)$ node access without scanning the list.
 
-@lru_cache(maxsize=1024)
-def fetch_user(user_id):
-    return db.get(user_id)
-```
-Or `collections.OrderedDict`:
-```python
-from collections import OrderedDict
+### LRU Operations Breakdown
 
-class LRUCache:
-    def __init__(self, capacity):
-        self.cap = capacity
-        self.od = OrderedDict()
-    def get(self, key):
-        if key not in self.od:
-            return None
-        self.od.move_to_end(key)
-        return self.od[key]
-    def put(self, key, value):
-        if key in self.od:
-            self.od.move_to_end(key)
-        self.od[key] = value
-        if len(self.od) > self.cap:
-            self.od.popitem(last=False)  # evict LRU
-```
+| Operation | Action Taken | Time Complexity |
+| :--- | :--- | :--- |
+| **`get(key)`** | Lookup node in HashMap. If found, move node to Head (MRU). Return value. | $O(1)$ |
+| **`put(key, val)`**| If key exists, update value and move to Head. If new, insert at Head. If full, remove Tail node & erase from HashMap. | $O(1)$ |
 
-### When LRU is suboptimal
-- **Scan workloads**: a full scan flushes the cache (every entry becomes "recent" briefly).
-- **Stable popularity**: LFU may do better.
-- **Periodic access**: ARC, W-TinyLFU adapt.
+### Approximated LRU in Redis
 
-### Real-world
-- Redis `allkeys-lru`.
-- Memcached LRU.
-- Postgres buffer pool uses Clock (LRU approximation).
-- Browser disk cache.
+Standard LRU requires maintaining pointers for every entry, consuming significant memory. Redis uses an **Approximated LRU Algorithm**:
+- Samples $N$ random keys (e.g., $N = 5$).
+- Evicts the logical least recently used key among the sampled set.
+- Delivers performance comparable to true LRU while saving significant memory.
 
 ### Key takeaway
-LRU is the default eviction policy. O(1) get/put via hash map + doubly linked list. In Python,
-`functools.lru_cache` or `OrderedDict`. Use LFU or hybrid (W-TinyLFU) only if access patterns
-make LRU poor.
+
+An LRU Cache combines a Hash Map and a Doubly Linked List to provide $O(1)$ reads, writes, and evictions. Use LRU to maintain high hit ratios based on temporal access patterns.

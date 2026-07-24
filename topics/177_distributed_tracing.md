@@ -4,71 +4,41 @@
 
 ---
 
-Distributed tracing = **following a single request as it flows through multiple services**.
-The third pillar of observability (after logs and metrics).
+Distributed Tracing tracks the **end-to-end flow of a single user request** as it traverses multiple microservices, network proxies, and database layers, identifying latency bottlenecks and failures.
 
-### Why
-- Microservices = one request hits many services.
-- Logs and metrics don't show the **end-to-end** journey.
-- "Where is the 2 seconds spent?" is impossible without tracing.
+### Distributed Trace Execution Timeline
 
-### How it works
 ```
-Request ID: trace_id=abc
-  |
-  +-- Service A (200ms)
-       |
-       +-- Service B (50ms)
-       |    |
-       |    +-- DB query (40ms)
-       |
-       +-- Service C (150ms)
-            |
-            +-- External API (140ms)
+Trace ID: 4b901f (Total Duration: 250ms)
++-----------------------------------------------------------------------------------+
+| [API Gateway] POST /order (0ms - 250ms)                                           |
++-----------------------------------------------------------------------------------+
+        |
+        +---> [Auth Service] Validate Token (5ms - 25ms)
+        |
+        +---> [Order Service] Process Order (30ms - 240ms)
+                    |
+                    +---> [Payment Service] Charge Card (40ms - 150ms)
+                    |
+                    +---> [Inventory DB] Lock Stock (160ms - 230ms)
 ```
-Each span has: trace_id, span_id, parent_id, operation, start, duration, tags.
 
-### Trace structure
-- **Trace**: end-to-end journey of one request.
-- **Span**: one operation (a service call, DB query).
-- **Context propagation**: trace_id passed via headers.
+### Tracing Context Anatomy
 
-### Standards
-- **OpenTelemetry** (OTel): the merging of OpenTracing + OpenCensus. Standardizes
-  instrumentation.
-- Propagation via W3C Trace Context headers.
+As network calls travel between microservices, W3C Trace Context headers are injected into HTTP/gRPC metadata:
 
-### Tools
-- **Jaeger** (open source).
-- **Zipkin** (open source).
-- **Datadog APM**.
-- **Honeycomb**.
-- **AWS X-Ray**.
+- **Trace ID**: Unique 128-bit global identifier representing the entire end-to-end request.
+- **Span ID**: Unique 64-bit identifier representing an individual service operation execution block.
+- **Parent Span ID**: Identifies the calling parent operation establishing parent-child hierarchy.
 
-### What traces show
-- Where time is spent (slowest span).
-- Errors (span marked error).
-- Service topology (who calls who).
-- Hot paths (high-frequency traces).
+### Tracing Stack Comparison
 
-### Sampling
-- Tracing every request = too much data.
-- Sample 1-10% of traffic.
-- Always sample errors and slow requests.
-
-### Implementation
-```python
-from opentelemetry import trace
-tracer = trace.get_tracer(__name__)
-
-with tracer.start_as_current_span("process_order"):
-    with tracer.start_as_current_span("charge_payment"):
-        charge()
-    with tracer.start_as_current_span("update_inventory"):
-        update()
-```
+| Tracing System | Open Standard | Collector Protocol | Storage Backend | Key Feature |
+| :--- | :--- | :--- | :--- | :--- |
+| **OpenTelemetry (OTel)**| W3C Standard | OTLP (gRPC / HTTP) | Multi-vendor exporter | Vendor-neutral industry standard |
+| **Jaeger** | CNCF Project | Jaeger / OTLP | Elasticsearch, Cassandra | Deep waterfall UI visualization |
+| **Zipkin** | Open Source | B3 Propagation | Elasticsearch | Lightweight Java-native tracing |
 
 ### Key takeaway
-Distributed tracing follows a request across services. Essential for debugging microservice
-latency and errors. Use **OpenTelemetry** for instrumentation, Jaeger/Zipkin/Datadog for
-collection. Sample to control cost.
+
+Implement distributed tracing with **OpenTelemetry trace context propagation** across microservices to isolate latency bottlenecks and RPC dependencies.

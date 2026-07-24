@@ -4,43 +4,62 @@
 
 ---
 
-Storage estimate sizes your database, retention policy, and monthly cloud bill.
+Estimating **Storage Requirements** determines total disk capacity needed over time (typically calculated for **1 year** and **5 years**). It accounts for primary record data, media attachments, index overhead, and replication redundancy.
 
-### Formula
+### Multi-Year Data Storage Accumulation Flow
+
 ```
-Storage/day = new_records/day × avg_record_size
-Storage/year = storage/day × 365
-Total = storage/year × retention_years
++-------------------------------------------------------------------------+
+|                  STORAGE ACCUMULATION PIPELINE                          |
++-------------------------------------------------------------------------+
+
+  [ Daily Written Records ]  ---> (e.g., 50 Million Tweets / day)
+              |
+              v (Multiply by record size ~ 500 Bytes)
+  [ Raw Daily Data Volume ]  ---> (50M * 500 B = 25 Gigabytes / day)
+              |
+              v (Multiply by 365 days + factor 3x for Replication / Indexes)
+  [ Annual Storage Total ]   ---> (25 GB * 365 * 3 ≈ 27.3 Terabytes / year)
+              |
+              v (Multiply by 5 years)
+  [ 5-Year Horizon Capacity] ---> (~136.5 Terabytes)
 ```
 
-### Bytes cheat sheet
-| Type | Avg size |
-|------|----------|
-| Tweet (text + metadata) | 200-500 B |
-| Image thumbnail | 5-20 KB |
-| Photo (full) | 200 KB - 2 MB |
-| Short video clip | 5-50 MB |
-| Log line | 200-500 B |
-| Metrics data point | 50-100 B |
-| Database row | 1-4 KB |
+### Digital Storage Units Conversion Reference
 
-### Worked example — Twitter
-- 500M tweets/day × 300B avg = 150 GB/day
-- × 365 = 55 TB/year
-- + indexes (2-3x) → ~150 TB/year
-- × 5-year retention = ~750 TB
+| Unit | Exact Bytes | Scientific Notation | Practical Rule of Thumb |
+| :--- | :--- | :--- | :--- |
+| **Kilobyte (KB)** | $1,024$ bytes | $\approx 10^3$ bytes | Small text snippet, metadata JSON |
+| **Megabyte (MB)** | $1,024$ KB | $\approx 10^6$ bytes | High-res photo, short audio clip |
+| **Gigabyte (GB)** | $1,024$ MB | $\approx 10^9$ bytes | 1 hour HD video stream |
+| **Terabyte (TB)** | $1,024$ GB | $\approx 10^{12}$ bytes | Enterprise DB tables, small log cluster |
+| **Petabyte (PB)** | $1,024$ TB | $\approx 10^{15}$ bytes | Web-scale data warehouse (S3 object store) |
 
-### Multipliers to remember
-- **Indexes**: typically 2-3x the raw data.
-- **Replication**: 3x for production (3 copies).
-- **Backups**: +1-2x of total.
-- **Overhead**: leave 30-50% headroom.
+### Step-by-Step Storage Estimation Walkthrough
 
-### Storage tiers
-- **Hot** (SSD, frequent access) — expensive.
-- **Warm** (HDD or cheaper SSD) — moderate.
-- **Cold / archive** (S3 Glacier) — cheap, slow.
+1. **Define Schema Field Sizes**:
+   - `user_id` (UUID): 16 bytes
+   - `tweet_id` (64-bit int): 8 bytes
+   - `tweet_text` (UTF-8 string, max 280 chars): ~300 bytes
+   - `created_at` (Timestamp): 8 bytes
+   - `metadata` (JSON): ~100 bytes
+   - **Total record size**: $\approx 500\text{ bytes per tweet}$.
+
+2. **Calculate Daily Storage Volume**:
+   - Given $100\,\text{Million new tweets posted per day}$:
+
+$$\text{Daily Raw Storage} = 100\,\text{M records} \times 500\,\text{Bytes} = 50,000,000,000\,\text{Bytes} = 50\,\text{GB/day}$$
+
+3. **Calculate 5-Year Total Storage Capacity**:
+
+$$\text{5-Year Storage} = 50\,\text{GB/day} \times 365\,\text{days} \times 5\,\text{years} = 91,250\,\text{GB} \approx 91.25\,\text{TB}$$
+
+4. **Account for Indexes and Replication Redundancy**:
+   - Index overhead (+20%): $91.25\,\text{TB} \times 1.20 = 109.5\,\text{TB}$.
+   - Triple replication ($3\times$ redundancy for fault tolerance):
+
+$$\text{Total Infrastructure Storage Required} = 109.5\,\text{TB} \times 3 \approx 328.5\,\text{TB}$$
 
 ### Key takeaway
-Multiply: **records/day × size × 365 × retention × replication**. Then apply the 3x rule (indexes
-+ replicas + headroom).
+
+Always calculate storage requirements over a **5-year horizon**. Include all schema fields, apply an **index overhead factor (typically +20%)**, and multiply by **replication factor ($3\times$)** to size real physical storage hardware.

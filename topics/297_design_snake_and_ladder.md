@@ -4,44 +4,35 @@
 
 ---
 
-LLD: model Snake and Ladder game.
+Object-Oriented Low-Level Design (LLD) for a Snake and Ladder Board Game managing board cells, snakes, ladders, dice rolling, and turn-based player movement loops.
 
-### Requirements
-- Board (10x10 = 100 cells).
-- Players.
-- Snakes (head → tail).
-- Ladders (bottom → top).
-- Dice.
+### System Requirements & Board Architecture
+- $10 	imes 10$ board grid ($100$ cells).
+- Random placement of $N$ snakes and $M$ ladders.
+- Support $P$ players moving sequentially based on single/double dice rolls.
 
-### Classes
+### System Component Diagram
 ```
-class Board:
-    size
-    snakes[]  # head -> tail
-    ladders[]  # bottom -> top
-
-class Snake: head, tail
-class Ladder: bottom, top
-
-class Player: id, position
-
-class Dice: roll() -> int (1-6)
-
-class Game:
-    board
-    players[]
-    current_player_index
-    play_turn()
+[ Game Loop Controller ] ---> [ Dice (Random 1-6) ]
+           |
+           v
+[ Current Player Move ] ---> [ Board (Cells 1 to 100) ]
+                                      |
+                                      v (Check Jump Entity)
+                           +----------+----------+
+                           |                     |
+                           v                     v
+                       [ Snake ]             [ Ladder ]
+                       (Head -> Tail)        (Bottom -> Top)
 ```
 
-### Turn flow
-1. Current player rolls dice.
-2. Move position + roll.
-3. If lands on snake head → teleport to tail.
-4. If lands on ladder bottom → teleport to top.
-5. Exact count to reach 100 to win.
-6. Next player.
+### Class Responsibilities
+| Class | Attributes | Primary Responsibilities |
+|---|---|---|
+| `SnakeAndLadderGame` | `board`, `players`, `dice`, `winner` | Controls game loop, turn transitions, and win conditions. |
+| `Board` | `size`, `jumps: Map<int, Jump>` | Holds grid cells and maps start positions to Snake/Ladder endpoints. |
+| `Jump` | `start`, `end` | Base class for `Snake` ($start > end$) and `Ladder` ($start < end$). |
+| `Dice` | `count`, `random` | Generates random numbers between $1$ and $6 	imes count$. |
 
 ### Key takeaway
-Snake and Ladder LLD = Board + Snakes/Ladders (teleport map) + Players + Dice + Game. Simple
-state machine on turn.
+Snake and Ladder LLD models board shortcuts as generic `Jump` objects (`Snake` and `Ladder`), driving game state cleanly via a queue-based player turn loop.

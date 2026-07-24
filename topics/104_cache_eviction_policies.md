@@ -4,60 +4,50 @@
 
 ---
 
-Eviction policies decide **which entries to remove when the cache is full**.
+A **Cache Eviction Policy** determines which item to remove from a cache when it reaches its memory capacity limit and needs space for new entries. Selecting the appropriate eviction policy optimizes cache hit ratios for specific workload access patterns.
 
-### The main policies
-| Policy | Evicts | Best for |
-|--------|--------|----------|
-| **LRU** (Least Recently Used) | Oldest unused | Most access patterns |
-| **LFU** (Least Frequently Used) | Least accessed | Skewed access (some hot, some cold) |
-| **FIFO** (First In First Out) | Oldest inserted | Simple, ordered data |
-| **MRU** (Most Recently Used) | Newest | Reverse-sequential scans |
-| **TTL** | By expiry time | Time-sensitive data |
-| **Random** | Random | Simple, surprisingly OK |
+### Memory pressure eviction flow
 
-### LRU (most common)
-- Track access time per entry.
-- When full, evict the entry with oldest access time.
-- Doubly linked list + hash map: O(1) get/put.
-
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=1024)
-def expensive(x):
-    return ...
+```
+                     +-----------------------------------+
+                     |   New Write Request (Memory Full) |
+                     +-----------------------------------+
+                                       |
+                                       v
+                     +-----------------------------------+
+                     |    Execute Eviction Algorithm     |
+                     +-----------------------------------+
+                                  /         \
+           LRU Policy:           /           \ LFU Policy:
+          Remove least          v             v Remove lowest
+          recently accessed                   access frequency
+                     +-----------------+   +------------------+
+                     | Evict Key: "B"  |   | Evict Key: "Z"   |
+                     +-----------------+   +------------------+
+                                       |
+                                       v
+                     +-----------------------------------+
+                     | Insert New Key into Freed Memory  |
+                     +-----------------------------------+
 ```
 
-### LFU
-- Track access count per entry.
-- Evict the entry with lowest count.
-- Better for stable popularity (a few super-hot keys).
-- Worse for scans (every entry briefly popular).
+### Primary eviction algorithms
 
-### ARC, W-TinyLFU (advanced)
-- Hybrid policies used by Caffeine, Eclipse.
-- Best of LRU + LFU.
+1. **LRU (Least Recently Used)**: Evicts the item that has not been accessed for the longest time.
+2. **LFU (Least Frequently Used)**: Evicts the item with the lowest total access count.
+3. **FIFO (First-In, First-Out)**: Evicts the oldest cached item regardless of access frequency or recency.
+4. **Random Replacement**: Selects a random item to evict. Low CPU overhead, but suboptimal hit ratios.
+5. **TTL-Based (Volatile-LRU)**: Evicts the item closest to expiration among keys with a configured TTL.
 
-### TTL
-- Each entry has expiry time.
-- Evicted when expired.
-- Often combined with LRU.
+### Eviction Policy Matrix
 
-### Redis eviction
-- `maxmemory` policy: `noeviction`, `allkeys-lru`, `volatile-lru`, `allkeys-lfu`,
-  `volatile-lfu`, `allkeys-random`, etc.
-
-### Choosing
-| Workload | Policy |
-|----------|--------|
-| General-purpose | LRU |
-| Stable popularity | LFU |
-| Time-sensitive | TTL |
-| Bounded scans | MRU |
-| Don't care | Random |
+| Policy | Primary Metric | Pros | Cons / Drawbacks |
+| :--- | :--- | :--- | :--- |
+| **LRU** | Access Recency | Excellent general-purpose policy | Susceptible to scan pollution (one-time scans clear hot items) |
+| **LFU** | Access Frequency | Retains high-frequency hot items | Retains stale historical items that are no longer accessed |
+| **FIFO** | Insertion Order | Extremely low CPU/Memory overhead | Ignores item access patterns entirely |
+| **Random**| Random Selection | Minimal CPU overhead | Suboptimal cache hit ratios |
 
 ### Key takeaway
-LRU is the safe default for most caches. LFU is better when access is heavily skewed. TTL is
-mandatory for time-sensitive data. Set a `maxmemory` + eviction policy on Redis so it degrades
-gracefully under memory pressure.
+
+Cache eviction policies manage memory limits by removing less valuable items. Use LRU for general web applications, LFU for frequency-skewed access patterns, and pair policies with TTLs to keep data fresh.

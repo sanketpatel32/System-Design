@@ -4,58 +4,46 @@
 
 ---
 
-Chaos engineering = **deliberately injecting failures** into production to verify the system
-behaves as expected.
+Chaos Testing (or Chaos Engineering) is the discipline of **experimenting on a distributed system by intentionally injecting production failures** (server crashes, network latency, partition drops) to verify resilience hypothesis.
 
-### Why
-- Production failures are inevitable.
-- Untested failure modes will surprise you.
-- Better to find weaknesses during business hours than at 3am.
-- Builds confidence in resilience.
+### Chaos Engineering Pipeline
 
-### What to test
-- Kill an instance.
-- Kill a DB primary (force failover).
-- Disconnect an AZ.
-- Add network latency.
-- Drop packets between services.
-- Fill up a disk.
-- Expire a cert.
-- Disable a downstream service.
+```
++-----------------------------------------------------------------------------------+
+|                          1. Define Steady-State Baseline                          |
+|                          (e.g., Order Success Rate = 99.9%)                       |
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v 2. Formulate Hypothesis
++-----------------------------------------------------------------------------------+
+|               "Hypothesis: Losing 1 Availability Zone won't drop QPS"             |
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v 3. Inject Chaos Fault
++-----------------------------------------------------------------------------------+
+|                  Chaos Agent Terminates 30% of App Pods (Chaos Mesh)              |
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v 4. Observe Metrics & Verify Circuit Breakers
++-----------------------------------------------------------------------------------+
+|             Success: Steady state maintained! System auto-healed in 3s            |
++-----------------------------------------------------------------------------------+
+```
 
-### Principles
-1. **Hypothesis**: "killing one web server won't affect users."
-2. **Blast radius**: start small (one instance), expand gradually.
-3. **Monitor**: watch metrics during the test.
-4. **Abort**: roll back if things break unexpectedly.
-5. **Automate**: schedule regular chaos tests (game days).
+### Common Chaos Fault Injection Types
 
-### Tools
-- **Netflix Chaos Monkey** (random instance termination).
-- **Gremlin** (managed chaos engineering).
-- **Chaos Mesh** (Kubernetes-native).
-- **AWS Fault Injection Service**.
+| Fault Type | Mechanism | Target Component | Verifies Architecture Layer |
+| :--- | :--- | :--- | :--- |
+| **Instance Termination** | Abruptly kills random VM/Pod | App Compute Instances | Kubernetes Auto-healing & Load Balancing |
+| **Network Latency Injection**| Injects 500ms artificial delay | RPC Network Traffic | Timeouts & Circuit Breaker tripping |
+| **Packet Loss / Blackhole**| Drops 100% of packets between AZs | Multi-AZ Network Links | Fallback Degraded Modes & Retries |
+| **Clock Drift Injection**| Skews system clock by +/- 5 seconds | Distributed DB Nodes | Consensus & Timestamp Ordering |
 
-### Process
-1. Identify critical user flows.
-2. Define steady-state metrics (e.g. error rate < 0.1%).
-3. Hypothesize: "if I kill X, metrics stay normal."
-4. Inject failure.
-5. Observe.
-6. If abnormal: investigate, fix, re-test.
-7. If normal: increase blast radius.
+### Key Rules of Engagement
 
-### When NOT to do chaos
-- On untested systems (break things first in staging).
-- During business-critical events (Black Friday).
-- Without monitoring (you won't know what broke).
-
-### Game days
-- Scheduled exercises where team deliberately breaks things.
-- Practice incident response.
-- Find documentation gaps.
+- **Run in Staging First**: Validate failure injection logic in non-production environments before executing automated production experiments.
+- **Emergency Stop Button**: Always maintain an automated rollback kill-switch to immediately abort chaos experiments if steady-state metrics breach safety thresholds.
 
 ### Key takeaway
-Chaos engineering finds the failure modes your tests miss. Start with small blast radius in
-business hours, monitor, automate. Game days build team muscle for real incidents. Don't do
-chaos without monitoring — you won't know what broke.
+
+Validate distributed resilience by **intentionally injecting real-world network and server failures**, ensuring systems auto-heal before production outages strike.

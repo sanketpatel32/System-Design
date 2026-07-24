@@ -4,62 +4,35 @@
 
 ---
 
-Backups = **copies of data stored separately, used to recover after loss or corruption.**
+Backup and Restore is the foundational data preservation pattern where **copies of database states and file stores are saved periodically** to isolated secondary storage targets to allow recovery from corruption or loss.
 
-### Why backup
-- Hardware failure.
-- Bug / accidental deletion.
-- Ransomware.
-- Region outage.
-- Compliance / audit.
+### Backup Strategy Architecture
 
-### Types
+```
++------------------------------------+       Continuous Write-Ahead Logs (WAL)      +-----------------------------+
+| Production Database                | -------------------------------------------> | Point-In-Time Restore (PITR)|
++------------------------------------+                                              +-----------------------------+
+    |                                                                                             ^
+    | Daily Full Backup Snapshot                                                                  |
+    v                                                                                             |
++------------------------------------+       Automated Lifecycle Rules                      +-----------------------------+
+| Primary S3 Backup Bucket           | -------------------------------------------> | S3 Glacier Cold Archive     |
++------------------------------------+                                              +-----------------------------+
+```
 
-#### Full backup
-- Complete copy of everything.
-- Slow to take, fast to restore.
-- Storage-heavy.
+### Backup Modalities Comparison
 
-#### Incremental
-- Only changes since last backup.
-- Fast to take, slower to restore (chain of increments).
+| Modality | Description | Storage Size | Restore Speed | Recovery Granularity |
+| :--- | :--- | :--- | :--- | :--- |
+| **Full Backup** | Complete copy of all database blocks/files | Largest | Fast | Single point in time |
+| **Incremental Backup** | Copies only blocks modified since last incremental | Smallest | Slowest (Requires applying full + all increments)| Specific incremental window |
+| **Differential Backup**| Copies blocks modified since last full backup | Moderate | Moderate | Single differential delta |
+| **Continuous WAL (PITR)**| Streams Write-Ahead Log segments continuously | Compact | Fast & Granular | Any exact second in time |
 
-#### Differential
-- Changes since last full backup.
-- Compromise between full and incremental.
+### Disaster Recovery Verification
 
-#### Continuous backup / PITR
-- Point-in-time recovery: restore to any second.
-- Via WAL streaming (Postgres) or CDC.
-
-### 3-2-1 rule
-- **3** copies of data.
-- **2** different media types.
-- **1** offsite (different region).
-
-### Where to back up
-- DB snapshots (RDS automated).
-- Object storage replication (S3 cross-region).
-- EBS snapshots.
-- Volume-level backups.
-
-### Testing
-- **Untested backups = no backups.**
-- Restore regularly to verify.
-- Measure restore time (should match RTO).
-
-### Retention
-- Daily for 30 days.
-- Weekly for 12 weeks.
-- Monthly for years.
-- Adjust to compliance requirements.
-
-### Immutable backups
-- Write-once, can't be modified/deleted (even by admin).
-- Protection against ransomware.
-- AWS Backup Vault Lock, S3 Object Lock.
+- **Automated Restore Testing**: Backups are useless if restores fail; run automated nightly jobs that restore backup dumps to isolated test environments and execute sanity check queries.
 
 ### Key takeaway
-Backups are your last line of defense. Follow the **3-2-1 rule**. Use **PITR** for granular
-recovery. Make backups **immutable** to defeat ransomware. Test restores regularly — untested
-backups are just hope.
+
+Combine **daily full snapshots with continuous Write-Ahead Log (WAL) streaming** to enable granular Point-In-Time Recovery (PITR) while routinely auditing automated restores.

@@ -1,50 +1,46 @@
 # Authentication
-
 > **Category:** Security
 
 ---
 
-Authentication = **verifying who a user is.** "Are you really Alice?"
+### Overview
+**Authentication (AuthN)** is the mechanism of verifying the claimed identity of a user, service, or system component. It answers the fundamental security question: *"Who are you?"*
 
-### Common methods
-- **Passwords**: classic, store hashed (bcrypt/scrypt/argon2).
-- **TOTP** (Authenticator apps): time-based codes.
-- **SMS OTP**: texted codes (less secure, SIM-swap risk).
-- **Hardware keys** (YubiKey, FIDO2): phishing-resistant.
-- **Biometrics**: fingerprint, face.
-- **OAuth / SSO**: log in with Google, GitHub.
-- **Certificates** (mTLS): for service-to-service.
+### Authentication Architectural Pattern
 
-### Multi-factor (MFA)
-- Combine something you **know** (password) with something you **have** (phone) or
-  **are** (biometric).
-- Reduces account takeover risk dramatically.
+```
++--------+       1. Credentials (ID + Secret)       +-----------------------+
+| Client | ---------------------------------------> | Authentication Service |
++--------+                                          +-----------------------+
+    ^                                                           |
+    |                                                           | 2. Validate Credential
+    |                                                           v
+    |                                               +-----------------------+
+    | 3. Issue Token / Session Cookie               | Identity Store / DB   |
+    +---------------------------------------------- | (Hashed Passwords)    |
+                                                    +-----------------------+
+```
 
-### Password storage
-- **Never store plaintext.**
-- Hash with **bcrypt / scrypt / argon2** (slow hashes, designed for passwords).
-- Add **salt** (random per-user).
-- Don't use MD5/SHA — fast hashes = easy cracking.
+### Primary Authentication Factors
 
-### Session after auth
-- Server issues a **session token** (cookie, JWT).
-- Client includes it on every request.
-- Server validates token → identifies user.
+| Factor Type | Mechanism | Examples | Security Level |
+|---|---|---|---|
+| **Knowledge** | Something you know | Password, PIN, Security Question | Low (vulnerable to phishing/reuse) |
+| **Possession** | Something you have | Hardware Key (YubiKey), TOTP App, SMS | Medium - High |
+| **Inherence** | Something you are | Fingerprint, FaceID, Iris Scan | High (hard to forge, non-transferable) |
 
-### Threats
-- **Phishing**: user gives creds to fake site.
-- **Credential stuffing**: bots try leaked passwords.
-- **Brute force**: try every password.
-- **Session theft**: steal the token (XSS, MITM).
+### Modern Authentication Strategies
 
-### Defenses
-- Rate limit login attempts.
-- Lockout after N failures.
-- MFA.
-- CAPTCHA on suspicious activity.
-- Monitor for anomalous logins.
-- Use hardware keys for high-risk users (admins).
+| Strategy | Architecture | Pros | Cons |
+|---|---|---|---|
+| **Session-Based** | Server-side session state stored in Redis/DB | Instant revocation, high control | State scale complexity across clusters |
+| **Token-Based (JWT)** | Stateless signed JWT payload verified via public key | Highly scalable, stateless backends | Revocation requires blacklist/short TTL |
+| **OAuth 2.0 / OIDC** | Delegated identity provider (Google, GitHub, Okta) | Offloads user security, zero password storage | Third-party identity provider dependency |
+| **Passwordless (WebAuthn)**| FIDO2 public key cryptography via Passkeys | Immune to phishing, zero secret sharing | Device sync & recovery complexity |
+
+### Password Storage Security Guidelines
+- **Hashing Standard**: Never store plaintext passwords. Use memory-hard key derivation algorithms: **Argon2id**, **bcrypt**, or **scrypt**.
+- **Salting**: Apply a unique, cryptographically random salt per user to defeat precomputed Rainbow Table attacks.
 
 ### Key takeaway
-Authentication = "who are you?". Use modern hashes (argon2), require MFA, monitor for
-anomalies. For high-security, use hardware keys (FIDO2) which are phishing-resistant.
+**Authentication** proves identity. Production systems must implement **Multi-Factor Authentication (MFA)**, enforce memory-hard password hashing (Argon2id), and prefer stateless OpenID Connect or Passkeys for scale and security.

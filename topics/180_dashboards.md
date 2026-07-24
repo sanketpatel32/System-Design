@@ -4,67 +4,39 @@
 
 ---
 
-Dashboards = **visual representations of metrics**, designed to make system health
-glanceable.
+Dashboards provide **real-time visual aggregations of key metrics, charts, and system status indicators**, enabling operators to assess system health at a glance during normal operations and incidents.
 
-### Why
-- Quick assessment of system health.
-- Spot trends and anomalies.
-- Debug during incidents.
-- Communicate with stakeholders.
+### Operational Dashboard Layout Architecture
 
-### Dashboard types
+```
++-----------------------------------------------------------------------------------+
+|                        TOP PANEL: Executive High-Level Health                     |
+|  [ Overall System Status: HEALTHY ]   [ Global QPS: 42,100 ]   [ Error Rate: 0.01% ]  |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                |                                                   |
+                v                                                   v
++------------------------------------+                    +------------------------------------+
+| PANEL 2: Four Golden Signals       |                    | PANEL 3: Infrastructure Saturation |
+| - P99 Latency Waterfall Chart      |                    | - CPU % Across Kubernetes Nodes   |
+| - 5xx Error Rate by Service        |                    | - Memory RAM Usage & Disk I/O      |
++------------------------------------+                    +------------------------------------+
+```
 
-#### 1. Service overview
-- One per service.
-- RED metrics: Rate, Errors, Duration.
-- Dependency status.
+### Dashboard Design Guidelines Matrix
 
-#### 2. SLO / SLI dashboard
-- Error budget burn-down.
-- Availability over time.
+| Dashboard Type | Target Audience | Primary Focus | Key Metrics |
+| :--- | :--- | :--- | :--- |
+| **Executive / High-Level**| Engineering Directors | System SLA/SLO compliance | Availability nines, overall QPS, total revenue |
+| **System / Service Level**| On-call SREs & Engineers | Operational health & debugging | Golden Signals (Latency, Traffic, Errors, Saturation)|
+| **Infrastructure Level** | DevOps / Platform Engineers| Capacity planning & limits | Node CPU, Memory RAM, Disk IOPS, Network Egress |
 
-#### 3. Infrastructure
-- CPU, memory, disk, network per host.
-- Saturation indicators.
+### Best Practices for Dashboard UX
 
-#### 4. Business KPIs
-- Signups, revenue, active users.
-- For stakeholders.
-
-#### 5. Incident dashboard
-- Pre-built views for common incidents.
-- "When X is broken, look here."
-
-### Design principles
-- **Glanceable**: key info in 5 seconds.
-- **Drill-down**: click for details.
-- **Consistent layout**: same place for same metric.
-- **Time range**: configurable (last hour, day, week).
-- **Annotations**: mark deploys, incidents.
-
-### Common metrics
-- Request rate (per second).
-- Error rate (%).
-- Latency percentiles (p50, p95, p99).
-- CPU / memory utilization.
-- Queue depth.
-- Cache hit rate.
-- DB connections.
-
-### Tools
-- **Grafana** (open source, popular).
-- **Datadog, New Relic** (commercial).
-- **Kibana** (for logs).
-- **Tableau, Looker** (business analytics).
-
-### Anti-patterns
-- Too many panels (information overload).
-- Pretty but useless (no actionable info).
-- Stale (no one updates).
-- Per-metric instead of per-goal.
+- **P99 vs Average Latency**: Always visualize 90th, 95th, and 99th latency percentiles; averages hide severe tail-latency spikes experienced by users.
+- **Consistent Time Ranges & Color Coding**: Standardize colors (Green = Normal, Yellow = Warning, Red = Critical) and align time axes across panels for easy cross-metric correlation.
 
 ### Key takeaway
-Dashboards make system health glanceable. One overview per service (RED), SLO dashboards for
-budgets, business KPIs for stakeholders. Keep them focused and actionable. Grafana + Prometheus
-is the open source standard.
+
+Build dashboards around **the Four Golden Signals using high-percentile metrics (P99)**, structuring views hierarchically to accelerate incident triage.

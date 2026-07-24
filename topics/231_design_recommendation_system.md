@@ -1,53 +1,48 @@
 # Design Recommendation System
-
 > **Category:** Search and Recommendation Systems
 
 ---
 
-Design a recommendation system ("you might like...").
+### Overview
+A **Recommendation System** predicts and ranks items (products, videos, movies, articles) that a user is likely to engage with, using collaborative filtering, content-based filtering, and deep learning models.
 
-### Requirements
-- **Functional**: recommend items (movies, products, songs) per user.
-- **Non-functional**: fresh; personalized; scalable.
+### Machine Learning Recommendation Pipeline
 
-### Approaches
-
-#### Collaborative filtering
-- "Users like you also liked..."
-- User-item matrix; similarity.
-- Matrix factorization (SVD, ALS).
-
-#### Content-based
-- "Items similar to what you liked."
-- Item features (genre, tags).
-- Cosine similarity.
-
-#### Hybrid
-- Combine both.
-- Deep learning (YouTube, Netflix).
-
-### Architecture
 ```
-[User history] -> [Feature pipeline] -> [Model training] -> [Model]
-[Item catalog]                                              |
-                                                            v
-                                                       [Serving]
-                                                            |
-[User] -> [Rec service] -> [Model + candidate generation] -> recs
++------------------+     1. User / Context Request     +--------------------+
+| Application API  | --------------------------------> | Retrieval / Candidate|
++------------------+                                   | Generation Service |
+                                                       +--------------------+
+                                                                 |
+                                                                 v 2. Fetch ~1,000 Candidates
+                                                       +--------------------+
+                                                       | Multi-Stage        |
+                                                       | Filtering Service  |
+                                                       +--------------------+
+                                                                 |
+                                                                 v 3. ~200 Filtered Items
+                                                       +--------------------+
+                                                       | Scoring & Ranking  | (Deep Learning DLRM /
+                                                       | ML Engine          |  Two-Tower Model)
+                                                       +--------------------+
+                                                                 |
+                                                                 v 4. Top 20 Recommendations
+                                                       +--------------------+
+                                                       | Re-ranking Engine  | (Diversity & Business Rules)
+                                                       +--------------------+
 ```
 
-### Two-stage
-1. **Candidate generation**: cheap model gets top 1000.
-2. **Ranking**: expensive model ranks 1000 → top 10.
+### Recommendation Modeling Approaches
 
-### Cold start
-- New user: popular items, demographics.
-- New item: content-based.
+| Technique | Mathematical Mechanism | Pros | Cons |
+|---|---|---|---|
+| **Collaborative Filtering**| Matrix Factorization / Singular Value Decomposition (SVD) | Learns complex preferences without item domain metadata | Cold start problem for new users/items |
+| **Content-Based Filtering**| Compute cosine similarity on item feature vectors | No user cold start problem; easily explainable | Over-specialization (lacks serendipity) |
+| **Two-Tower Neural Network**| User Tower + Item Tower embedding dot product | Real-time candidate retrieval across millions of items | Requires continuous ML pipeline retraining |
 
-### Real-time
-- Update recs on each interaction (click, like).
+### Feature Store & Vector DB Integration
+- **Feature Store (Feast / Tecton)**: Serves low-latency real-time user features (e.g., last 5 items viewed) and offline batch historical stats.
+- **Vector Database (Milvus / Pinecone)**: Performs $k$-Nearest Neighbor ($k$-NN) approximate search on 512-dimensional embeddings.
 
 ### Key takeaway
-Recommendation = collaborative filtering + content-based + deep learning. Two-stage: candidate
-generation + ranking. Handle cold start (new users/items) with popularity + content
-signals.
+Modern Recommendation Systems execute a **two-stage pipeline**: fast **candidate retrieval** (vector ANN search yielding ~1,000 candidates) followed by fine-grained **deep learning ML scoring** to select the top 20 items.

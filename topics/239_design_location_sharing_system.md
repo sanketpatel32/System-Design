@@ -1,42 +1,46 @@
 # Design Location Sharing System
-
 > **Category:** Location Based Systems
 
 ---
 
-Design a system where users share their real-time location with friends (e.g. Life360).
+### Overview
+A **Location Sharing System** (e.g., Apple Find My, Glympse) streams continuous real-time location coordinates from mobile client devices to designated receivers over controlled sharing windows.
 
-### Requirements
-- **Functional**: share location with circle; see on map; history.
-- **Non-functional**: low-latency updates; privacy.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[User location] -> [Location service] -> [Redis (latest)]
-                                       -> [DB (history)]
-                                       -> [WebSocket push to circle]
+Publisher (Sender)                              Location Gateway                    Subscriber (Receiver)
+     |                                                 |                                     |
+     | === 1. WSS Lat/Lon Packet ===================>  |                                     |  (If Active)
+     |                                                 v 2. Fanout Location Stream           |
+     |                                       +-------------------+                           |
+     |                                       | Location Router   | === 3. WSS Push ========> |
+     |                                       +-------------------+                           |
+     |                                                 |                                     |
+     |                                                 v 4. Write Time-Series Log            |
+     |                                       +-------------------+                           |
+     |                                       | Redis / TimescaleDB|                          |
+     |                                       +-------------------+                           |
 ```
 
-### Location updates
-- App reports every 10-60 seconds.
-- Or significant movement.
+### Location Telemetry Packet Structure
+```json
+{
+  "sharing_session_id": "sess_9981a",
+  "publisher_id": "usr_441",
+  "coordinates": { "latitude": 37.7749, "longitude": -122.4194 },
+  "accuracy_meters": 5.2,
+  "battery_level": 84,
+  "timestamp": 1700000000
+}
+```
 
-### Circles
-- Group of users sharing with each other.
-- Members see each other's latest location.
-
-### Storage
-- **Redis**: latest location per user (fast reads).
-- **DB**: history for playback.
-
-### Real-time
-- WebSocket to each member of a circle.
-- Push when location updates.
-
-### Privacy
-- Per-circle opt-in.
-- Pause sharing.
+### Optimization Strategies: Battery & Bandwidth
+1. **Dynamic Adaptive Ping Rate**: Adjust GPS update intervals dynamically based on device movement state:
+   - **Stationary**: Send update every 5 minutes.
+   - **Walking**: Send update every 30 seconds.
+   - **Driving**: Send update every 5 seconds.
+2. **Kalman Filtering**: Smooth noisy GPS coordinates locally on client device before transmission.
 
 ### Key takeaway
-Location sharing = location updates → Redis (latest) + DB (history) → WebSocket push to circle
-members. Per-circle opt-in privacy. Real-time via persistent WebSocket connections.
+Minimize client battery drain using **Adaptive GPS ping rates** based on accelerometer activity, streaming compressed location packets over persistent **WebSockets**.

@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { RotateCw, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useProgress } from "@/lib/progress";
 
@@ -155,7 +157,11 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               Key takeaway
             </span>
-            <p className="text-lg leading-relaxed text-ink">{current.takeaway}</p>
+            <div className="prose-atlas text-lg leading-relaxed text-ink">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {current.takeaway}
+              </ReactMarkdown>
+            </div>
             <Link
               href={`/topics/${current.slug}`}
               onClick={(e) => e.stopPropagation()}

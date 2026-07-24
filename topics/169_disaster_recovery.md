@@ -4,50 +4,35 @@
 
 ---
 
-Disaster recovery (DR) = **plans and infrastructure to recover from a major failure** —
-region outage, data center loss, ransomware, human error.
+Disaster Recovery (DR) comprises the architecture, policies, and procedures designed to **restore critical infrastructure and data services** following catastrophic events (e.g. regional cloud outages, natural disasters, or major cyberattacks).
 
-### Why
-- Region outages happen (AWS us-east-1 has gone down multiple times).
-- Data loss happens (accidental deletion, bug).
-- Ransomware / breaches.
-- Compliance often requires DR plans.
+### Disaster Recovery RTO vs RPO Metrics
 
-### Key metrics
-| Metric | Meaning |
-|--------|---------|
-| **RPO** (Recovery Point Objective) | How much data can you lose? (e.g. 5 min) |
-| **RTO** (Recovery Time Objective) | How long until you're back? (e.g. 1 hour) |
-| **DR RTO** | Time to switch to DR site |
+```
++-----------------------------------------------------------------------------------+
+| Timeline of a Catastrophic Outage Event                                          |
++-----------------------------------------------------------------------------------+
 
-### Strategies (in order of cost)
-1. **Backup only**: restore from backup. RPO/RTO in hours.
-2. **Pilot light**: minimal infra in DR region; scale up on failover. RTO 10s of minutes.
-3. **Warm standby**: smaller replica of production in DR region. RTO minutes.
-4. **Multi-site active-active**: full traffic in multiple regions. RTO ~0.
+     Last Backup Snapshot                          Disaster Strikes              Data & Services Fully Restored
+--------------+-------------------------------------------+------------------------------------+------------> Time
+              |<------------ RPO Window ------------->|   |<----------- RTO Window ----------->|
+              |       (Max Tolerable Data Loss)           |       (Max Downtime Duration)      |
+```
 
-### Components of DR
-- **Backups**: regular, tested, off-region.
-- **Replication**: DB + object storage to DR region.
-- **Infrastructure as Code**: recreate everything from templates.
-- **DNS failover**: Route53 health checks, automatic.
-- **Runbooks**: documented procedures.
-- **Tests**: chaos engineering, game days.
+### DR Strategies Matrix
 
-### Common failures to plan for
-- **Region outage** (multi-region).
-- **AZ outage** (multi-AZ).
-- **Data corruption** (point-in-time recovery).
-- **Ransomware** (immutable backups).
-- **Bug deploy** (rollback, feature flags).
-- **DDoS** (CDN, autoscale).
+| Strategy | RTO (Recovery Time) | RPO (Data Loss) | Cost | Architecture Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Backup & Restore** | Hours to Days | Hours to 24 Hours | Lowest | Cold S3/Glacier storage dumps restored on fresh compute |
+| **Pilot Light** | 10 - 30 Minutes | Minutes | Low | DB core continuously replicated; app compute scaled to zero |
+| **Warm Standby** | 1 - 5 Minutes | Seconds to Minutes | Medium | Scaled-down shadow infrastructure running in secondary region |
+| **Active-Active Hot Site**| Sub-Second / Instant| Near Zero | Highest | Full multi-region live-live cluster with global DNS routing |
 
-### Testing
-- **Game days**: deliberately fail things.
-- **Restore drills**: restore backups regularly, verify.
-- **Failover tests**: switch to DR region quarterly.
+### Key Disaster Recovery Metrics
+
+- **Recovery Point Objective (RPO)**: Maximum acceptable age of unrecovered data lost during an outage (e.g., RPO = 5 minutes means up to 5 minutes of data loss is acceptable).
+- **Recovery Time Objective (RTO)**: Maximum acceptable clock duration the system can remain offline before business disruption limits are exceeded (e.g., RTO = 1 hour).
 
 ### Key takeaway
-Define RPO/RTO, then choose strategy (pilot light, warm standby, multi-site). Replicate data,
-automate infra via IaC, document runbooks, and TEST your DR plan regularly — untested DR is
-just hope.
+
+Align disaster recovery strategies to business requirements by balancing **RTO (downtime target) and RPO (data loss target)** against multi-region infrastructure costs.

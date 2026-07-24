@@ -4,65 +4,43 @@
 
 ---
 
-Event sourcing = **store the system's state as an append-only log of events**, rather than
-just the current state.
+Event Sourcing is an architectural pattern where **all changes to application state are stored as an append-only sequence of immutable events** (Event Log), rather than overwriting current-state database records.
 
-### The idea
+### Event Sourcing Architecture & Snapshots
+
 ```
-Traditional: store current state.
-   account.balance = 100
-
-Event-sourced: store every event.
-   AccountCreated(id=1)
-   Deposited(id=1, amount=150)
-   Withdrew(id=1, amount=50)
-   Current balance: replay events = 100
-```
-
-### Why
-- **Audit**: complete history.
-- **Time travel**: reconstruct any past state.
-- **Reproducibility**: replay to debug.
-- **Multiple read models**: build different views from same events.
-- **Recovery**: re-apply events after a fix.
-
-### Architecture
-```
-1. Command arrives (e.g. "deposit 50").
-2. App validates, computes new events.
-3. Appends events to event store (atomic).
-4. Events published to message broker.
-5. Projectors update read models (DB, search, cache).
-6. Queries read from read models.
++-----------------------------------------------------------------------------------+
+|                        Immutable Event Store (Append-Only Log)                    |
++-----------------------------------------------------------------------------------+
+| Event 1: AccountOpened ($0)  --> Event 2: Deposited ($100) --> Event 3: Withdrew ($30)|
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v Replay / Materialize State
+                                +-------------------+
+                                | Calculated Balance|
+                                | = $70             |
+                                +-------------------+
+                                          ^
+                                          | Performance Optimization
+                                +-------------------+
+                                | Periodic Snapshot |
+                                | (State at Event 200)
+                                +-------------------+
 ```
 
-### Event store
-- Append-only log (Kafka, EventStoreDB, DynamoDB, Postgres).
-- Events immutable, ordered.
-- Snapshotting: periodically save state to avoid full replay.
+### Event Sourcing vs Traditional CRUD
 
-### CQRS pairing
-- Event sourcing writes events.
-- CQRS read models project events to queryable form.
+| Feature | Traditional CRUD Database | Event Sourcing Pattern |
+| :--- | :--- | :--- |
+| **Data Storage** | Current state only (`UPDATE balance SET value=70`)| Immutable append-only log (`INSERT INTO events`)|
+| **Auditability** | Destructive overwrites lose historical context | 100% audit log of every change over time |
+| **State Recovery** | Requires restoring backup dumps | Replay event sequence to any point in time |
+| **Query Complexity**| Simple SQL queries | Requires projection layers or snapshots |
 
-### Trade-offs
-- ✅ Auditability, temporal queries, multiple views.
-- ✅ Decoupling (events are the contract).
-- ❌ Complexity (event versioning, schema evolution).
-- ❌ Storage (events accumulate).
-- ❌ Latency (replay on cold reads).
+### Performance Optimization via Snapshots
 
-### Event versioning
-- Schema evolves over years.
-- Upcasters: transform old events to new schema.
-- Hard problem; plan for it.
-
-### Real-world
-- Financial (every transaction matters).
-- Order systems (lifecycle tracking).
-- Inventory (stock changes over time).
-- Audit-heavy compliance systems.
+- **State Snapshots**: To prevent replaying millions of events from genesis to compute current state, systems write periodic state snapshots (e.g. every 1,000 events) and replay only subsequent new events.
 
 ### Key takeaway
-Event sourcing stores **changes** (events) instead of current state. Pairs naturally with CQRS.
-Best for audit-heavy, evolving systems. Costs: complexity (event versioning, projections, snapshotting).
+
+Event sourcing captures **every system change as an immutable event stream**, providing complete auditability, precise temporal state replay, and reliable event-driven architecture integration.

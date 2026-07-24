@@ -4,58 +4,37 @@
 
 ---
 
-A distributed transaction = **a transaction that spans multiple services or databases**,
-needing atomicity across them.
+A Distributed Transaction executes operations across **multiple distinct databases, microservices, or network partitions**, ensuring ACID properties across all participating nodes.
 
-### The problem
-- Transfer $100: debit in Account Service (Postgres), credit in Ledger Service (separate DB).
-- Both must succeed, or both must roll back.
+### Distributed Transaction Architecture
 
-### Two broad approaches
+```
++-----------------------------------------------------------------------------------+
+|                           Transaction Coordinator                                 |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                | 2-Phase Commit / Saga Orchestration               |
+                v                                                   v
+    +-----------------------+                           +-----------------------+
+    | Order Service DB      |                           | Payment Service DB    |
+    | (SQL Transaction A)   |                           | (SQL Transaction B)   |
+    +-----------------------+                           +-----------------------+
+```
 
-#### 1. Two-Phase Commit (2PC)
-- Coordinator asks all participants to "prepare."
-- If all yes: "commit." If any no: "abort."
-- Synchronous, strong, slow, blocking.
+### Distributed Transaction Patterns Matrix
 
-#### 2. Saga pattern
-- Break into a sequence of local transactions.
-- Each step has a **compensating action** (undo).
-- If any step fails, run compensations to roll back.
-- Asynchronous, eventual, more available.
+| Approach | Consistency | Isolation Level | Latency | Resilience | Primary Use Case |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Two-Phase Commit (2PC)** | Immediate (ACID) | Strict / Serializable | High (Locking) | Fragile to Coordinator failure | RDBMS Cross-Shard Transactions |
+| **Saga Orchestration** | Eventual (BASE) | Read Committed (No Lock) | Low | Resilient with Compensating Actions| Microservice Workflows |
+| **Three-Phase Commit (3PC)**| Immediate (ACID) | Strict | Very High | Handles Coordinator crashes | Specialized Telecom Systems |
 
-### Other approaches
+### Key System Challenges
 
-#### Outbox pattern
-- Write business data + event to same DB (atomic).
-- CDC streams event to message broker.
-- Effectively-once delivery across systems.
-
-#### Transactional outbox + idempotent consumer
-- App writes order + "publish event" row in one transaction.
-- Worker reads outbox, publishes to Kafka.
-- Consumer dedups by event ID.
-
-### Trade-offs
-| | 2PC | Saga |
-|--|-----|------|
-| Consistency | Strong | Eventual |
-| Latency | High (synchronous) | Lower (async) |
-| Availability | Low (blocking) | High |
-| Complexity | Protocol-heavy | Compensation logic |
-| Use case | Single-DB mostly | Microservices |
-
-### Real-world
-- Most microservice systems use **Saga** (or outbox) for cross-service transactions.
-- 2PC used within a single distributed DB (CockroachDB, Spanner).
-
-### Why 2PC is rare
-- Blocking: if coordinator dies, participants hang.
-- Slow: multiple round trips.
-- Fragile: many failure modes.
-- Couples services.
+- **Dual Writes Problem**: Updating a database and pushing to a message queue in one block can fail halfway. Mitigated via the **Transactional Outbox Pattern**.
+- **Performance Overhead**: Long-held distributed locks decrease system throughput exponentially as node counts grow.
 
 ### Key takeaway
-Cross-service atomicity is hard. Prefer **Saga + outbox** for microservices (eventual, available).
-Reserve **2PC** for within a single distributed DB. Design every step with a compensating
-action.
+
+Prefer **eventually consistent Saga patterns** for modern microservices, reserving heavy Two-Phase Commit (2PC) protocols for tight single-database shard transactions.

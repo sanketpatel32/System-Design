@@ -1,25 +1,41 @@
 # Design ETL System
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-See **#259 Design Data Pipeline** — ETL is the canonical pattern.
+An Extract, Transform, Load (ETL) system automates the ingestion of raw data from multiple operational databases, transforms it into structured analytical formats, and loads it into enterprise data warehouses.
 
-### ETL vs ELT
-- **ETL**: transform before loading (legacy, slower).
-- **ELT**: load raw, transform in warehouse (modern, faster).
+### System Requirements
+- **Functional Requirements**:
+  - Extract data efficiently using Change Data Capture (CDC) or scheduled batch queries.
+  - Transform data (cleaning, deduplication, schema normalization, data masking).
+  - Load transformed data into analytical warehouses with robust error management (Dead-Letter Queues).
+- **Non-Functional Requirements**:
+  - High Reliability: Idempotent DAG pipeline execution with retry capabilities.
+  - Data Lineage: Track complete data origins and transformation histories.
+  - Low Operational Cost: Efficient resource allocation during ETL batch execution windows.
 
-### Modern ELT
+### System Architecture
 ```
-[Sources] -> [Extract] -> [Load raw to warehouse] -> [Transform (dbt)] -> [Models]
+[ Operational DBs ] ---> [ Change Data Capture (Debezium) ] ---> [ Raw Data Buffer (S3) ]
+                                                                        |
+                                                                        v
+[ DAG Orchestrator ] ----------------------------------------> [ ETL Processing Engine ]
+(Airflow / Prefect)                                             (Apache Spark / dbt)
+                                                                        |
+                                  +-------------------------------------+-------------------------------------+
+                                  |                                                                           |
+                                  v                                                                           v
+                      [ Data Warehouse (Snowflake) ]                                              [ Dead-Letter Queue (DLQ) ]
+                      (Transformed Clean Tables)                                                  (Malformed Records / Alerts)
 ```
 
-### Why ELT wins
-- Warehouses (BigQuery, Snowflake) are fast enough to transform in-place.
-- Raw data always available for re-modeling.
-- dbt brings software engineering to SQL.
+### ETL vs ELT Comparison
+| Paradigm | Transformation Location | Best Use Case | Performance & Flexibility |
+|---|---|---|---|
+| **ETL (Extract-Transform-Load)** | External compute engine (Spark) before loading | Strict privacy compliance, heavy data cleaning before warehouse ingest | Reduces warehouse storage costs; transformation engine requires maintenance. |
+| **ELT (Extract-Load-Transform)** | Transformed inside Data Warehouse via SQL (`dbt`) | Modern cloud data warehouses (Snowflake, BigQuery) | Maximum flexibility; allows analysts to re-transform raw historical data in SQL easily. |
 
 ### Key takeaway
-ETL/ELT = extract + load + transform. Modern = ELT with dbt. Raw data lands in warehouse, then
-SQL transforms build models. Airflow orchestrates the schedules.
+ETL systems decouple DAG orchestration (Airflow) from heavy data transformations (Spark/dbt), while modern cloud architectures increasingly shift toward ELT to leverage scalable cloud warehouse SQL engines.

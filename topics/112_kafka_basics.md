@@ -4,61 +4,45 @@
 
 ---
 
-Apache Kafka = **a distributed, partitioned, replicated, append-only log**. Used for
-streaming data, event sourcing, log aggregation, and as a message broker.
+**Apache Kafka** is a distributed event streaming platform designed for high-throughput, fault-tolerant, append-only log ingestion and stream processing. Unlike traditional message queues, Kafka persists messages to disk in ordered partitions and allows messages to be replayed by multiple consumer groups.
+
+### Cluster architecture & partitions
+
+```
+                             +------------------------+
+                             |     Kafka Cluster      |
+                             +------------------------+
+                                         |
+                             +------------------------+
+                             |    TOPIC: "User-Events"|
+                             +------------------------+
+                                 /                \
+                       Partition 0                Partition 1
+                 +-----------------------+  +-----------------------+
+                 | [Msg 0] [Msg 1] [Msg 2|  | [Msg 0] [Msg 1] [Msg 2|
+                 +-----------------------+  +-----------------------+
+                             ^                          ^
+                             |                          |
+                     Consumer Group A           Consumer Group B
+                     (Offset Pointer 2)         (Offset Pointer 1)
+```
 
 ### Core concepts
-- **Topic**: a named stream/category (e.g. `orders`, `user_events`).
-- **Partition**: a topic is split into N partitions for parallelism.
-- **Offset**: position of a message within a partition (monotonic).
-- **Producer**: writes messages to a topic.
-- **Consumer**: reads messages from partitions.
-- **Consumer group**: a group shares partitions (one per consumer).
-- **Broker**: a Kafka server.
-- **Cluster**: multiple brokers.
 
-### Architecture
-```
-Topic "orders" with 3 partitions:
-  P0: [msg0, msg1, msg4, msg7, ...]
-  P1: [msg2, msg3, msg5, msg8, ...]
-  P2: [msg6, msg9, msg10, ...]
+1. **Topic & Partition**: A topic is a logical event stream split into physical **Partitions** distributed across cluster brokers. Partitions maintain strict message ordering using sequential offset numbers.
+2. **Producer Partitioning**: Producers route events to specific partitions using key hashing (`hash(Key) % Partitions`). Events sharing the same key land on the same partition, guaranteeing strict ordering.
+3. **Consumer Groups & Offsets**: Consumers belong to Consumer Groups. Each partition is assigned to exactly one consumer per group. Consumers track their progress in the stream using **Offsets**.
+4. **Log Retention**: Kafka retains events on disk for a configured retention period (e.g., 7 days) regardless of consumption state, enabling historical replay.
 
-Each partition replicated across brokers (leader + followers).
-```
+### Kafka vs Traditional Message Queues
 
-### Key properties
-- **Persistent**: messages stored on disk for days/weeks/forever.
-- **Replayable**: consumers can re-read from any offset.
-- **Ordered within partition**: not across partitions.
-- **High throughput**: millions of messages/sec.
-- **Scalable**: partitions → parallelism.
-
-### Producers choose partition
-- By key: `hash(key) % num_partitions` (same key → same partition → order).
-- Round-robin if no key.
-
-### Consumer groups
-- Each partition assigned to one consumer in a group.
-- Add consumers → parallelism up to #partitions.
-- Different groups consume independently.
-
-### Use cases
-- **Event streaming** (user activity, IoT).
-- **Event sourcing** (the source of truth is the log).
-- **Log aggregation** (collect app logs).
-- **Stream processing** (Kafka Streams, Flink).
-- **CDC** (Debezium streams DB changes to Kafka).
-- **Decoupling microservices**.
-
-### Trade-offs
-- ✅ High throughput, replayable, ordered (per partition).
-- ✅ Multiple independent consumers.
-- ❌ Operational complexity (clusters, monitoring).
-- ❌ No per-message priority.
-- ❌ Ordering only within partition.
+| Feature | Apache Kafka | Traditional MQ (RabbitMQ, SQS) |
+| :--- | :--- | :--- |
+| **Data Storage Model** | Append-only distributed commit log | In-memory queue with transient disk backing |
+| **Message Deletion** | Retained based on time/size policy | Deleted immediately upon consumer ACK |
+| **Message Ordering** | Guaranteed strictly within each partition | Guaranteed only in single-consumer queues |
+| **Throughput Capacity** | Extremely High (Millions of events/sec) | Moderate to High (Tens of thousands/sec) |
 
 ### Key takeaway
-Kafka is a **distributed log** optimized for high-throughput, replayable streaming. Partition for
-parallelism, replicate for durability. Use it for event sourcing, CDC, log aggregation, and
-decoupling microservices.
+
+Apache Kafka provides distributed event streaming using append-only partition logs. Leverage Kafka for high-throughput event logging, stream processing, and scenarios requiring event replay across multiple consumer groups.

@@ -4,61 +4,44 @@
 
 ---
 
-Metrics = **numeric measurements of system behavior over time.** The foundation of
-monitoring and alerting.
+Metrics are **numeric, aggregated data points measured over time intervals**, providing quantitative visibility into overall system health, resource utilization, and operational performance.
 
-### Why metrics
-- **Understand** what's happening.
-- **Detect** anomalies.
-- **Alert** when things break.
-- **Trend** analysis (capacity planning).
-- **SLO/SLA tracking**.
+### Prometheus Pull Metrics Architecture
 
-### Types
-- **Counter**: monotonically increasing (requests served, errors).
-- **Gauge**: instantaneous value (CPU, queue depth).
-- **Histogram**: distribution (request latency buckets).
-- **Summary**: pre-computed quantiles.
+```
++-----------------------------------------------------------------------------------+
+|                         App Pods (Exposing /metrics Endpoint)                     |
++-----------------------------------------------------------------------------------+
+                                          ^
+                                          | 1. HTTP Pull / Scraping (Every 15s)
+                                          v
++-----------------------------------------------------------------------------------+
+|                         Prometheus Server Time-Series DB                          |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                | 2. PromQL Queries                                 | 3. Alert Triggers
+                v                                                   v
++------------------------------------+                    +------------------------------------+
+| Grafana Visualization Dashboard    |                    | Alertmanager (PagerDuty / Slack)   |
++------------------------------------+                    +------------------------------------+
+```
 
-### USE method (resources)
-For resources (CPU, disk, network):
-- **U**tilization (% busy).
-- **S**aturation (queue length).
-- **E**rrors (failed operations).
+### The Four Golden Signals of Monitoring
 
-### RED method (services)
-For services:
-- **R**ate (requests/sec).
-- **E**rrors (error rate).
-- **D**uration (latency distribution).
+| Metric Signal | Definition | Example Units |
+| :--- | :--- | :--- |
+| **Latency** | Time taken to service a request (split by 50th/99th percentile)| Milliseconds (ms) |
+| **Traffic** | Total demand placed on the system | Requests per second (QPS) |
+| **Errors** | Rate of requests that fail | HTTP 5xx count / percentage |
+| **Saturation** | How full system resources are | CPU %, Memory RAM %, IOPS |
 
-### Four Golden Signals (Google SRE)
-- **Latency**.
-- **Traffic**.
-- **Errors**.
-- **Saturation**.
+### Metric Data Types
 
-### Cardinality
-- Each unique label combination = a time series.
-- High cardinality (per-user, per-request) → explosion.
-- Keep cardinality bounded.
-
-### Collection
-- **Pull model** (Prometheus): scrape metrics endpoints.
-- **Push model** (StatsD, CloudWatch): app pushes.
-- **OTS**: OpenTelemetry standard.
-
-### Storage
-- Time-series DB (TSDB): Prometheus, InfluxDB, TimescaleDB.
-- Compresses well (columnar, delta).
-- Retention: 15 days (Prometheus default), longer with remote storage.
-
-### Visualization
-- Grafana dashboards.
-- Per-service dashboards.
-- SLO dashboards.
+- **Counter**: Monotonically increasing value (e.g. `http_requests_total`).
+- **Gauge**: Instantaneous numerical snapshot that goes up or down (e.g. `memory_usage_bytes`).
+- **Histogram**: Samples observations into configurable buckets for percentile calculations (e.g. `http_request_duration_seconds_bucket`).
 
 ### Key takeaway
-Use the **RED method** for services (Rate, Errors, Duration) and **USE** for resources
-(Utilization, Saturation, Errors). Use Prometheus + Grafana. Watch cardinality. Tie alerts to
-user-facing SLOs, not raw metrics.
+
+Track system health using the **Four Golden Signals (Latency, Traffic, Errors, Saturation)** stored as time-series metrics for fast aggregation and alerting.

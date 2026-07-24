@@ -4,51 +4,48 @@
 
 ---
 
-An index = **a separate data structure that makes lookups on a column fast**, at the cost of
-slower writes and extra storage.
+**Indexing** is a data structure technique used by database engines to rapidly locate rows without scanning every page in a table. An index creates an auxiliary search tree or hash table mapping indexed column values to their physical disk addresses, trading additional write latency and storage for significantly faster query execution.
 
-### Without vs with an index
-```sql
-SELECT * FROM users WHERE email = 'alice@x.com';
--- No index: scan every row. O(n).
--- With index on email: look up in O(log n).
+### Internal B-Tree index structure
+
+```
+                         +-------------------+
+                         |    Root Node      |
+                         |     [ 20 | 50 ]   |
+                         +-------------------+
+                        /          |          \
+           +-----------+    +------+------+    +-----------+
+           | Internal  |    |  Internal   |    | Internal  |
+           | [ 5 | 10 ]|    | [ 30 | 40 ] |    | [ 60 | 70]|
+           +-----------+    +-------------+    +-----------+
+             /       \         /        \        /       \
+         +-----+   +-----+  +-----+   +-----+ +-----+   +-----+
+         |Leaf |   |Leaf |  |Leaf |   |Leaf | |Leaf |   |Leaf |
+         |[1,3]|   |[6,8]|  |[22] |   |[35] | |[52] |   |[75] |
+         +-----+   +-----+  +-----+   +-----+ +-----+   +-----+
+         (Points to physical data rows on disk / Clustered Key)
 ```
 
-### How indexes work
-- Most DBs use **B-trees** (balanced trees).
-- Some use **hash indexes** (only equality), **GIN/GIST** (Postgres extensions), **LSM trees**
-  (Cassandra).
+### Primary index data structures
 
-### What to index
-- Columns in **WHERE** clauses.
-- Columns used for **JOIN** (`ON a.id = b.a_id`).
-- Columns in **ORDER BY** / **GROUP BY**.
-- **Foreign keys** (often not auto-indexed — do it manually).
+1. **B-Tree / B+Tree**: Balanced search trees with $O(\log N)$ lookup, insert, and delete complexity. Ideal for range queries (`BETWEEN`, `>`, `<`), equality lookups, and sorted returns (`ORDER BY`). Used as the default index structure in PostgreSQL, MySQL (InnoDB), and Oracle.
+2. **Hash Index**: $O(1)$ point-lookup hash tables. Highly efficient for equality checks (`=`), but cannot support range queries or sorting.
+3. **LSM-Tree (Log-Structured Merge)**: Append-only structure optimized for fast write operations, commonly used in NoSQL databases (Cassandra, RocksDB).
+4. **GIN / GiST (Generalized Inverted Index)**: Used for composite, text search, JSON document, and spatial data indexing.
 
-### When indexes hurt
-- **Writes** — every INSERT/UPDATE/DELETE updates all indexes.
-- **Small tables** — sequential scan may be faster.
-- **High-churn tables** — index maintenance overhead.
-- **Low-selectivity columns** (e.g. boolean) — index rarely used.
+### Index classification comparison
 
-### Types
-| Type | Use |
-|------|-----|
-| B-tree | Default, range + equality |
-| Hash | Equality only |
-| Composite | Multiple columns (order matters!) |
-| Partial | `WHERE active = true` subset |
-| Covering (INCLUDE) | Stores extra cols to avoid table lookup |
-| Unique | Enforces uniqueness + index |
-| Full-text | Text search (tsvector) |
+| Index Type | Structure | Query Capabilities | Best Use Cases |
+| :--- | :--- | :--- | :--- |
+| **Clustered Index** | B+Tree (Sorts actual table rows on disk) | Range, Point, Order By | Primary Key (One per table) |
+| **Secondary (Non-Clustered)** | B+Tree (Holds pointers to Clustered Key) | Point lookups, Filtering | Frequently searched non-PK columns (`email`, `status`) |
+| **Covering Index** | B+Tree containing all queried columns | Eliminates double-lookups | High-frequency read queries |
+| **Partial Index** | B+Tree filtering rows (`WHERE status = 'ACTIVE'`) | Compact storage & fast lookups | Large tables with status flags |
 
-### EXPLAIN is your friend
-```sql
-EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'x';
--- Shows the plan: seq scan vs index scan, cost, rows.
-```
+### The Write Penalty (Index Overhead)
+
+While indexes accelerate read queries, every `INSERT`, `UPDATE`, or `DELETE` operation requires updating all associated indexes on the table, increasing write latency and storage utilization.
 
 ### Key takeaway
-Index for your **queries**, not your schema. Every index speeds reads but slows writes.
-Measure with `EXPLAIN ANALYZE`. Don't index low-selectivity columns. Composite indexes are
-powerful but column order matters.
+
+Indexes replace full table scans with $O(\log N)$ tree traversals. Focus indexes on high-cardinality columns used in `WHERE`, `JOIN`, and `ORDER BY` clauses, avoiding over-indexing to protect write throughput.

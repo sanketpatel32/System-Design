@@ -1,53 +1,36 @@
-# Read Through Cache
+# Read-Through Cache
 
 > **Category:** Caching
 
 ---
 
-Read-through = **the cache library/layer is responsible for fetching from the DB on miss**.
-The app just calls `cache.get(key)`.
+A **Read-Through Cache** is an architectural pattern where the application treats the cache as its primary datastore. On a cache miss, the cache layer transparently fetches the missing data from the underlying database, populates itself, and returns the result to the application.
 
-### Flow
+### Pattern workflow
+
 ```
-value = cache.get_or_fetch(key, lambda k: db.query(k))
-# Internally:
-#   if cache hit: return
-#   else: call lambda, fill cache, return
+ [Application] ------ 1. Request Data (`Get Key`) ------> [Read-Through Cache]
+                                                                |
+                                             +------------------+------------------+
+                                             |                                     |
+                                        2a. Cache Hit                         2b. Cache Miss
+                                             |                                     |
+                                             v                                     v
+                                    [Return Cached Data]                 [Cache Reads DB]
+                                                                                   |
+                                                                                   v
+                                                                             [Database]
 ```
 
-### Difference from cache-aside
-| | Cache-aside | Read-through |
-|--|-------------|--------------|
-| Who fetches? | Application | Cache library |
-| Code | App has DB+cache logic | Cache abstracts DB |
-| Read path | 2 calls (cache then DB) | 1 call |
+### Comparison: Read-Through vs Cache-Aside
 
-### Pros
-- ✅ **Cleaner app code** — caching is transparent.
-- ✅ **Consistent TTL/eviction** — library enforces.
-- ✅ Less duplication across services.
-
-### Cons
-- ❌ **Cache library coupling** — must know how to fetch.
-- ❌ Harder to debug (where did the data come from?).
-- ❌ Same stampede risk as cache-aside (unless library handles it).
-
-### Implementations
-- **Spring Cache, Hibernate L2 cache** (Java).
-- **Caffeine + loading function** (JVM).
-- **Redis with Lua + loader** (custom).
-
-### When to use
-- Many call sites for the same cached entity.
-- Need consistent TTL / refresh policies.
-- Want a clean abstraction.
-
-### When NOT to use
-- Heterogeneous data sources.
-- Complex fetch logic.
-- Tight latency requirements (abstraction adds overhead).
+| Feature | Read-Through Cache | Cache-Aside Pattern |
+| :--- | :--- | :--- |
+| **Orchestrator** | Cache middleware/library fetches from DB | Application code fetches from DB on cache miss |
+| **Code Simplicity** | Clean application logic (Single datastore interface) | Application manages DB fallbacks and cache writes |
+| **Data Model Alignment**| Data model in cache must match DB schema | Application can transform DB data before caching |
+| **Infrastructure Support**| Requires plugins or specialized frameworks (e.g., NCache) | Standard Redis/Memcached client libraries |
 
 ### Key takeaway
-Read-through hides cache+DB logic behind a single API, keeping app code clean. Best when many
-call sites share the same data and fetch logic. Cache-aside is more flexible when fetch logic
-varies.
+
+Read-Through caching simplifies application code by delegating database fetching to the cache layer. It ensures consistent loading mechanics, but requires cache infrastructure that supports underlying database integration.

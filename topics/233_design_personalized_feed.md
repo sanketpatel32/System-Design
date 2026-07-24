@@ -1,42 +1,42 @@
 # Design Personalized Feed
-
 > **Category:** Search and Recommendation Systems
 
 ---
 
-Design a personalized feed (FB-style): mix of content tailored to user.
+### Overview
+A **Personalized Feed System** merges activity from followed connections with algorithmic interest-based recommendations, assembling custom content feeds tailored to user preferences.
 
-### Combine multiple signals:
-- Posts from friends / followed.
-- Recommended content.
-- Sponsored content.
-- Trending.
+### System Architecture Topology
 
-### Ranking
-- Per-item, predict engagement (like, comment, share, time spent).
-- Re-rank by predicted value.
-- Diversity (don't show all from one source).
-
-### Architecture
 ```
-[User] -> [Feed service]
-           |
-           +-> [Candidate generation (multiple sources)]
-           +-> [Ranking (ML model)]
-           +-> [Diversity filter]
-           +-> [Sponsored insertion]
-           v
-        [Feed]
++--------+     1. GET /v1/feed/personalized     +-------------------+
+| Client | -----------------------------------> | API Gateway       |
++--------+                                      +-------------------+
+    ^                                                     |
+    | 5. Return Top 50 Items                              v 2. Request Hybrid Candidates
+    |                                           +-------------------+
+    | <---------------------------------------- | Feed Orchestrator |
+    |                                           +-------------------+
+    |                                              /             \
+    |            3. Social Follow Candidates (70%) /               \ 4. ML Recommendations (30%)
+    |                                             v                 v
+    |                                   +-------------------+  +-------------------+
+    |                                   | Social Feed Cache |  | Recommendation DB |
+    |                                   | (Redis ZSET)      |  | (Vector Index)    |
+    |                                   +-------------------+  +-------------------+
 ```
 
-### Two-stage
-1. **Candidates**: get 1000s from various sources.
-2. **Ranking**: ML model scores, takes top 50.
+### Hybrid Merging Ratio & Composition
 
-### Real-time updates
-- New posts trickle into candidate pool.
-- Re-rank on user action (click, dismiss).
+| Composition Tier | Weight | Selection Logic |
+|---|---|---|
+| **Social Graph Items** | 70% | Recent posts from followed friends/pages sorted by recency |
+| **Algorithmic Recommendations**| 20% | High-affinity content scored by vector embedding similarity |
+| **Sponsored / Ads** | 10% | Targeted ads matched via demographic auction engine |
+
+### Feed De-duplication & Interleaving
+- **Bloom Filter**: Maintains local cache of post IDs rendered to user in current session to prevent duplicate display.
+- **Interleaving Engine**: Merges social, recommended, and ad items into a cohesive feed array: `[Social, Social, Rec, Ad, Social, Rec, ...]`.
 
 ### Key takeaway
-Personalized feed = multi-source candidate generation + ML ranking + diversity filter.
-Thousands of candidates → top N. Real-time updates on user actions.
+Personalized feeds combine **social graph updates** with **vector recommendations**. Use **Bloom Filters** to prevent duplicate views and interleave items according to defined business ratios.

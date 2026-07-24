@@ -4,52 +4,46 @@
 
 ---
 
-Design spatial queries using geohashing.
+A Geohashing-based system converts two-dimensional latitude and longitude coordinates into short alphanumeric string keys using Z-order space-filling curves. Geohashes enable fast spatial indexing, range queries, and proximity searches in traditional key-value and relational databases.
 
-### What is geohashing
-- Encode (lat, long) into a string.
-- Nearby points share prefix.
-- Hierarchical: longer prefix = smaller area.
+### Key Concepts & Precision Levels
+Geohash encodes geographic coordinates by interleaving binary bits of latitude and longitude. Longer string prefixes represent smaller, more precise geographical bounding boxes.
 
+| Geohash Length | Grid Cell Dimensions | Typical Application |
+|---|---|---|
+| **3** | $\sim 156 \text{ km} \times 156 \text{ km}$ | State / Region level indexing |
+| **5** | $\sim 4.9 \text{ km} \times 4.9 \text{ km}$ | City district / Neighborhood search |
+| **6** | $\sim 1.2 \text{ km} \times 0.6 \text{ km}$ | Nearby ride-hailing driver matching |
+| **7** | $\sim 152 \text{ m} \times 152 \text{ m}$ | Hyper-local venue search & POI matching |
+
+### System Architecture
 ```
-lat 40.7128, long -74.0060 -> "dr5regw"
-"dr5" covers NYC area.
-"dr5regw" covers ~38m × 19m.
+[ Mobile Client ] ---> [ API Gateway ] ---> [ Location Search Service ]
+                                                   |
+                                   +---------------+---------------+
+                                   |                               |
+                                   v                               v
+                        [ Redis Geohash Index ]        [ Geospatial DB (PostGIS) ]
+                        (ZSET / In-Memory)              (Persistence / Complex Polygons)
 ```
 
-### Use cases
-- "Find users within 1km" → query same + neighbor cells.
-- "All drivers in this area" → cell lookup.
-- Spatial sharding (shard by geohash).
+### Spatial Indexing Comparison
+| Spatial Index | Indexing Structure | Search Mechanism | Pros & Cons |
+|---|---|---|---|
+| **Geohash** | Base32 String (Z-Curve) | Prefix string match / B-Tree | Simple DB indexing; edge boundary issues require searching 8 neighbor cells. |
+| **Google S2** | 64-bit Integer (Hilbert Curve) | Hierarchy of cell IDs | Superior uniform coverage across poles; highly optimized for 64-bit integer ops. |
+| **Uber H3** | Hexagonal Grid System | Hexagon neighbor traversal | Constant distance to all 6 adjacent neighbors; optimal for ride-sharing & supply-demand aggregation. |
+| **QuadTree** | 4-way Tree Decomposition | In-memory spatial tree search | Dynamic node splitting based on density; memory intensive to scale horizontally. |
 
-### Neighbor computation
-- For each geohash, compute 8 neighbors.
-- Used for "nearby" queries that span cell boundaries.
+### API Design & Operations
+| Endpoint | Method | Description | Request Payload / Params |
+|---|---|---|---|
+| `/v1/location/update` | POST | Ingest entity location | `entity_id`, `lat`, `lon`, `timestamp` |
+| `/v1/location/nearby` | GET | Query entities within radius | `lat`, `lon`, `radius_meters`, `limit` |
 
-### Precision vs cell size
-| Geohash length | Cell size |
-|----------------|-----------|
-| 1 | 5000 km |
-| 4 | 39 km |
-| 6 | 1.2 km × 0.6 km |
-| 8 | 38m × 19m |
-
-### Storage
-- Index geohash in DB.
-- Prefix query for nearby.
-
-### Trade-offs
-- ✅ Simple spatial index.
-- ✅ Works with standard DB indexes.
-- ❌ Edge of cell (points close but in different cells).
-- ❌ Some cells near poles have weird shapes.
-
-### Alternatives
-- **Quadtree**: hierarchical, better near equator.
-- **R-tree**: specialized spatial index (PostGIS).
-- **S2 / H3**: Google / Uber cell systems.
+### Boundary Challenge & Resolution
+Because adjacent points across grid cell lines can have completely different Geohash prefixes, querying only a target entity's Geohash cell misses close entities in adjacent cells.
+*Resolution*: Always calculate and query the target cell **plus all 8 surrounding neighbor cells** (9 cells total), then apply Euclidean/Haversine filtering on the returned subset.
 
 ### Key takeaway
-Geohashing encodes lat/long into prefix-shareable strings for fast "nearby" queries. Pick
-precision for the radius you need. Edge effects (close points in different cells) → query
-neighbors too.
+Geohashing translates 2D spatial coordinates into 1D strings using Z-order space-filling curves, enabling efficient index lookups. To prevent edge-boundary data loss, spatial queries must query the target cell along with its 8 adjacent neighbor cells.

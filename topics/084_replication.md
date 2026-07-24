@@ -4,49 +4,40 @@
 
 ---
 
-Replication = **copying data from a primary database to one or more replicas**, for
-redundancy, read scaling, and disaster recovery.
+**Database Replication** is the process of copying and maintaining database objects and data across multiple physical server nodes. Replication provides data redundancy, increases read scalability, ensures fault tolerance during hardware failures, and minimizes latency by placing data geographically closer to users.
 
-### Why
-- **High availability** — promote a replica if the primary dies.
-- **Read scaling** — spread reads across replicas.
-- **Geo-distribution** — replicas close to users.
-- **Backup / analytics** — heavy queries offloaded from primary.
+### High-Level Architecture
 
-### Replication strategies
+```
+                        +--------------------+
+                        |  Client / App Tier |
+                        +--------------------+
+                           /              \
+                 Writes   /                \ Reads
+                         v                  v
+                +---------------+   +---------------+
+                | Primary Node  |   | Secondary Node|
+                | (Master / R/W)|   | (Replica / RO)|
+                +---------------+   +---------------+
+                        |                   ^
+                        | Transaction Logs  |
+                        +--(WAL Stream)-----+
+```
 
-#### Synchronous
-- Primary waits for replicas to ACK before committing.
-- ✅ No data loss on failover.
-- ❌ Slower commits (waits for network round-trip).
-- ❌ Replica failure stalls primary.
+### Primary replication topologies
 
-#### Asynchronous
-- Primary commits, sends to replicas later.
-- ✅ Fast commits.
-- ❌ **Replication lag** → potential data loss on failover.
+1. **Single-Leader (Primary-Replica)**: All writes route to a designated primary node. The primary streams state changes via Write-Ahead Logs (WAL) to secondary nodes that process read queries.
+2. **Multi-Leader (Multi-Primary)**: Multiple nodes accept writes concurrently. Leaders synchronize updates asynchronously. Common in multi-region deployments.
+3. **Leaderless (Dynamo-style)**: Any node can accept read and write requests. Clients write to multiple nodes concurrently using quorum protocols ($W + R > N$).
 
-#### Semi-synchronous
-- Primary waits for at least one ACK (out of N).
-- Compromise between sync and async.
+### Replication Mode Comparison
 
-### Topologies
-- **Single-leader (master-slave)**: one writer, many readers. Most common.
-- **Multi-leader**: each node accepts writes; conflict resolution needed.
-- **Leaderless** (Dynamo-style): any replica accepts writes; quorum reconciles.
-
-### Replication methods
-- **Statement-based**: replay SQL statements (hard with non-deterministic functions).
-- **Wal-based** (Postgres): stream WAL records.
-- **Logical**: decode changes into a portable format (used by Debezium for CDC).
-
-### Replication lag
-- Cause: writes faster than replicas can apply.
-- Effect: stale reads (read-your-writes violation).
-- Mitigation: read-from-primary for X seconds after user's write; sticky sessions; tuned
-  consistency.
+| Mode | Write Latency | Data Consistency Guarantee | Failover Data Loss Risk |
+| :--- | :--- | :--- | :--- |
+| **Asynchronous** | Ultra-low (Primary responds immediately) | Eventual Consistency (Subject to replication lag) | High (Un-streamed WAL logs lost on crash) |
+| **Synchronous** | High (Primary blocks until all replicas commit) | Strong Consistency (Zero replication lag) | Zero data loss, but slow replica blocks writes |
+| **Semi-Synchronous**| Moderate (Primary waits for 1 replica log ACK)| High Consistency | Minimal data loss risk |
 
 ### Key takeaway
-Replication is essential for HA and read scaling. Pick **single-leader async** for most OLTP
-workloads (good balance of speed and HA). Use **sync/semi-sync** when data loss is
-unacceptable. Always plan for replication lag in your read paths.
+
+Database replication distributes copies of data across servers to ensure high availability and read scalability. Balance synchronous replication for strong consistency against asynchronous replication for low write latency.

@@ -4,63 +4,41 @@
 
 ---
 
-Alerting = **notifying humans when something needs attention.** The bridge between
-monitoring and incident response.
+Alerting automatically **notifies engineering teams of system anomalies or SLA breaches**, routing actionable warnings via channels such as PagerDuty, Slack, or email.
 
-### Why alert
-- Detect issues before users complain.
-- Trigger incident response.
-- Wake someone up at 3am (only when truly needed).
+### Alerting Pipeline & Notification Routing
 
-### Alert principles
+```
++------------------------+      1. Metric Breach      +------------------------+
+| Prometheus Alert Rules | -------------------------> | Alertmanager           |
++------------------------+                            +------------------------+
+                                                                  |
+                                                                  v 2. Group, Dedupe & Silence
+                                                      +------------------------+
+                                                      | Notification Router    |
+                                                      +------------------------+
+                                                                  |
+                                     +----------------------------+----------------------------+
+                                     | High Severity (P1)                                      | Low Severity (P3)
+                                     v                                                         v
+                         +------------------------+                                +------------------------+
+                         | PagerDuty (On-Call Call)|                                | Slack / Teams Channel  |
+                         +------------------------+                                +------------------------+
+```
 
-#### 1. Alert on symptoms, not causes
-- ❌ "CPU > 80%"
-- ✅ "Error rate > 1% for 5 min"
-- Symptom = user-visible. Cause = might be fine.
+### Alert Severity Levels Matrix
 
-#### 2. Actionable
-- Each alert should require human action.
-- If no action, it's noise.
-- "Action or silence."
+| Severity Level | Trigger Condition | Reaction Requirement | Notification Channel |
+| :--- | :--- | :--- | :--- |
+| **P1 - Critical** | Core user functionality down / High error rate | Immediate wake-up response (< 15 mins) | PagerDuty / Phone Call |
+| **P2 - Warning** | Component degraded, but fallback working | Address within business hours | Slack Priority Channel |
+| **P3 - Informational**| Non-critical anomaly (e.g. disk at 75%) | Review during backlog grooming | Slack Async Channel |
 
-#### 3. Page vs ticket
-- **Page** (wake someone): user-facing impact, urgent.
-- **Ticket**: cleanup, follow-up, non-urgent.
+### Preventing Alert Fatigue
 
-#### 4. SLO-based
-- Alert when error budget is burning too fast.
-- Tied to user experience.
-
-### Alert fatigue
-- Too many alerts → ignored.
-- Fix: tune thresholds, suppress noise, route to right team.
-
-### Common alert types
-- **High error rate** (5xx spike).
-- **High latency** (p99 > SLO).
-- **Service down** (health check fails).
-- **Saturation** (disk full, queue backed up).
-- **Anomaly** (unusual pattern, ML-based).
-- **SLO burn** (budget consumed too fast).
-
-### Routing
-- **Severity**: P1 (page), P2 (page business hours), P3 (ticket).
-- **Service**: route to owning team.
-- **On-call rotation**: PagerDuty, OpsGenie.
-
-### Runbooks
-- Each alert links to a runbook.
-- Runbook: what to check, how to mitigate, who to escalate.
-- Reduces time to resolution.
-
-### Anti-patterns
-- Alerting on every metric (noise).
-- Same alert going to multiple people.
-- No documentation ("what does this mean?").
-- Alerts that always fire (cry wolf).
+- **Alert on Symptoms, Not Causes**: Alert on high user-facing error rates (Symptom) rather than single-server high CPU (Cause).
+- **Service Level Objectives (SLO) Burn Rate Alerting**: Trigger alerts based on how fast the system is consuming its error budget rather than static arbitrary thresholds.
 
 ### Key takeaway
-Alert on **user-facing symptoms** (error rate, latency), make alerts **actionable**, route by
-severity + team. Pair every alert with a runbook. Avoid alert fatigue — silence non-actionable
-alerts.
+
+Design alerting to **notify on actionable user-facing symptoms**, leveraging SLO error budget burn rates to eliminate alert fatigue.

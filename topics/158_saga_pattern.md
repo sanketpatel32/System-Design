@@ -4,59 +4,42 @@
 
 ---
 
-A Saga = **a sequence of local transactions, each with a compensating action** to undo on
-failure. Replaces distributed transactions in microservices.
+The Saga Pattern manages **distributed transactions across microservices as a sequence of local transactions**. If any local step fails, the Saga executes a series of **compensating transactions** to roll back prior state changes.
 
-### Why
-- 2PC is blocking and slow across services.
-- Saga sacrifices atomicity for availability.
-- Each service transaction commits locally.
-- If something fails, run compensations.
+### Choreography vs Orchestration Architecture
 
-### Example: order flow
 ```
-1. Create order        (Order Service)         [compensation: cancel order]
-2. Charge payment      (Payment Service)       [compensation: refund]
-3. Reserve inventory   (Inventory Service)     [compensation: release]
-4. Ship                (Shipping Service)      [compensation: cancel shipment]
+Choreography (Event-Driven):
+[Order Service] --- OrderCreated ---> [Payment Service] --- PaymentCharged ---> [Inventory Service]
+       ^                                     | (Fails!)                                 |
+       +--- CancelOrder <--- PaymentFailed --+                                          v
+
+Orchestration (Central Coordinator):
+                               +-----------------------+
+                               | Saga Orchestrator     |
+                               +-----------------------+
+                                   |       ^       |
+                     1. CreateOrder|       |       | 3. Charge (Fails!)
+                                   v       |       v
+                             +---------------------------+
+                             | Services (Order / Payment)|
+                             +---------------------------+
+                                   |
+                                   v 4. Execute Compensating Rollback (Cancel Order)
 ```
-If step 3 fails: refund (2), cancel order (1).
 
-### Two flavors
+### Saga Execution Modes Matrix
 
-#### Choreography (event-driven)
-- Each service publishes events.
-- Others react.
-- No central coordinator.
-- Pros: decoupled.
-- Cons: hard to follow the flow.
+| Variant | Control Flow | Coupling Level | Complexity | Best Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **Choreography** | Decoupled Pub/Sub Events | Extremely Low | Hard to trace workflows | Simple 2-3 step microservice pipelines |
+| **Orchestration**| Centralized State Controller | Low-Medium | Easy to visualize and audit | Complex enterprise e-commerce checkout flows |
 
-#### Orchestration (central)
-- An orchestrator calls each service in order.
-- Handles failures, runs compensations.
-- Pros: clear flow, easier debugging.
-- Cons: orchestrator is a SPOF.
+### Forward & Backward Recovery
 
-### Trade-offs
-| | Saga | 2PC |
-|--|------|------|
-| Atomicity | Eventual (with compensation) | Strong |
-| Availability | High | Low |
-| Latency | Low | High |
-| Complexity | Compensation logic | Protocol |
-| Coupling | Loose | Tight |
-
-### Pitfalls
-- **Compensations must be idempotent** (retried).
-- **Order of compensation** matters (reverse order).
-- **Partial failure** during compensation is hard.
-- **Isolation** — intermediate states are visible.
-
-### Real-world
-- Most microservices that span multiple services use Saga.
-- Temporal, Cadence, AWS Step Functions orchestrate.
+- **Forward Recovery**: Retries a failed transaction step until it succeeds (used when failure is transient).
+- **Backward Recovery (Compensating Transactions)**: Executes explicit undo actions (e.g., `RefundPayment`, `ReleaseInventory`) in reverse order when a step fails permanently.
 
 ### Key takeaway
-Saga = **chain of local transactions + compensations**. The microservice alternative to 2PC —
-sacrifices atomicity for availability. Use **orchestration** for clarity, **choreography** for
-decoupling. Always design idempotent compensations.
+
+The Saga pattern replaces blocking locks with **local transactions and compensating actions**, achieving eventual consistency across decoupled microservices.

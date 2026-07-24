@@ -4,45 +4,41 @@
 
 ---
 
-Design a system to stream real-time stock prices.
+A Stock Price Streaming System ingests high-frequency market tick data from financial exchanges and broadcasts live price updates, order books, and ticker charts to millions of financial terminal clients.
 
-### Requirements
-- **Functional**: subscribe to symbols; receive live prices; historical.
-- **Non-functional**: low-latency (<100ms); high throughput.
+### System Requirements
+- **Functional Requirements**:
+  - Real-time ingestion of stock trade ticks and bid/ask quote updates.
+  - Low-latency fan-out to connected web and mobile trading applications.
+  - Historical ticker query support for chart generation.
+- **Non-Functional Requirements**:
+  - Ultra-Low Latency: Sub-10ms distribution from exchange ingest to client render.
+  - High Throughput: Process hundreds of thousands of price ticks per second during market open/close.
+  - Zero Data Corruption: Strict ordering guarantees for tick updates.
 
-### Architecture
+### System Architecture
 ```
-[Exchange feeds] -> [Ingestor] -> [Kafka] -> [Stream processor]
-                                              |
-                                              v
-                                         [Time-series DB]
-                                         [WebSocket gateway]
-                                              |
-[Client] <-WebSocket-------+
+[ Financial Exchange Feed ] ---> [ FIX Protocol Ingest ] ---> [ Ring Buffer (Disruptor) ]
+                                                                      |
+                                                                      v
+                                                          [ Streaming Engine (Kafka) ]
+                                                                      |
+        +-------------------------------------------------------------+-------------------------------------------------------------+
+        |                                                                                                                           |
+        v                                                                                                                           v
+[ High-Fanout Gateway Cluster ]                                                                             [ Time-Series DB (ClickHouse) ]
+(WebSockets / SSE Push Nodes)                                                                              (Historical Ticker Candles)
+        |                                                                                                                           |
+        v                                                                                                                           v
+[ Client Trading Terminals ]                                                                                [ Analytics API ]
 ```
 
-### Ingestion
-- Connect to exchange APIs (FIX, websocket).
-- Normalize formats.
-- Publish to Kafka.
-
-### Stream processing
-- Filter per user's subscriptions.
-- Compute rolling stats.
-- Push to subscribers.
-
-### WebSocket
-- Client subscribes to symbols.
-- Server pushes updates.
-
-### Storage
-- **Time-series DB** (InfluxDB, kdb+) for history.
-- Real-time cache in Redis.
-
-### Backpressure
-- High-volume bursts (market open).
-- Sample / drop oldest for clients that can't keep up.
+### Optimization Techniques
+| Technique | Implementation | Impact |
+|---|---|---|
+| **LMAX Disruptor Ring Buffer** | Lock-free in-memory ring buffer | Millions of events/sec per thread with sub-microsecond latency. |
+| **Delta Encoding** | Transmits price deltas (`+0.05`) instead of full price payloads | Reduces network payload size by $> 70\%$. |
+| **Binary Protocols** | Protocol Buffers / FlatBuffers instead of JSON | Eliminates JSON serialization overhead. |
 
 ### Key takeaway
-Stock streaming = exchange feed → Kafka → stream processor → WebSocket push to subscribers.
-Time-series DB for history. Handle backpressure during market-open bursts.
+Stock price streaming systems achieve sub-10ms fan-out using lock-free ring buffers (LMAX Disruptor), binary delta encoding (Protobuf), and WebSocket push gateways backed by time-series databases.

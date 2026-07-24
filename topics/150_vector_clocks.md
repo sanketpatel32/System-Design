@@ -4,56 +4,39 @@
 
 ---
 
-Vector clocks = **a way to order events across nodes without a central clock**. Detects
-concurrency and causality.
+A Vector Clock is an algorithm used to **generate logical timestamps and establish causal ordering of events** across distributed nodes without relying on synchronized physical clocks.
 
-### The problem
-- Each node has its own clock, possibly skewed.
-- Can't trust physical timestamps for ordering.
-- Need to know: did event A happen before B? Or were they concurrent?
+### Vector Clock State Update Mechanism
 
-### Vector clock structure
-- Each node maintains a vector `[n1, n2, n3, ...]` of counters.
-- On local event: increment own counter.
-- On send: attach current vector.
-- On receive: max each element with received vector, then increment own.
-
-### Example
 ```
-Node A: [0,0,0] -> local event -> [1,0,0]
-       sends to B with [1,0,0]
-Node B: [0,0,0] -> receives [1,0,0] -> max([0,0,0],[1,0,0]) + inc B -> [1,1,0]
+  Node A: [A:1, B:0] ------------ Local Write ------------> [A:2, B:0] (Concurrent Conflict!)
+             \                                                    /
+              \ Network Sync                                     /
+               v                                                v
+  Node B: [A:1, B:0] ---- Local Write ----> [A:1, B:1] -- Client Reconciles --> [A:2, B:1]
 ```
 
-### Comparison rules
-Given two vector clocks V1 and V2:
-- **V1 < V2** (V1 happened before V2): every V1[i] <= V2[i], with at least one strict.
-- **V1 > V2**: vice versa.
-- **Concurrent**: neither dominates (some elements larger, some smaller).
+### Vector Clock Rules
 
-### Use cases
-- **DynamoDB, Riak**: detect conflicting writes.
-- **CRDTs**: determine merge order.
-- **Distributed debugging**: causal history.
+Each node maintains an array (vector) of size \(N\) representing its knowledge of logical clock state across all cluster nodes:
 
-### Conflict detection
-```
-Client A writes x=1 with clock [1,0]
-Client B writes x=2 with clock [0,1]
-Server compares: neither dominates → CONFLICT
-```
-App resolves (last-write-wins, prompt user, merge).
+1. **Local Operation**: Before a node \(i\) processes an event, it increments its own component: `V[i] = V[i] + 1`.
+2. **Message Send**: Node \(i\) attaches its current vector clock `V` to outgoing network messages.
+3. **Message Receive**: Upon receiving message with clock `V_msg`, node \(i\) updates vector: `V[j] = max(V[j], V_msg[j])` for all \(j\), then increments `V[i] = V[i] + 1`.
 
-### Vector clocks vs version vectors
-- Similar; version vectors track per-replica versions of an object.
-- Vector clocks track per-event ordering.
+### Event Causality Comparison Matrix
 
-### Trade-offs
-- ✅ Detects causality without central clock.
-- ❌ Size grows with node count (O(N)).
-- ❌ Comparison is O(N).
-- Dotted version vectors, interval tree clocks: more compact variants.
+| Scenario | Clock Condition | Relationship | Interpretation |
+| :--- | :--- | :--- | :--- |
+| **Event X Causal Precedes Y** | \(V(X) < V(Y)\) | \(X 	o Y\) | Event X happened before Y; state safely overwritten. |
+| **Event Y Causal Precedes X** | \(V(Y) < V(X)\) | \(Y 	o X\) | Event Y happened before X; state safely overwritten. |
+| **Concurrent Writes** | Neither \(V(X) \le V(Y)\) nor \(V(Y) \le V(X)\) | \(X \parallel Y\) | Conflict detected! Client/App must resolve divergence. |
+
+### System Trade-offs
+
+- ✅ **Causal Accuracy**: Detects concurrent updates reliably without physical clock synchronization errors.
+- ❌ **Vector Size Explosion**: Vectors grow proportionally to the number of nodes (\(O(N)\)). Mitigated using actor pruning or limit bounds (e.g. Amazon Dynamo).
 
 ### Key takeaway
-Vector clocks let nodes determine **causality** (did A cause B? are they concurrent?) without a
-central clock. Used by DynamoDB, Riak for conflict detection. Trade-off: O(N) size per clock.
+
+Vector clocks establish **causal ordering between distributed events**, identifying concurrent write conflicts without relying on physical clock synchronization.

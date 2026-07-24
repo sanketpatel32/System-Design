@@ -4,65 +4,44 @@
 
 ---
 
-A circuit breaker = **stops calling a failing service** so it can recover, instead of
-hammering it with retries.
+A Circuit Breaker is a stability pattern that **detects downstream RPC failures or high latency**, tripping to fail fast immediately and preventing cascading failure across distributed microservices.
 
-### States
+### Circuit Breaker Finite State Machine
+
 ```
-   CLOSED (normal)
-        |
-        | failure rate > threshold
-        v
-   OPEN (fail fast)
-        |
-        | after timeout
-        v
-   HALF-OPEN (probe)
-        |
-   +----+----+
-   |         |
-success   failure
-   |         |
-   v         v
-CLOSED    OPEN
+                        +-------------------------+
+                        |         CLOSED          |  (Normal Operation)
+                        | (Requests Flow Normally)|
+                        +-------------------------+
+                          /                     ^
+      Error Threshold    /                       \  Success Threshold
+      Exceeded          v                         \ Exceeded
+                        +-------------------------+
+                        |          OPEN           |  (Failing Fast)
+                        | (Rejects Immediately)   |
+                        +-------------------------+
+                          \                     ^
+        Sleep Window       \                   /  Failure Occurs
+        Expires             v                 /
+                        +-------------------------+
+                        |        HALF-OPEN        |  (Testing Recovery)
+                        | (Allows Probe Requests) |
+                        +-------------------------+
 ```
 
-### How it works
-1. **Closed**: requests flow normally. Track success/failure.
-2. **Open**: if failure rate exceeds threshold (e.g. 50% of last 100), trip. All requests fail
-   fast (no network call).
-3. **Half-open**: after a cooldown, allow one probe. If it succeeds → close. If fails → reopen.
+### Circuit Breaker State Transition Matrix
 
-### Why
-- **Protect the failing service**: it's overloaded; your calls make it worse.
-- **Fail fast**: caller gets an immediate error instead of hanging.
-- **Allow recovery**: give it breathing room.
-- **Prevent cascading failure**: a slow downstream doesn't take you down.
+| State | Operation Allowed? | Trigger to Next State | Fallback Action |
+| :--- | :--- | :--- | :--- |
+| **Closed** | Yes (100% Traffic) | Error rate exceeds threshold (e.g. > 50% failures in 10s) | N/A (Normal execution) |
+| **Open** | No (Fails Fast Immediately)| Sleep timer window expires (e.g., after 30 seconds) | Returns fallback response / cached default |
+| **Half-Open**| Partial (Probe Traffic) | Probe requests succeed -> Closed; Probe fails -> Open | Returns fallback if probe fails |
 
-### Configuration
-- **Failure threshold**: e.g. 50% failures in last 100 requests.
-- **Open duration**: 30s default.
-- **Half-open probes**: 1 request, then evaluate.
+### Key Benefits
 
-### Libraries
-- **Hystrix** (Netflix, deprecated but famous).
-- **Resilience4j** (modern Java).
-- **Polly** (.NET).
-- **opossum** (Node.js).
-- **gRPC**: built-in.
-
-### Fallbacks
-When the circuit is open, what does the caller do?
-- Return cached data.
-- Return default / degraded response.
-- Return error (and let caller handle).
-
-### Compared to retries
-- Retries handle transient failures.
-- Circuit breakers handle sustained failures.
-- They complement: retry 1-2 times, then circuit-break.
+- **Prevent Resource Exhaustion**: Stops caller threads from blocking on unresponsive downstream microservices.
+- **Proactive Fallbacks**: Returns static backup data or cached responses instantly during downstream outages.
 
 ### Key takeaway
-Circuit breakers stop cascading failures by **failing fast** when a downstream is broken. Trip
-on high failure rate, probe periodically to test recovery. Combine with retries (transient) +
-fallbacks (degraded response).
+
+Deploy circuit breakers to **fail fast during downstream service outages**, insulating core system threads and gracefully returning fallback responses.

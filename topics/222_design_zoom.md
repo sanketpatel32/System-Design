@@ -1,43 +1,49 @@
 # Design Zoom
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Zoom: video conferencing for many participants.
+### Overview
+**Zoom** is a real-time video conferencing platform engineered to deliver sub-150ms latency audio and video streams across varying network conditions for up to thousands of interactive meeting participants.
 
-### Requirements
-- **Functional**: video/audio calls; screen share; recording; chat.
-- **Non-functional**: low-latency (<500ms one-way); scale to 100s of participants.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[Participants] <-WebRTC-> [Media servers (SFU)]
-                            |
-                            v
-                       [Recording service]
-                       [Signaling server]
++--------------------------------------------------------------------------+
+|                        ZOOM MEETING ARCHITECTURE                         |
++--------------------------------------------------------------------------+
+  Participant A (Webcam/Mic)                    Participant B (Webcam/Mic)
+       |                                             |
+       | Encrypted UDP (RTP / SRTP)                  | Encrypted UDP (SRTP)
+       v                                             v
++--------------------------------------------------------------------------+
+|                  MULTIMEDIA ROUTING NODE (SFU CLUSTER)                   |
+|                                                                          |
+|  [ Bandwidth Probing ] --> [ Packet Loss Recovery ] --> [ Stream Forward]|
++--------------------------------------------------------------------------+
+                                     ^
+                                     | Meeting Signaling / Room Setup
++--------------------------------------------------------------------------+
+|                        ZOOM CLOUD CONTROL PLANE                          |
+|  [ User Auth ] --> [ Meeting Scheduler ] --> [ Meeting Controller DB ]   |
++--------------------------------------------------------------------------+
 ```
 
-### WebRTC
-- P2P for small calls (2-4 participants).
-- **SFU (Selective Forwarding Unit)** for larger: each participant sends once, server forwards
-  to others.
-- **MCU** (multi-point control unit): server mixes (rare, expensive).
+### Protocol & Network Optimization Matrix
 
-### Signaling
-- WebSocket for call setup (join, leave, negotiate).
-- After setup, media flows over UDP/WebRTC.
+| Mechanism | Engineering Strategy | Latency / Resilience Impact |
+|---|---|---|
+| **Transport Protocol** | Custom **UDP (SRTP)** instead of TCP | Eliminates head-of-line blocking latency |
+| **Media Architecture**| Selective Forwarding Unit (**SFU**) | Forwards stream streams directly without re-encoding |
+| **Adaptive Video** | Dynamic resolution switching (720p -> 360p -> 180p) | Adjusts video quality instantly during bandwidth drops |
+| **Loss Recovery** | Forward Error Correction (**FEC**) + Selective NACK | Recovers lost packets without full retransmission |
 
-### Scaling
-- One media server per N participants.
-- Spread across regions (closest to users).
-- Recording: server captures stream → S3.
+### Selective Forwarding Unit (SFU) vs Multipoint Control Unit (MCU)
 
-### Adaptive quality
-- Client adjusts bitrate based on bandwidth.
-- Server sends multiple layers (simulcast).
+| Architecture Model | Video Processing | Bandwidth Usage | Server CPU Overhead |
+|---|---|---|---|
+| **MCU (Legacy)** | Decodes and composites all video inputs into 1 stream | Low client bandwidth | **Extremely High** server CPU |
+| **SFU (Zoom Model)**| Forwards active speaker streams directly to clients | Dynamic per client | **Very Low** server CPU |
 
 ### Key takeaway
-Zoom = WebRTC + SFU media servers + signaling over WebSocket. P2P for small, SFU for large.
-Recording via server-side capture. Simulcast for adaptive quality.
+Zoom delivers sub-150ms meeting latency by executing media forwarding over custom **UDP (SRTP)** using **Selective Forwarding Units (SFUs)** paired with **Forward Error Correction (FEC)**.

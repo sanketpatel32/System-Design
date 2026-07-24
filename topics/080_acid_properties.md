@@ -4,53 +4,45 @@
 
 ---
 
-ACID = **Atomicity, Consistency, Isolation, Durability** — the four guarantees of a
-transactional database.
+**ACID** is an acronym representing the four foundational guarantees of relational database management systems: **Atomicity**, **Consistency**, **Isolation**, and **Durability**. Together, ACID properties guarantee data integrity across concurrent executions and hardware failures.
 
-### Atomicity
-> "All or nothing."
-Either all operations in the transaction succeed, or none do. No partial state.
+### Architecture relationship
 
-```sql
-BEGIN;
-  debit(A, 100);
-  credit(B, 100);   -- if this fails, the debit is rolled back too
-COMMIT;
+```
+                          [ ACID GUARANTEES ]
+                                   |
+       +------------------+--------+--------+------------------+
+       |                  |                 |                  |
+       v                  v                 v                  v
++--------------+   +--------------+  +--------------+   +--------------+
+|  ATOMICITY   |   | CONSISTENCY  |  |  ISOLATION   |   | DURABILITY   |
+| (All or None)|   | (Valid State)|  | (Concurrency)|   | (Persisted)  |
++--------------+   +--------------+  +--------------+   +--------------+
+       |                  |                 |                  |
+   Undo Logs /        Foreign Keys /    Locks / MVCC        Redo Logs /
+   Rollbacks         Constraints        Snapshots              WAL
 ```
 
-### Consistency
-> "Valid state to valid state."
-The DB enforces constraints (PK, FK, CHECK, UNIQUE). A transaction can't leave the DB in an
-inconsistent state.
+### Breakdown of ACID Guarantees
 
-### Isolation
-> "Concurrent transactions don't interfere."
-Two transactions running concurrently produce the same result as if they ran sequentially
-(at the highest level — serializable).
+1. **Atomicity ("All or Nothing")**: Guarantees that all statements within a transaction complete successfully. If any statement fails, the entire transaction is rolled back, leaving the database in its pre-transaction state. *Enforced via Undo Logs.*
+2. **Consistency ("Valid State Transitions")**: Guarantees that a transaction moves the database from one valid schema state to another, maintaining all schema constraints (`FOREIGN KEY`, `NOT NULL`, `CHECK`).
+3. **Isolation ("Concurrent Execution Integrity")**: Guarantees that concurrently executing transactions do not interfere with one another, producing results equivalent to running them sequentially. *Enforced via MVCC and Locks.*
+4. **Durability ("Permanent Storage")**: Guarantees that once a transaction commits, its modifications survive any subsequent system crash or power outage. *Enforced via Write-Ahead Logging (WAL) and disk flushes.*
 
-Lower levels trade isolation for performance:
-- **Read committed** (default in Postgres): no dirty reads.
-- **Repeatable read**: same query returns same result within a transaction.
-- **Serializable**: as if sequential.
+### ACID Implementation Matrix
 
-### Durability
-> "Committed data survives crashes."
-Once `COMMIT` returns, the data is on disk (WAL flushed) — even if the power dies.
+| Property | Database Enforcement Mechanism | Potential Vulnerability / Failure Mode |
+| :--- | :--- | :--- |
+| **Atomicity** | Undo Logs & Transaction Abort Handlers | Unhandled app exceptions leaving connections open |
+| **Consistency** | Schema Constraints, Triggers, Domain Checks | Application-level validation bugs |
+| **Isolation** | Lock Managers (2PL), Multi-Version Concurrency Control (MVCC) | Read anomalies (Dirty Reads, Non-Repeatable Reads, Phantoms) |
+| **Durability** | Non-volatile Write-Ahead Logs (WAL) flushed to disk (`fsync`) | Disk hardware failure without secondary replication |
 
-Achieved via **WAL** (write-ahead log) + `fsync` before commit ack.
+### ACID vs BASE (NoSQL)
 
-### Trade-offs
-- ACID is **expensive**: locks, sync I/O, coordination.
-- Distributed ACID (2PC) is even more expensive and brittle.
-- NoSQL often trades ACID for **BASE** (Basically Available, Soft state, Eventual consistency).
-
-### Real-world
-- Postgres/MySQL: full ACID.
-- MongoDB: ACID since 4.0 (multi-doc transactions).
-- Cassandra: tunable consistency, not full ACID.
-- DynamoDB: ACID only within a single item; transactions supported but limited.
+Relational databases prioritize strict ACID guarantees. Distributed NoSQL databases often adopt **BASE** (**B**asically **A**vailable, **S**oft-state, **E**ventual consistency) to favor horizontal availability and scaling over immediate consistency.
 
 ### Key takeaway
-ACID guarantees correctness under concurrency and failures. It's the default for transactional
-data (OLTP). Trade it away deliberately (and knowingly) when you need massive scale or
-availability.
+
+ACID properties ensure database reliability. Atomicity guarantees all-or-nothing execution, Consistency preserves schema rules, Isolation manages concurrent access, and Durability ensures committed updates persist.

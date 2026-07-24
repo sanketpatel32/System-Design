@@ -4,47 +4,48 @@
 
 ---
 
-Multipart upload = **breaking a large file into parts, uploading each independently, then
-combining them.** Required for large files in S3.
+Multipart upload is a strategy that breaks large files into **smaller data chunks (parts)**, uploads them concurrently over network channels, and reassembles them atomically on the storage target.
 
-### Why
-- **Parallel uploads**: parts uploaded concurrently → faster.
-- **Resume on failure**: retry only the failed part, not the whole file.
-- **Bypass size limits**: single PUT max is 5GB; multipart can do 5TB.
-- **Better reliability**: smaller parts, fewer chances to fail mid-upload.
+### Protocol Sequence Diagram
 
-### S3 multipart flow
 ```
-1. Initiate:  POST /uploads  -> upload_id
-2. Upload parts:
-     PUT /uploads/{id}/part/1   (data, must be ≥5MB except last)
-     PUT /uploads/{id}/part/2
-     ...
-3. Complete:  POST /uploads/{id}/complete  (with ETags of all parts)
-4. S3 assembles the object.
++--------+            +--------------------+            +---------------+
+| Client |            | App Gateway / API  |            | Object Store  |
++--------+            +--------------------+            +---------------+
+    |                           |                               |
+    | 1. Initiate Multipart     |                               |
+    |-------------------------->| Request Upload ID             |
+    |                           |------------------------------>|
+    |                           |<------------------------------| Returns UploadId: 99x
+    |<--------------------------| Return UploadId               |
+    |                           |                               |
+    | 2. Upload Parts Parallel  |                               |
+    |--- Part 1 (Bytes 0-5MB) ->|------------------------------>| Returns ETag: "e1"
+    |--- Part 2 (Bytes 5-10MB)->|------------------------------>| Returns ETag: "e2"
+    |--- Part 3 (Bytes 10-15MB)->|------------------------------>| Returns ETag: "e3"
+    |                           |                               |
+    | 3. Complete Multipart     |                               |
+    |-------------------------->| Send UploadId + Part/ETag List|
+    |                           |------------------------------>| Reassemble Object
+    |<--------------------------| Return 200 OK                 |
 ```
 
-### Constraints
-- Min part size: **5MB** (except the last).
-- Max parts: 10,000.
-- Max object size: 5TB.
-- Max single PUT: 5GB.
+### Multipart Upload Lifecycle API
 
-### Choosing part size
-- Smaller parts (5-100MB): more parallelism, more overhead.
-- Larger parts (100MB-5GB): less overhead, harder to retry.
-- Sweet spot: 50-100MB for most files.
+| API Action | HTTP Method | Input Parameters | Return Payload |
+| :--- | :--- | :--- | :--- |
+| **InitiateUpload** | `POST` | `filename`, `content_type`, `size` | `UploadId` |
+| **UploadPart** | `PUT` | `UploadId`, `partNumber`, `Chunk Data` | `ETag` (MD5 Checksum) |
+| **CompleteUpload** | `POST` | `UploadId`, `[{partNumber, ETag}]` | `200 OK` (Final S3 Object URL) |
+| **AbortUpload** | `DELETE` | `UploadId` | `240 No Content` (Cleans temporary parts) |
 
-### Aborting
-- Always abort incomplete multipart uploads → they incur storage costs.
-- Lifecycle rule: auto-abort after 7 days.
+### Key Benefits & Failure Mitigation
 
-### Use cases
-- Video / large document uploads.
-- Mobile / flaky networks (resume per part).
-- Parallel upload from multiple threads.
+- ✅ **Resumable Uploads**: If part 4 fails out of 100, only part 4 needs re-transmission.
+- ✅ **Parallel Throughput**: Utilizes multiple TCP streams to maximize internet client bandwidth.
+- ✅ **Memory Efficiency**: Senders stream chunks sequentially from disk without loading multi-gigabyte files into RAM.
+- ❌ **Orphaned Parts Cost**: Incomplete uploads consume storage. Systems set lifecycle rules to auto-abort uploads after 7 days.
 
 ### Key takeaway
-For files > 100MB, use **multipart upload** — parallel, resumable, bypasses size limits. Always
-clean up incomplete uploads (they cost money). Most SDKs do this transparently above a size
-threshold.
+
+Multipart upload enables **fast, reliable uploads of large files** by parallelizing chunk delivery and isolating retry operations to individual failed parts.

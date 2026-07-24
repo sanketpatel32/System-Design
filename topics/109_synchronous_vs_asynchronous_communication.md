@@ -4,60 +4,37 @@
 
 ---
 
-Two styles of communication between services.
+Communication between microservices and system components occurs via **Synchronous** or **Asynchronous** interaction models. Synchronous communication blocks the caller until a response is received, while asynchronous communication decouples the request execution from the caller, allowing the client to continue processing immediately.
 
-### Synchronous
-- Caller **waits** for response before continuing.
-- Examples: HTTP, gRPC (unary), function calls.
-```
-Client -> POST /charge -> Server
-Client <- 200 OK <------- Server  (blocks until response)
-```
+### Communication models architecture
 
-### Asynchronous
-- Caller **doesn't wait**. Sends a message, moves on.
-- Examples: message queues, pub/sub, email, webhooks.
 ```
-Client -> produce message -> [Queue]
-Client <- ack immediately      |
-                                v
-                          [Worker] (later)
+Synchronous Communication (Blocking REST / gRPC)
+Client -------------- Request --------------> Service A
+Client <------------- Response ------------- Service A  (Blocks for duration T)
+
+Asynchronous Communication (Non-Blocking Message Queue)
+Producer ---- Publish Event ----> [ Message Queue ]
+                                         |
+                                         v (Async Consume)
+                                     Consumer
 ```
 
-### Comparison
-| | Sync | Async |
-|--|------|-------|
-| Coupling | Tight (caller needs callee up) | Loose (decoupled) |
-| Latency | Caller waits | Caller moves on |
-| Scalability | Limited by slowest callee | Better (buffer bursts) |
-| Failure | Caller fails with callee | Caller always succeeds |
-| Complexity | Simple to reason | More complex (events, retries) |
-| Feedback | Immediate | Delayed |
+### Protocol comparison & characteristics
 
-### When to use sync
-- Need response now to proceed.
-- Simple request/response.
-- User waiting (UI).
-- Strong consistency required.
+1. **Synchronous Protocols (REST, gRPC, HTTP/2)**: The client initiates a TCP connection and waits for the server to process the request and return an HTTP/gRPC status code and response body.
+2. **Asynchronous Patterns (Message Brokers, Event Streams, Webhooks)**: The publisher pushes a message to an intermediary message broker (RabbitMQ, Apache Kafka, AWS SQS) and immediately receives an acknowledgment. Consumers process messages independently.
 
-### When to use async
-- Long-running operations.
-- Bursty traffic (queues absorb spikes).
-- Fanout (one event → many consumers).
-- Decoupling producers/consumers.
-- Notifications, emails, analytics.
+### Synchronous vs Asynchronous Matrix
 
-### Hybrid pattern
-- Sync for the user-facing path.
-- Async for everything else (notifications, indexing, analytics).
-
-### Example: e-commerce checkout
-```
-Sync:    charge credit card (must know if it succeeded)
-Async:   send confirmation email, update inventory, log analytics
-```
+| Dimension | Synchronous Communication | Asynchronous Communication |
+| :--- | :--- | :--- |
+| **Coupling** | Tight coupling (Caller must know receiver endpoint) | Loose coupling (Publisher knows only the topic/queue) |
+| **Availability Dependency**| Low availability (Failure in downstream service cascades) | High availability (Broker buffers messages if consumer is down)|
+| **Latency Profile** | Cumulative sum of downstream service call latencies | Immediate response (Sub-millisecond broker publish ACK) |
+| **Complexity** | Low (Simple request-response programming model) | Higher (Requires managing brokers, retries, idempotency) |
+| **Primary Use Cases** | User authentication, real-time queries, payment gateway API | Background processing, order fulfillment, logs, notifications |
 
 ### Key takeaway
-Default to **async** for non-critical paths (notifications, indexing, analytics) and **sync**
-for paths where the caller needs the result. The mix is normal — use both, with clear
-boundaries.
+
+Use synchronous communication (REST/gRPC) when immediate response data is required by the caller. Use asynchronous communication (message queues/streams) to decouple services, absorb traffic spikes, and improve system availability.

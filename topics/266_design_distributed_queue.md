@@ -1,46 +1,47 @@
 # Design Distributed Queue
 
-> **Category:** Advanced System Design Problems
+> **Category:** Distributed Systems Infrastructure
 
 ---
 
-Design a distributed queue like SQS.
+A Distributed Message Queue enables asynchronous communication and decoupled data transfer between distributed software components by buffering tasks and messages.
 
-### Requirements
-- **Functional**: enqueue; dequeue; ACK; FIFO option; DLQ.
-- **Non-functional**: durable; HA; at-least-once.
+### System Requirements
+- **Functional Requirements**:
+  - Publish and consume messages asynchronously.
+  - Support multiple consumer groups, message visibility timeouts, and dead-letter queues (DLQ).
+  - Guarantee configurable message delivery semantics.
+- **Non-Functional Requirements**:
+  - High Availability: Uninterrupted message ingestion during broker failures.
+  - Horizontal Scalability: Scale queue partitions and throughput linearly.
+  - Durability: Persist messages to disk to prevent loss before consumer processing.
 
-### Architecture
+### System Architecture
 ```
-[Producer] -> [Queue service] -> [Consumers]
-                 |
-                 v
-              [Storage (DB / log)]
+[ Message Producers ] ---> [ API Gateway / Load Balancer ]
+                                     |
+                                     v
+                        [ Queue Broker Cluster ]
+  +----------------------------------+----------------------------------+
+  |                                  |                                  |
+  v                                  v                                  v
+[ In-Memory Message Index ]   [ Persistent Disk Storage ]    [ In-Flight Visibility Timer ]
+  |                                  |                                  |
+  +----------------------------------+----------------------------------+
+                                     |
+                                     v
+                        [ Consumer Group Workers ]
+                                     | (On Repeated Max Retries)
+                                     v
+                        [ Dead-Letter Queue (DLQ) ]
 ```
 
-### Storage
-- **DB-backed**: rows with `visible_at`, `lock_token`.
-- **Log-based** (Kafka): append-only with consumer offsets.
-
-### Visibility timeout
-- After dequeue: message hidden for N seconds.
-- If not ACKed: becomes visible again.
-
-### At-least-once
-- Messages redelivered until ACK.
-- Consumers must be idempotent.
-
-### FIFO
-- Standard queue: best-effort order, parallel consumers.
-- FIFO queue: strict order, dedup by message ID.
-
-### DLQ
-- After max receive count → move to DLQ.
-
-### HA
-- Replicate queue data.
-- Multiple queue brokers.
+### Delivery Guarantees & Messaging Models
+| Delivery Guarantee | Technical Implementation | Trade-off |
+|---|---|---|
+| **At-Most-Once** | Ack message immediately upon dispatch to consumer | Fast; risk of lost messages if consumer crashes mid-processing. |
+| **At-Least-Once** | Ack message only *after* consumer completes processing | Durable; consumers must be idempotent to handle duplicate deliveries. |
+| **Exactly-Once** | Atomic transaction between consumer ack, storage state, and deduplication ID | Highest overhead; requires end-to-end transactional coordination. |
 
 ### Key takeaway
-Distributed queue = durable storage + visibility timeout + at-least-once + DLQ. Standard
-(parallel) vs FIFO (ordered). Consumers must be idempotent. SQS is the canonical example.
+Distributed message queues decouple producer and consumer systems using persistent storage, visibility timeouts, and dead-letter queues (DLQ), relying on consumer idempotency to support scalable at-least-once delivery.

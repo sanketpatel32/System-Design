@@ -4,47 +4,28 @@
 
 ---
 
-LLD: model a logger framework.
+Object-Oriented Low-Level Design (LLD) for a Logging Framework (like Log4j / SLF4J) supporting configurable log levels, Chain of Responsibility processing, and multi-sink appenders.
 
-### Requirements
-- Log levels (DEBUG, INFO, WARN, ERROR).
-- Multiple sinks (console, file, DB).
-- Async.
-- Formatting.
+### System Requirements & Architecture
+- Log levels: `DEBUG` $< 	ext{INFO} < 	ext{WARN} < 	ext{ERROR}`.
+- Chain of Responsibility pattern to filter logs based on severity.
+- Support multiple log appenders/sinks (Console, File, Database, Remote Socket).
 
-### Classes
+### Chain of Responsibility Diagram
 ```
-class LogSubject:  # abstract
-    log(message)
-
-class LogObserver:  # abstract
-    update(message)
-
-class ConsoleSink(LogObserver): ...
-class FileSink(LogObserver): ...
-class DatabaseSink(LogObserver): ...
-
-class Logger:
-    observers[]
-    log_level
-
-class LogFactory:
-    create_logger(config) -> Logger
-
-class LogManager:
-    get_logger(name) -> Logger  # singleton per name
+[ Log Request ] ---> [ InfoLogger ] ---> [ DebugLogger ] ---> [ ErrorLogger ]
+                          |                   |                    |
+                          v                   v                    v
+                   [ Console Sink ]     [ File Sink ]       [ Database Sink ]
 ```
 
-### Patterns
-- **Observer** (multiple sinks subscribe to log events).
-- **Singleton** (LogManager).
-- **Factory** (create logger).
-- **Chain of responsibility** (log levels).
-
-### Async
-- Queue + worker thread.
-- Don't block caller.
+### Class Model & Responsibilities
+| Class | Pattern Role | Key Methods |
+|---|---|---|
+| `AbstractLogger` | Chain Handler | `setNextLogger()`, `logMessage(level, message)` |
+| `InfoLogger` | Concrete Handler | Handles `INFO` level logs and passes to next logger in chain. |
+| `ErrorLogger` | Concrete Handler | Handles `ERROR` level logs and triggers immediate alerts/sinks. |
+| `LogAppender` | Strategy Sink Interface | `append(formattedMessage)` (Implemented by `ConsoleAppender`, `FileAppender`). |
 
 ### Key takeaway
-Logger LLD = Observer pattern (multiple sinks) + Singleton (LogManager) + Factory. Async via
-queue + worker. Log levels filter what's emitted.
+A logging framework design applies the Chain of Responsibility pattern to filter log severity levels dynamically, decoupling log processing from sink output appenders (`ConsoleAppender`, `FileAppender`).

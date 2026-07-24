@@ -1,50 +1,39 @@
 # Design Spotify
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Spotify: stream music, playlists, recommendations.
+### Overview
+**Spotify** is an audio streaming platform delivering instant, gapless playback of millions of music tracks, podcasts, synced lyrics, and real-time social listening sessions.
 
-### Requirements
-- **Functional**: play music; playlists; recommendations; offline mode.
-- **Non-functional**: low-latency start (1s); massive concurrent streams.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[Client] -> [API] -> [Metadata service]
-                     [Playlist service]
-                     [Recommendation (ML)]
-                              |
-                              v
-                       [Audio CDN]
++---------------+     1. Play Track Request     +-------------------+
+| Client App    | ----------------------------> | API Gateway       |
++---------------+                               +-------------------+
+        |                                                 |
+        | 4. Stream Audio Bytes                           v 2. Fetch Track Metadata & Token
+        |                                       +-------------------+
+        v                                       | Audio API Service |
++-------------------+                           +-------------------+
+| Audio CDN         |                                     |
+| (AES Encrypted    | <-----------------------------------+
+| Ogg Vorbis/AAC)   | 3. Pre-fetch Chunk URLs
++-------------------+
 ```
 
-### Audio storage
-- Songs pre-encoded at multiple bitrates.
-- CDN caches globally.
+### Key Technical Subsystems
 
-### Streaming
-- HTTP range requests for seeking.
-- Buffer ahead for smooth playback.
-- Pre-fetch next track in playlist.
+| Feature | Engineering Strategy |
+|---|---|
+| **Audio Compression** | Encoded in **Ogg Vorbis** (96, 160, 320 kbps) and **AAC** for universal device support. |
+| **Gapless Playback** | Client pre-fetches the first 5 seconds of the *next* track in playlist while current track finishes playing. |
+| **Synced Lyrics** | Real-time WebSocket timestamp sync matching audio track playback position. |
+| **Discover Weekly** | Offline batch calculation using **Collaborative Filtering** and **Word2Vec** audio embedding models. |
 
-### Recommendations
-- Collaborative filtering (users like you).
-- Audio features (tempo, energy).
-- **Discover Weekly**: weekly personalized playlist.
-
-### Offline mode
-- Cache encrypted audio on device.
-- License-checked before play.
-
-### Data model
-```
-tracks (id, title, artist, duration, audio_url)
-playlists (id, user_id, name)
-playlist_tracks (playlist_id, track_id, position)
-```
+### Low-Latency Audio Streaming Pipeline
+Audio files are split into small 5-second encrypted byte ranges. Client buffers audio data locally in a ring buffer to survive transient network drops.
 
 ### Key takeaway
-Spotify = audio CDN + pre-encoded bitrates + recommendation ML. Low-latency start via
-pre-fetching + buffering. Offline mode via encrypted local cache.
+Spotify ensures zero-latency playback through **client-side ring-buffer pre-fetching** of the next track, serving encrypted **Ogg Vorbis** audio streams from edge CDNs.

@@ -1,48 +1,59 @@
 # Design Reddit
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Reddit: subreddits, posts, comments (nested), votes.
+### Overview
+**Reddit** is a network of community forums (subreddits) where users submit content (text, links, images), vote up or down, and participate in nested hierarchical comment threads sorted by real-time ranking algorithms ("Hot", "Top").
 
-### Requirements
-- **Functional**: post to subreddit; comment (nested); vote; rank (hot).
-- **Non-functional**: high read load; eventual consistency OK for votes.
+### Architecture Topology Diagram
 
-### Data model
 ```
-subreddits (id, name)
-posts (id, subreddit_id, user_id, title, content, score, created_at)
-comments (id, post_id, parent_comment_id, user_id, text, score)
-votes (post_or_comment_id, user_id, direction)
-```
-
-### Nested comments
-- **Adjacency list**: `parent_comment_id` (simple, recursive queries).
-- **Materialized path**: `/1/3/7/` (fast subtree queries).
-- **Nested sets**: fast reads, slow writes.
-
-### Ranking (Hot algorithm)
-```
-score = log10(upvotes - downvotes) + seconds_since_epoch / 45000
-```
-- Boosts popular posts.
-- Newer posts get a lift.
-
-### Architecture
-```
-[Client] -> [API] -> [Post service]
-                     [Comment service]
-                     [Vote service]
-                     [Search]
++--------+     1. Submit Post / Vote     +-------------------+
+| Client | ----------------------------> | API Gateway       |
++--------+                               +-------------------+
+    ^                                              |
+    | 5. Fetch Subreddit Feed                      v 2. Write Vote / Post
+    |                                    +-------------------+
+    | <--------------------------------- | Vote Service /    |
+    |                                    | Subreddit Service |
+    |                                    +-------------------+
+    |                                              |
+    v                                              v 3. Async Recalculate Rank
++-------------------+                    +-------------------+
+| Feed Cache        | <----------------- | Real-time Hot     |
+| (Redis Sorted Set)|                    | Score Worker      |
++-------------------+                    +-------------------+
+                                                   | 4. Persist
+                                                   v
+                                         +-------------------+
+                                         | Cassandra /       |
+                                         | PostgreSQL Shards |
+                                         +-------------------+
 ```
 
-### Votes
-- High write volume.
-- Counted in Redis, periodically flushed to DB.
+### Reddit "Hot" Ranking Algorithm
+
+$$S = \log_{10}(z) + \frac{y \cdot t}{45000}$$
+
+Where:
+- $z = \max(|\text{ups} - \text{downs}|, 1)$
+- $y = 1$ if $\text{ups} > \text{downs}$, $-1$ if $\text{ups} < \text{downs}$, $0$ if $\text{ups} = \text{downs}$.
+- $t = \text{submission\_time} - \text{epoch\_start}$.
+
+### Nested Comment Thread Data Representation
+
+| Tree Storage Strategy | Schema Structure | Query Efficiency |
+|---|---|---|
+| **Materialized Path** | `path: "1/4/12/99"` | Fast subtree fetching (`WHERE path LIKE '1/4%'`); path string overhead |
+| **Adjacency List** | `parent_id: "node_12"` | Recursive graph query; slow for deep trees |
+| **Closure Table** | Separate `comment_ancestors` table | Extremely fast depth lookups; write amplification on insert |
+
+### Subreddit Feed Caching via Redis Sorted Sets
+- **Redis Key**: `subreddit:sysadmin:hot`
+- **Data Structure**: **Sorted Set (ZSET)**.
+- **Score**: Calculated "Hot" floating point rank $S$.
+- **Value**: `post_id`.
 
 ### Key takeaway
-Reddit = subreddits + posts + nested comments + vote-based ranking. Use materialized path for
-nested comments. Votes counted in Redis, batched to DB. Hot algorithm balances popularity +
-recency.
+Reddit relies on **Redis Sorted Sets (ZSETs)** to store real-time post ranks derived from time-decayed vote algorithms ($S$), and uses **Materialized Paths** for efficient nested comment thread queries.

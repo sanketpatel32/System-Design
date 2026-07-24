@@ -1,47 +1,53 @@
 # Design Web Crawler
-
 > **Category:** Search and Recommendation Systems
 
 ---
 
-Design a distributed web crawler.
+### Overview
+A **Web Crawler** (e.g., Googlebot) systematically navigates the World Wide Web to discover, download, and index web pages while respecting robot exclusion rules (`robots.txt`) and domain politeness.
 
-### Requirements
-- **Functional**: crawl pages; extract links; store content; respect robots.txt.
-- **Non-functional**: high throughput; politeness; freshness.
+### High-Level Architecture Diagram
 
-### Architecture
 ```
-[URL frontier] -> [Crawler workers] -> [Content store]
-                  [Link extractor] -> [URL frontier]
++------------------+     1. Seed URLs      +-------------------+
+| Seed URL Generator| -------------------> | URL Frontier      |
++------------------+                       | (Priority Queue)  |
+                                           +-------------------+
+                                                     |
+                                                     v 2. Next URL
+                                           +-------------------+
+                                           | DNS Resolver      |
+                                           +-------------------+
+                                                     |
+                                                     v 3. Resolved IP
++------------------+     5. Raw Content    +-------------------+
+| S3 Storage       | <-------------------- | HTML Downloader   |
++------------------+                       +-------------------+
+                                                     |
+                                                     v 4. Extract Links
+                                           +-------------------+
+                                           | Link Extractor &  |
+                                           | Duplicate Filter  |
+                                           +-------------------+
+                                                     | (New Unique URLs)
+                                                     v 6. Push Back
+                                           +-------------------+
+                                           | URL Frontier      |
+                                           +-------------------+
 ```
 
-### URL frontier
-- Priority queue of URLs to crawl.
-- Priorities: freshness, importance, root domain.
-- **Politeness**: per-domain rate limit.
+### URL Frontier Architecture: Politeness & Priority
+The URL Frontier prevents overloading target domains while prioritizing high-importance sites:
 
-### Crawling
-- Fetch HTML.
-- Parse, extract links.
-- Store content for indexing.
-- Add new URLs to frontier.
+```
+Priority Queues (F1, F2, F3) ---> Queue Selector ---> Politeness Queues (B1, B2... per domain) ---> Worker
+```
 
-### Distributed
-- Many workers across machines.
-- URL dedup via hash set (Bloom filter for scale).
-- Frontier shared via queue (Kafka).
-
-### Politeness
-- Respect robots.txt.
-- Rate limit per domain (1 req/sec).
-- Identify with User-Agent.
-- Slow down on 429 / 5xx.
-
-### Freshness
-- Re-crawl periodically.
-- More often for changing pages.
+| Politeness / Priority Feature | Mechanism |
+|---|---|
+| **Politeness Control** | Map each host domain to a dedicated queue; enforce a minimum delay (e.g., 1 sec) between requests to the same domain. |
+| **URL Deduplication** | Maintain a Bloom Filter / Redis Set of all seen URLs to avoid duplicate crawling loops. |
+| **`robots.txt` Parser**| Cache parsed `robots.txt` files per host domain in memory before scheduling downloads. |
 
 ### Key takeaway
-Web crawler = URL frontier (priority + politeness) + distributed workers + content store. Respect
-robots.txt, rate-limit per domain. Bloom filter for URL dedup.
+Design Web Crawlers using a **URL Frontier** equipped with **Politeness Queues** (per-host delay enforcement) and **Bloom Filters** to perform high-throughput, non-disruptive web link discovery.

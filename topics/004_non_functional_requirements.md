@@ -4,33 +4,47 @@
 
 ---
 
-Non-Functional Requirements (NFRs) describe **how** the system must behave — the quality
-attributes that apply across all features.
+Non-Functional Requirements (NFRs) define **how well a system operates**. While functional requirements define specific features, NFRs specify quality attributes, system performance constraints, operational targets, security bounds, and SLA targets.
 
-### The usual suspects
-| NFR | Question | Typical target |
-|-----|----------|----------------|
-| Scalability | Can it handle 10x traffic? | Horizontal scale |
-| Availability | Uptime %? | 99.9% / 99.99% |
-| Latency | Response time? | p99 < 200ms |
-| Throughput | Requests/sec? | 10k RPS |
-| Consistency | Stale reads OK? | Strong / eventual |
-| Durability | Data loss tolerance? | 99.999999999% |
-| Security | Who can access what? | TLS, auth, RBAC |
-| Maintainability | How easy to change? | Modular, observable |
-| Cost | $/user budget? | Pay per use |
+### The Non-Functional Requirement Trade-Off Spectrum
 
-### Trade-offs are unavoidable
-You **cannot** have all of these at once:
-- Strong consistency **vs** high availability (CAP).
-- Low latency **vs** low cost (cache everything = expensive).
-- Strict isolation **vs** throughput (locks reduce concurrency).
+```
++-------------------------------------------------------------------------+
+|                  NON-FUNCTIONAL REQUIREMENT MATRIX                      |
++-------------------------------------------------------------------------+
+|                                                                         |
+|         [ Latency ] <---------- Trade-off ----------> [ Consistency ]   |
+|     Fast response (<100ms)                       Strong ACID Guarantees |
+|                                                                         |
+|      [ Availability ] <-------- Trade-off ----------> [ Partitioning ]  |
+|     High Uptime (99.99%)                          Distributed Split     |
+|                                                                         |
+|         [ Throughput ] <------- Trade-off ----------> [ Resource Cost ] |
+|     100k QPS Processing                          Cloud Spending         |
+|                                                                         |
++-------------------------------------------------------------------------+
+```
 
-### How to surface them in interview
-After listing NFRs, **call out the trade-offs explicitly**:
-> "We prioritize low read-latency, so we'll accept eventual consistency on the feed (a new post
-> may take 1-2s to appear)."
+### Core NFR Categories & SLA Definitions
+
+| Metric / Quality Attribute | Definition | Typical Industry SLA / Standard Target |
+| :--- | :--- | :--- |
+| **Availability** | Percentage of operational time system responds to requests. | 99.99% ("Four Nines" = 52.6 min downtime/yr) |
+| **Latency** | Time taken to process a single request end-to-end. | p99 < 200ms, p50 < 20ms |
+| **Throughput** | Volume of work processed per unit of time. | Read: 50,000 QPS, Write: 5,000 QPS |
+| **Durability** | Guarantee that saved data will not be lost or corrupted. | 99.999999999% (11 Nines for S3 storage) |
+| **Fault Tolerance** | Ability to continue functioning despite component failures. | Zero downtime during single AZ failure |
+| **Security & Compliance**| Protection of sensitive data in transit and at rest. | TLS 1.3, AES-256, GDPR / SOC2 compliance |
+
+### The CAP & PACELC Connection
+Non-functional requirements cannot all be maximized simultaneously. Architectural tradeoffs must be explicitly engineered:
+- **CAP Theorem**: In the presence of a network partition (**P**), a system must trade off between Consistency (**C**) and Availability (**A**).
+- **PACELC Theorem**: **If** there is a Partition (**P**), choose Availability (**A**) vs Consistency (**C**); **Else** (**E**), choose Latency (**L**) vs Consistency (**C**).
+
+### Quantifying NFRs in System Design
+- Avoid vague statements like "the system must be fast and highly available."
+- Use quantifiable metrics: "p99 read latency under 50ms at 20,000 QPS with 99.99% availability."
 
 ### Key takeaway
-NFRs drive **every architectural decision**. Get them on the whiteboard first — they are the
-constraints you optimize against.
+
+Non-Functional Requirements determine the **operational success and scalability bounds** of an architecture. Always define measurable metrics (p99 latency, nines of availability, data durability) and explicitly state the engineering tradeoffs accepted to achieve them.

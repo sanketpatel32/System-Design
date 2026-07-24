@@ -4,48 +4,52 @@
 
 ---
 
-Fanout-on-read (pull model) = **when a user opens their feed, fetch and merge recent posts
-from all their followees on the fly.** Writes are O(1).
+**Fanout on Read** (also known as the **Pull Model**) is an architecture where writing new content is lightweight ($O(1)$ operation) — content is stored once in the author's post table. When a recipient opens their feed, the system dynamically queries, aggregates, and sorts posts from all accounts the recipient follows at read time.
 
-### How it works
+### Architecture flow
+
 ```
-1. Bob opens app.
-2. System fetches Bob's followees (say 500 users).
-3. Fetch each followee's recent posts (from cache/DB).
-4. Merge, rank, paginate.
-5. Return feed.
+[Author Writes Post] --------> [Author Post Store] (Stored Once)
+
+[Follower Requests Timeline]
+            |
+            v
++-----------------------+
+|  Feed Service Router  |
++-----------------------+
+            |
+            +---> 1. Fetch list of followees (Graph DB)
+            |
+            +---> 2. Query recent posts for all followees (Scatter-Gather)
+            |
+            +---> 3. Merge-Sort results by timestamp in memory
+            |
+            v
+[Rendered Timeline Delivered to Client]
 ```
 
-### Pros
-- ✅ **Cheap writes** — just store the post once.
-- ✅ **No celebrity problem** — Bieber's tweets pulled, not pushed.
-- ✅ **Fresh** — no pre-computed stale inbox.
-- ✅ **Lower storage** — posts stored once.
+### Core mechanics
 
-### Cons
-- ❌ **Slow reads** — must fan out to N followees.
-- ❌ **Doesn't scale for users following many accounts** (or many celebrities).
-- ❌ **Cache misses hurt** — must fetch from DB.
-- ❌ **Ranking is expensive** at read time.
+1. **Lightweight Write**: When an author posts, the payload is inserted once into the author's primary post table. No downstream timeline writes occur.
+2. **Read-Time Scatter-Gather**: When a follower requests their feed:
+   - System retrieves the list of people they follow ($K$ followees).
+   - System issues concurrent query requests to fetch recent posts for each followee.
+   - System merges and sorts the $K$ streams in memory to return the top $N$ recent posts.
 
-### Optimization
-- **Cache followees' recent posts** in Redis (last 100 each).
-- **Parallelize fanout** (N concurrent fetches).
-- **Limit fanout depth** (only fetch from last 200 followees who posted).
-- **Pre-compute** for users with few followees (hybrid).
+### Operational trade-offs
 
-### When to use
-- **Celebrity accounts** — their posts get pulled into millions of feeds.
-- **Read-light users** — not worth pre-computing for.
-- **Real-time / chronological** — no ranking needed.
+| Characteristic | Evaluation | Impact |
+| :--- | :--- | :--- |
+| **Write Performance** | Extremely Fast ($O(1)$ complexity) | Instant post confirmation regardless of author follower count |
+| **Read Latency** | High Latency ($O(K \log K)$ merge) | Opening feeds requires multithreaded network queries across databases |
+| **Resource Allocation**| Heavy Read CPU & Network IO | Aggregating feeds consumes CPU resources during active read traffic |
+| **Storage Efficiency** | Maximum Efficiency | Data is stored once without redundancy |
 
-### Hybrid (the answer)
-Most real systems combine:
-- Normal users → **fanout-on-write**.
-- Celebrities → **fanout-on-read**.
-- Reader's feed = pre-built inbox + celebrity tweets pulled at read time.
+### Optimizing Fanout on Read
+
+- **In-Memory Caching**: Cache recent posts of followees in Redis to avoid hitting persistent disk stores during scatter-gather queries.
+- **Query Bounds**: Limit scatter-gather queries to active accounts updated within the past 7 days.
 
 ### Key takeaway
-Fanout-on-read is the **escape hatch** for celebrity-scale. Reads are slower (must fan out to
-followees) but writes are cheap. Combine with fanout-on-write for the hybrid that scales
-everywhere.
+
+Fanout on Read optimizes write performance and eliminates write amplification, making it suitable for systems with high-follower accounts or lower read-to-write ratios. However, it requires robust read caching to mitigate scatter-gather read latency.

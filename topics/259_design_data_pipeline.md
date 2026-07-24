@@ -1,48 +1,48 @@
 # Design Data Pipeline
 
-> **Category:** Data Intensive Systems
+> **Category:** Analytics and Data Pipelines
 
 ---
 
-Design a data pipeline: move data from sources to destinations with transformation.
+A Data Pipeline transports data from source systems to downstream analytics data stores, applying transformations, enrichments, and validations along the way.
 
-### Requirements
-- **Functional**: extract from sources; transform; load to warehouse.
-- **Non-functional**: reliable; schedulable; observable.
+### System Requirements
+- **Functional Requirements**:
+  - Support both real-time streaming and scheduled batch data movement.
+  - Provide schema evolution management and data quality validation.
+  - Guarantee exactly-once data processing semantics.
+- **Non-Functional Requirements**:
+  - Scalability: Process petabytes of structured and unstructured data.
+  - Fault Tolerance: Auto-recover from node worker crashes without data duplication or loss.
+  - Extensibility: Modular architecture supporting plug-and-play sources and sinks.
 
-### Architecture
+### System Architecture (Lambda vs Kappa)
 ```
-[Sources (DBs, APIs, logs)]
-        |
-        v
-   [Extractors] -> [Kafka] -> [Transformers] -> [Loaders] -> [Warehouse]
-                                                                   |
-                                                                   v
-                                                              [Dashboards]
-                                                              [ML models]
+                                 [ Data Sources ]
+                                        |
+                                        v
+                            [ Distributed Log (Kafka) ]
+                                        |
+      +---------------------------------+---------------------------------+
+      | (Speed Layer)                                                     | (Batch Layer)
+      v                                                                   v
+[ Real-Time Stream Processor ]                                      [ Batch Storage (S3 / HDFS) ]
+(Apache Flink / Spark Streaming)                                    (Apache Spark / Delta Lake)
+      |                                                                   |
+      v                                                                   v
+[ Real-Time Views (Redis/HBase) ]                                   [ Batch Views (Snowflake) ]
+      |                                                                   |
+      +---------------------------------+---------------------------------+
+                                        |
+                                        v
+                             [ Unified Query Layer ]
 ```
 
-### Stages
-- **Extract**: pull from DB (CDC), API, files.
-- **Transform**: clean, enrich, aggregate.
-- **Load**: write to warehouse.
-
-### Tools
-- **Airflow**: orchestrates DAGs.
-- **dbt**: SQL transforms.
-- **Kafka Connect**: source/sink connectors.
-- **Spark / Flink**: large-scale transforms.
-
-### Patterns
-- **Batch**: hourly / daily runs.
-- **Micro-batch**: every few minutes (Spark).
-- **Streaming**: continuous (Flink).
-
-### Quality
-- Schema validation.
-- Data tests (great_expectations).
-- Reconciliation counts.
+### Architectural Framework Comparison
+| Architecture | Data Flow Model | Primary Frameworks | Pros & Cons |
+|---|---|---|---|
+| **Lambda Architecture** | Dual path: Speed layer (streaming) + Batch layer (re-indexing) | Storm/Flink + Hadoop/Spark | Accurate batch layer fixes stream drift; complex code duplication across two layers. |
+| **Kappa Architecture** | Single stream processing path for both real-time and historical data | Apache Flink / Kafka Streams | Unified codebase; relies on long retention in message log for historical reprocessing. |
 
 ### Key takeaway
-Data pipeline = extract → transform → load (ETL). Orchestrate with Airflow. Stream with Kafka +
-Flink for real-time. Validate data quality. Modern: ELT with dbt transforms in the warehouse.
+Modern data pipelines favor Kappa architectures built on durable log stores (Kafka) and stream processors (Flink), eliminating dual-codebase maintenance while ensuring exactly-once processing guarantees.

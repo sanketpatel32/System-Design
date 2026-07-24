@@ -1,49 +1,48 @@
 # Design QR Code Generator
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design a service that generates QR codes from input (URL, text, vCard).
+### Overview
+A **QR Code Generator System** converts URLs, text strings, or contact data into 2D matrix barcode images (PNG/SVG) and serves them with minimal latency, supporting customization (colors, logos) and click analytics.
 
-### Requirements
-- **Functional**: input text/URL → QR image; download PNG/SVG; analytics.
-- **Non-functional**: low-latency generation; high availability.
+### Architecture Topology
 
-### Architecture
 ```
-[Client] -> [API] -> [QR library (qrcode)] -> [S3 (cache)] -> return
-                                                    |
-                                                    v
-                                              [CDN]
++--------+     1. POST /api/v1/qr/generate     +-------------------+
+| Client | -----------------------------------> | API Gateway       |
++--------+                                      +-------------------+
+    ^                                                     |
+    |                                                     v 2. Check Cache
+    |                                           +-------------------+       Hit       +---------------+
+    |                                           | Redis Image Cache | --------------> | Fast Image    |
+    |                                           +-------------------+                 | CDN Delivery  |
+    |                                                     | Miss                      +---------------+
+    |                                                     v
+    |                                           +-------------------+       Save      +---------------+
+    | <--- 4. Image Binary / S3 CDN Link ------ | QR Generator Engine| -------------> | AWS S3 Bucket |
+    |                                           +-------------------+                 +---------------+
 ```
 
-### QR generation
-- Library: `qrcode` (Python), `zxing` (Java), `go-qrcode`.
-- CPU-bound (encoding + drawing).
-- For given input, output is **deterministic** → cacheable.
+### Core API Interface
 
-### Caching
-- Hash input → key.
-- Cache generated image in S3/CDN.
-- Same input → instant response.
+| Endpoint | Method | Parameters | Response |
+|---|---|---|---|
+| `/api/v1/qr/generate` | `POST` | `{"data": "https://...", "size": 300, "format": "png", "error_correction": "M"}` | `200 OK` -> Image binary or CDN URL |
+| `/api/v1/qr/dynamic` | `POST` | `{"target_url": "https://..."}` | `201 Created` -> Redirect QR code mapping |
 
-### APIs
-- `POST /qr {data, size, format}` → image or URL.
-- `GET /qr/{id}` → cached image.
+### Error Correction Level Matrix
 
-### Customization
-- Logo overlay, color, error correction level.
-- Each variant = different cache entry.
+| Level | Recovery Capacity | Trade-off | Use Case |
+|---|---|---|---|
+| **L (Low)** | ~7% damage restored | Smallest matrix grid size | Low-density screen display |
+| **M (Medium)** | ~15% damage restored | Standard balance | Standard URLs on posters |
+| **Q (Quartile)**| ~25% damage restored | Higher grid density | Outdoor print media |
+| **H (High)** | ~30% damage restored | Densest grid; allows embedded logos | Branding with logo overlay in center |
 
-### Rate limiting
-- Per IP/user to prevent abuse (QR generation is CPU-bound).
-
-### Scaling
-- Stateless API → clone freely.
-- CPU-bound → autoscale on CPU.
-- Cache aggressively (deterministic output).
+### Static vs Dynamic QR Codes
+- **Static QR Code**: Direct payload (URL/text) embedded directly into the matrix. Immutable once printed.
+- **Dynamic QR Code**: Matrix contains a short URL proxy (e.g., `https://qr.link/a9X2`). Server redirects to dynamic destination URL, allowing real-time target changes and click analytics tracking.
 
 ### Key takeaway
-QR generator = CPU-bound library + cache by input hash + CDN. Since output is deterministic,
-cache hit rate can approach 100% after warm-up. Stateless, scales by cloning.
+Design QR Code generators using **Dynamic Short URLs** to allow post-print target modification and analytics tracking. Offload rendering CPU overhead by caching generated matrix images in **Redis** and **CDN**.

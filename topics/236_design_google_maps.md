@@ -1,34 +1,44 @@
 # Design Google Maps
-
 > **Category:** Location Based Systems
 
 ---
 
-Design Google Maps: routing, search, traffic, POI.
+### Overview
+**Google Maps** is a digital mapping and navigation service providing vector map tile rendering, geocoding, real-time traffic monitoring, and A* / Dijkstra shortest-path route planning.
 
-### Requirements
-- **Functional**: search places; route between points; ETA with traffic; turn-by-turn nav.
-- **Non-functional**: low-latency routing; global scale.
+### Architecture Topology Diagram
 
-### Components
-- **Maps tiles**: rendered map images (CDN).
-- **Places DB**: POI, addresses (Postgres / ES).
-- **Routing engine**: Dijkstra / A* on road graph.
-- **Traffic**: real-time + historical.
+```
++--------+     1. GET /v1/tile?x=10&y=20&z=15     +-------------------+
+| Client | -------------------------------------> | Map Tile Gateway  |
++--------+                                        +-------------------+
+    ^                                                       |
+    | 4. Vector Tile Protobuf Payload                       v 2. Fetch Map Tile
+    |                                             +-------------------+       Hit       +---------------+
+    | <------------------------------------------ | Redis / S3 Tile   | --------------> | CDN Delivery  |
+    |                                             | Cache             |                 +---------------+
+    |                                             +-------------------+
+    | 5. GET /v1/route?origin=A&dest=B                      | Miss
+    v                                                       v 3. Render Vector Tile
++-------------------+                             +-------------------+
+| Routing Service   |                             | Tile Renderer     |
+| (Graph Engine)    |                             +-------------------+
++-------------------+
+```
 
-### Routing
-- Road network as graph (nodes = intersections, edges = roads).
-- A* with heuristic (geographic distance).
-- Traffic weights edges (real-time).
+### System Subsystems & Algorithms
 
-### ETA
-- Sum of edge traversal times (factoring traffic).
-- ML for prediction accuracy.
+| Subsystem | Responsibilities & Algorithms |
+|---|---|
+| **Map Tile Engine** | Renders static/vector map tiles at zoom levels $Z_0$ to $Z_{22}$ cached in CDN. |
+| **Geocoding Service**| Translates street address strings into (`lat, lon`) pairs via inverted index. |
+| **Routing Engine** | Shortest path routing over road network graphs using **Contraction Hierarchies / A* Search**. |
+| **Traffic Engine** | Aggregates real-time GPS telemetry from active driver devices to compute edge weights on road graphs. |
 
-### Tiles
-- Pre-rendered at multiple zoom levels.
-- CDN caches per region.
+### Road Network Graph Model
+Roads are modeled as a directed weighted graph:
+- **Vertices (Nodes)**: Intersections (`lat, lon`).
+- **Edges**: Road segments with dynamic weights ($W = \frac{\text{Distance}}{\text{Real-time Speed}}$).
 
 ### Key takeaway
-Google Maps = road graph + A* routing + traffic weighting + map tiles (CDN) + places DB.
-Routing is graph traversal; traffic makes edges dynamic. Tiles pre-rendered for fast pan/zoom.
+Google Maps splits operations into **cached vector map tiles (S3/CDN)** for rendering and **Contraction Hierarchies (A* graph search)** on dynamic road network graphs for route planning.

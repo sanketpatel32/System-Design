@@ -4,60 +4,36 @@
 
 ---
 
-Monitoring = **continuously watching your system's behavior** to detect issues before users
-notice.
+Monitoring is the continuous process of **collecting, aggregating, and analyzing system metrics, logs, and traces** to assess operational health and detect anomalies proactively.
 
-### Why
-- Catch problems before users do.
-- Debug incidents.
-- Track SLOs.
-- Plan capacity.
+### Integrated Observability Triad
 
-### What to monitor
-- **Infrastructure**: CPU, memory, disk, network.
-- **Application**: request rate, latency, error rate.
-- **Dependencies**: DB, cache, queue health.
-- **Business**: signups, revenue, active users.
+```
+                                  +-------------------+
+                                  | Observability     |
+                                  +-------------------+
+                                            |
+        +-----------------------------------+-----------------------------------+
+        |                                   |                                   |
+        v                                   v                                   v
++---------------+                   +---------------+                   +---------------+
+| Metrics       |                   | Logs          |                   | Traces        |
+| (Numerical    |                   | (Text Event   |                   | (Request Path |
+| Time-Series)  |                   | Records)      |                   | Waterfalls)   |
++---------------+                   +---------------+                   +---------------+
+```
 
-### Layers
-1. **Black-box**: external probe (is the homepage up?).
-2. **White-box**: internal metrics (request rate, latency).
-3. **Logs**: detailed events.
-4. **Traces**: per-request flow.
+### Black-Box vs White-Box Monitoring
 
-### Approaches
-| Method | What |
-|--------|------|
-| **USE** | Utilization, Saturation, Errors (resources) |
-| **RED** | Rate, Errors, Duration (services) |
-| **Four Golden Signals** | Latency, Traffic, Errors, Saturation |
+| Type | Perspective | Data Source | Detects | Example Tools |
+| :--- | :--- | :--- | :--- | :--- |
+| **Black-Box Monitoring** | External user perspective | Synthetic HTTP Pings from outside network | Outages, DNS drops, TLS expiry | Pingdom, Datadog Synthetics |
+| **White-Box Monitoring** | Internal system perspective| Internal JMX / Prometheus `/metrics` | CPU spikes, DB pool limits, GC pauses | Prometheus, Grafana |
 
-### Dashboards
-- **Service overview**: RED metrics per service.
-- **SLO dashboard**: error budget burn-down.
-- **Dependency health**: DB, cache, queue.
-- **Business KPIs**: signup rate, revenue.
+### Observability Best Practices
 
-### Tools
-- **Prometheus + Grafana** (open source, popular).
-- **Datadog, New Relic** (commercial).
-- **CloudWatch, Stackdriver** (cloud-native).
-
-### Alerting
-- Alert on **user-facing symptoms** (high error rate, latency).
-- Don't alert on causes (CPU > 80% — might be fine).
-- Page on SLO burn-rate; warn on trends.
-
-### Synthetic monitoring
-- Probes that simulate user behavior ("open app, add to cart, checkout").
-- Detect issues before real users hit them.
-- Run from multiple geo locations.
-
-### Real user monitoring (RUM)
-- Track actual user experiences (page load time, errors).
-- Capture in browser / app.
+- **Correlate the Triad**: Link logs, metrics, and traces using a shared `trace_id` so engineers can click from a Grafana metric latency spike straight to corresponding microservice error logs.
 
 ### Key takeaway
-Monitor at every layer: infrastructure, app, dependencies, business. Use **RED/USE/Golden
-Signals** as frameworks. Alert on symptoms (error rate, latency), not causes. Combine black-box
-(synthetic) and white-box (internal metrics) views.
+
+Combine **white-box and black-box monitoring across metrics, logs, and traces** to gain complete internal and external visibility into system health.

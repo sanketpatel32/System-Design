@@ -4,48 +4,39 @@
 
 ---
 
-LLD: model elevators in a building.
+Object-Oriented Low-Level Design (LLD) for a Multi-Elevator Control System managing elevator dispatching, floor requests, internal buttons, and door safety logic across a high-rise building.
 
-### Requirements
-- Multiple elevators, floors.
-- Request elevator (up/down).
-- Internal requests (floor buttons).
-- Dispatch algorithm.
+### System Requirements & State Model
+- Coordinate multiple elevator cars across $N$ floors.
+- Process internal floor selection buttons and external hall call buttons (Up/Down).
+- Efficient elevator dispatching algorithm (SCAN / LOOK / Destination Dispatch).
 
-### Classes
+### System Component Diagram
 ```
-class Elevator:
-    id
-    current_floor
-    direction  # UP, DOWN, IDLE
-    state  # MOVING, DOOR_OPEN, DOOR_CLOSED
-    requests[]
-
-class ElevatorSystem:
-    elevators[]
-
-class Request:
-    source_floor
-    destination_floor
-    direction
-
-class Dispatcher:
-    assign(request) -> elevator
-
-# Enums
-class Direction: UP, DOWN, IDLE
-class ElevatorState: MOVING, DOOR_OPEN, DOOR_CLOSED
+[ External Hall Panel (Up/Down) ] ---> [ Elevator Dispatcher Controller ]
+                                                 |
+                       +-------------------------+-------------------------+
+                       |                                                   |
+                       v                                                   v
+            [ Elevator Car 1 ]                                  [ Elevator Car 2 ]
+            (State: MOVING_UP)                                  (State: IDLE)
+            +-> Internal Panel                                  +-> Internal Panel
+            +-> Door Mechanism                                  +-> Door Mechanism
+            +-> Motor Control                                   +-> Motor Control
 ```
 
-### Dispatch algorithms
-- **Simple**: nearest elevator.
-- **SCAN** (elevator algorithm): go in one direction, then reverse.
-- **Look**: SCAN with reversal when no more requests ahead.
+### Class Responsibilities & Dispatch Strategies
+| Class | Purpose | Key Attributes / Methods |
+|---|---|---|
+| `ElevatorController` | Coordinates elevator dispatch algorithms | `dispatchCar(hallRequest)`, `cars: List` |
+| `ElevatorCar` | Represents single elevator state | `currentFloor`, `direction`, `state`, `move()`, `openDoor()` |
+| `HallButton` | External floor button (UP/DOWN) | `floor`, `direction`, `press()` |
+| `InternalButton` | Inside car floor destination button | `destinationFloor`, `press()` |
 
-### Patterns
-- **Strategy** for dispatch algorithm.
-- **Observer** for state changes (notify UI).
+| Dispatch Algorithm | Execution Logic | Use Case |
+|---|---|---|
+| **SCAN (Elevator Algo)** | Moves continuous direction servicing all calls in path before reversing | Standard building traffic. |
+| **Destination Dispatch**| User inputs destination floor before entering car; groups users by floor | High-rise office towers during peak morning rush. |
 
 ### Key takeaway
-Elevator LLD = Elevator + ElevatorSystem + Dispatcher + Request classes. Strategy pattern for
-dispatch (SCAN, Look, nearest). State machine for elevator (MOVING / DOOR_OPEN).
+Elevator design encapsulates state machines inside `ElevatorCar` objects while delegating scheduling optimization to an external `ElevatorController` using the SCAN or Destination Dispatch algorithms.

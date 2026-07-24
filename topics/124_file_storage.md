@@ -4,55 +4,53 @@
 
 ---
 
-File storage = **a hierarchical filesystem** (directories and files) accessed via protocols
-like NFS, SMB, or POSIX.
+File storage presents data in a **hierarchical tree structure of folders and files**, accessed through standard POSIX file system interfaces over networks (e.g., NFS, SMB/CIFS).
 
-### How it works
+### Architecture Overview
+
+File storage abstracts disk blocks into human-readable paths with directory hierarchies, metadata attributes (permissions, timestamps, file size), and file locks.
+
 ```
-/shared/
-  docs/
-    report.pdf
-    notes.txt
-  images/
-    logo.png
++-----------------------------------------------------------------------------------+
+|                            Client Application / OS                                |
++-----------------------------------------------------------------------------------+
+                                          | POSIX (open, read, write, close)
+                                          v
++-----------------------------------------------------------------------------------+
+|                        Network File Protocol (NFS / SMB)                          |
++-----------------------------------------------------------------------------------+
+                                          |
+                        +-----------------+-----------------+
+                        |                                   |
+                        v                                   v
+             +---------------------+             +---------------------+
+             | Metadata Server     |             | Data Storage Server |
+             | (Inodes, Tree Path) |             | (File Payloads)     |
+             +---------------------+             +---------------------+
 ```
-Files organized in a tree of folders. Network protocols (NFS, SMB) let multiple servers mount
-the same filesystem.
 
-### Properties
-- **Hierarchical**: directories contain files and subdirectories.
-- **POSIX semantics**: permissions, locks, atomic rename.
-- **Shared access**: multiple clients mount same volume.
-- **Block-based underneath**: typically backed by a SAN or NAS.
+### Technical Attributes & API Capabilities
 
-### Use cases
-- Home directories.
-- Shared configuration.
-- Legacy enterprise apps expecting a filesystem.
-- CMS media folders.
+- **Hierarchical Namespace**: Files are referenced via absolute path paths (e.g., `/var/log/app/output.log`).
+- **File Locking**: Supports shared and exclusive locks (`flock`) to prevent concurrent write corruption.
+- **Shared Access**: Multiple compute nodes can mount the same file system concurrently.
 
-### Pros
-- ✅ Familiar (every OS has one).
-- ✅ POSIX semantics (locking, atomic rename).
-- ✅ Good for small files and structured data.
+### Storage System Matrix
 
-### Cons
-- ❌ **Hard to scale**: single namespace, metadata bottleneck.
-- ❌ **Single region** typically.
-- ❌ **Metadata overhead** for billions of small files.
-- ❌ **Performance** degrades at scale.
+| Dimension | File Storage | Block Storage | Object Storage |
+| :--- | :--- | :--- | :--- |
+| **Data Organization** | Hierarchical Tree | Raw Fixed Blocks | Flat Namespace |
+| **Access Protocol** | NFS, SMB/CIFS, POSIX | iSCSI, Fibre Channel, NVMe | HTTP REST (GET, PUT, DELETE) |
+| **Latency** | Low (Milliseconds) | Ultra-Low (Sub-millisecond) | Medium (Tens of ms) |
+| **Scalability** | Moderate (PB Scale) | Fixed Volume Capacity | Massive (EB Scale) |
+| **Best For** | Shared App Files, Legacy Apps | Database Data Files, VM Disks | Unstructured Media, Data Lakes |
 
-### Common implementations
-- **NFS** (Linux, traditional).
-- **SMB / CIFS** (Windows).
-- **Amazon EFS** (managed NFS).
-- **Azure Files**.
+### System Design Trade-offs
 
-### When NOT to use
-- Massive scale (petabytes, billions of objects) → object storage.
-- Need geographic distribution → object storage + CDN.
-- Very high throughput → block storage + custom app.
+- ✅ **POSIX Compatibility**: Legacy software works out-of-the-box without rewriting storage code.
+- ✅ **Shared Access**: Ideal for multi-server workloads needing simultaneous read/write to shared directories.
+- ❌ **Scalability Limits**: Heavy directory traversal overhead and lock contention slow down operations at millions of files.
 
 ### Key takeaway
-File storage is the **familiar hierarchical model**, great for shared folders and legacy apps.
-Don't use it for internet-scale storage — object storage (S3) scales better.
+
+File storage provides **POSIX-compliant shared access with hierarchical paths**. It is ideal for shared application state, legacy enterprise migrations, and content management systems, but scales less efficiently than object storage for billions of files.

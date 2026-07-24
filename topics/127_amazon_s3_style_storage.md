@@ -4,53 +4,53 @@
 
 ---
 
-S3 (Simple Storage Service) is AWS's object storage, the **de facto standard** for cloud
-object storage. Other clouds have equivalents (GCS, Azure Blob) with similar APIs.
+Amazon S3-style storage represents distributed object storage systems engineered for **11 nines (99.999999999%) of data durability**, high availability, and strong read-after-write consistency over global HTTP endpoints.
 
-### Core operations
-| Operation | What |
-|-----------|------|
-| `PutObject` | Upload an object |
-| `GetObject` | Download |
-| `DeleteObject` | Remove |
-| `ListObjects` | List keys with prefix |
-| `CopyObject` | Server-side copy |
-| `HeadObject` | Get metadata only |
+### Distributed System Architecture
 
-### Buckets and keys
-- **Bucket**: top-level container, globally unique name.
-- **Key**: object's path within bucket (`photos/cat.jpg`).
-- **Region**: bucket lives in one region (replicated across AZs within).
+S3 systems separate request routing, index/metadata databases, and storage nodes.
 
-### URL styles
-- Path-style: `https://s3.amazonaws.com/bucket/key`
-- Virtual-hosted: `https://bucket.s3.amazonaws.com/key`
+```
++-----------------------------------------------------------------------------------+
+|                                 S3 Client Request                                 |
++-----------------------------------------------------------------------------------+
+                                          | HTTPS Request (AWS Signature v4)
+                                          v
++-----------------------------------------------------------------------------------+
+|                             Request Routing Gateway                               |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                |                                                   |
+                v                                                   v
+    +-----------------------+                           +-----------------------+
+    | Metadata Storage      |                           | Data Placement Engine |
+    | (Strong Consistency)  |                           | Erasure Coding (8+4)  |
+    +-----------------------+                           +-----------------------+
+                |                                                   |
+                v                                                   v
+    +-----------------------+                           +-----------------------+
+    | Distributed KV Store  |                           | Physical Disks/Racks  |
+    +-----------------------+                           +-----------------------+
+```
 
-### Permissions
-- **Bucket policies** (JSON): who can do what.
-- **IAM policies**: per-user / role.
-- **ACLs**: legacy per-object.
-- **Pre-signed URLs**: time-limited direct access.
+### Storage Classes & Lifecycle Management
 
-### Features
-- **Versioning**: every save creates a new version.
-- **Lifecycle rules**: move to IA/Glacier, expire old.
-- **Encryption**: SSE-S3 (managed), SSE-KMS (custom keys), CSE (client).
-- **CORS** for browser uploads.
-- **Events**: notify Lambda/SQS on PUT.
-- **Transfer Acceleration**: fast global uploads via CloudFront edge.
-- **Select / Glacier Select**: query within objects.
+S3 systems optimize cost by offering automated transitions between storage tiers based on access frequency.
 
-### Performance
-- Single PUT: 5GB max. Use multipart for larger.
-- Latency: tens of ms.
-- Throughput: parallelize requests.
-- **Prefix performance**: historically limited per-prefix; partitioned automatically now.
+| Storage Class | First-Byte Latency | Minimum Duration | Durability | Access Pattern |
+| :--- | :--- | :--- | :--- | :--- |
+| **S3 Standard** | Milliseconds | None | 99.999999999% | Active, frequently accessed media |
+| **S3 Infrequent Access**| Milliseconds | 30 Days | 99.999999999% | Backups, disaster recovery assets |
+| **S3 Glacier Flexible** | Minutes - Hours | 90 Days | 99.999999999% | Historical archives |
+| **S3 Glacier Deep Archive**| 12 - 48 Hours | 180 Days | 99.999999999% | Long-term compliance logs |
 
-### Multi-region
-- **Cross-region replication**: copy to another region for DR.
-- **CloudFront in front**: cache globally.
+### Architectural Deep-Dive & Performance Optimization
+
+- **Consistent Hashing & Prefix Sharding**: Partitioning key spaces across storage buckets allows handling 5,500 GET and 3,500 PUT requests per second per prefix.
+- **Erasure Coding (e.g., 8+4 scheme)**: Data payload is split into 8 data blocks and 4 parity blocks distributed across failure domains. The system withstands loss of up to 4 nodes while storing only 1.5x payload size.
+- **Byte-Range Fetches**: Clients issue `Range: bytes=0-1048575` headers to read specific file sections in parallel.
 
 ### Key takeaway
-S3 is the **standard object store**. Master buckets/keys, pre-signed URLs, lifecycle rules,
-versioning, and event notifications. Pair with CloudFront for global low-latency reads.
+
+S3-style storage provides **ultra-durable, strongly-consistent storage** optimized through erasure coding, automated tiering, and prefix-level horizontal partitioning.

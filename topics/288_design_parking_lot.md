@@ -4,55 +4,40 @@
 
 ---
 
-LLD: model a parking lot (classes, relationships).
+Object-Oriented Low-Level Design (LLD) for a Multi-Floor Parking Lot management system supporting diverse vehicle types, parking spot allocation algorithms, and payment processing gates.
 
-### Requirements
-- Multiple floors, spots, vehicles.
-- Spot types: motorcycle, car, truck.
-- Park, unpark, calculate fee.
+### System Requirements & Class Model
+- Support vehicle types: `Motorcycle`, `Car`, `Truck`.
+- Support spot types: `Compact`, `Large`, `Handicapped`, `MotorcycleSpot`.
+- Automatic assignment of nearest available spot to entry gate.
+- Fee calculation based on vehicle type and duration.
 
-### Classes
+### LLD Class Diagram
 ```
-class Vehicle:
-    license_plate
-    type  # MOTORCYCLE, CAR, TRUCK
-
-class ParkingSpot:
-    id
-    type
-    is_free
-    vehicle
-
-class ParkingFloor:
-    id
-    spots[]
-
-class ParkingLot:
-    floors[]
-
-class Ticket:
-    id
-    vehicle
-    spot
-    entry_time
-
-class FeeStrategy:
-    calculate_fee(ticket) -> money
-
-# Enums
-class VehicleType: MOTORCYCLE, CAR, TRUCK
-class SpotType: MOTORCYCLE, COMPACT, LARGE
++------------------+          +------------------+          +------------------+
+|    ParkingLot    | 1     *  |   ParkingFloor   | 1     *  |   ParkingSpot    |
++------------------+ --------> +------------------+ --------> +------------------+
+| - floors: List   |          | - floorId: int   |          | - spotId: string |
+| + parkVehicle()  |          | - spots: List    |          | - isFree: bool   |
+| + unparkVehicle()|          | + getFreeSpot()  |          | - type: SpotType |
++------------------+          +------------------+          +------------------+
+                                                                      ^
+                                                                      | (assigned to)
+                                                            +------------------+
+                                                            |     Vehicle      |
+                                                            +------------------+
+                                                            | - licenseNo: str |
+                                                            | - type: VehType  |
+                                                            +------------------+
 ```
 
-### Patterns
-- **Strategy** for fee calculation (hourly, daily, flat).
-- **Factory** to create spot of right type.
-- **Singleton** for the parking lot.
-
-### Operations
-- `park(vehicle)`: find spot, assign, return ticket.
-- `unpark(ticket)`: free spot, calculate fee.
+### Core Entity Responsibilities
+| Class | Attributes | Primary Methods |
+|---|---|---|
+| `ParkingLot` | `lotId`, `floors`, `entryGates`, `exitGates` | `assignSpot(vehicle)`, `releaseSpot(ticket)` |
+| `ParkingSpot` | `spotId`, `spotType`, `isOccupied`, `currentVehicle` | `occupy()`, `vacate()` |
+| `ParkingTicket` | `ticketId`, `spotId`, `entryTime`, `vehicle` | `calculateFee(exitTime)` |
+| `PaymentStrategy` | `PricingModel` | `computeCost(hours, vehicleType)` |
 
 ### Key takeaway
-Parking lot LLD = Vehicle, ParkingSpot, ParkingFloor, ParkingLot, Ticket classes. Strategy
-pattern for fee calculation. Singleton for lot. Factory for spot creation.
+Designing a parking lot requires clean encapsulation of physical entities (`ParkingFloor`, `ParkingSpot`, `Vehicle`) and abstraction of strategy patterns for spot assignment and fee calculation.

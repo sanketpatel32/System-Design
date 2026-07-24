@@ -4,51 +4,51 @@
 
 ---
 
-Metadata storage = **a separate store for descriptive data about objects** (size, type,
-owner, tags), distinct from the object data itself.
+Metadata storage separates **file/object descriptors** (filename, path, owner, size, permissions, chunk mapping) from heavy binary file payloads to achieve high throughput and fast index querying.
 
-### Why separate
-- Object stores (S3) hold the data; metadata in S3 is limited.
-- For rich queries (find all images from user X in date range), you need a **searchable** store.
+### Architectural Separation Pattern
 
-### Typical pattern
+High-scale storage architectures isolate metadata reads/writes into low-latency relational or key-value databases, reserving object stores for payload data.
+
 ```
-[User uploads photo]
-    |
-    v
-1. Store photo bytes in S3: s3://photos/abc.jpg
-2. Store metadata in Postgres / DynamoDB / ES:
-   {
-     id: "abc",
-     user_id: 123,
-     s3_key: "photos/abc.jpg",
-     size: 200KB,
-     type: "image/jpeg",
-     created_at: "2024-06-01T...",
-     tags: ["vacation", "beach"]
-   }
++-----------------------------------------------------------------------------------+
+|                             Client Application Interface                          |
++-----------------------------------------------------------------------------------+
+                                      |
+         +----------------------------+----------------------------+
+         | 1. Query / Update Metadata                              | 2. Fetch / Upload Payload
+         v                                                         v
++------------------------------------+                    +-------------------------+
+|     Metadata Storage Cluster       |                    |  Object / Blob Storage  |
+|  (NewSQL / Distributed NoSQL)      |                    |    (Raw Data Chunks)    |
++------------------------------------+                    +-------------------------+
+| Schema: file_id, owner_id, size,   |                    | Chunk 01: [0x8A2...]    |
+| path, checksum, chunk_locations[]  |                    | Chunk 02: [0x4F1...]    |
++------------------------------------+                    +-------------------------+
 ```
 
-### Where to store metadata
-- **Postgres / MySQL** — structured, queryable, transactional.
-- **DynamoDB** — key-value at scale.
-- **Elasticsearch** — full-text / faceted search.
-- **MongoDB** — flexible schema.
+### Database Selection Matrix for Metadata
 
-### Use cases
-- **Photo/video apps**: file in S3, metadata in DB.
-- **CMS**: document in S3, search via metadata.
-- **E-commerce**: product image in S3, product info in DB.
+| Engine Type | Examples | Read Latency | Scaling Strategy | Best For |
+| :--- | :--- | :--- | :--- | :--- |
+| **Distributed NoSQL** | Cassandra, DynamoDB | Sub-10 ms | Hash Sharding by File ID | Massively scalable key-value metadata |
+| **NewSQL / Distributed SQL**| CockroachDB, TiDB | 10 - 20 ms | Range Sharding by Directory | POSIX file systems requiring ACID tree operations |
+| **In-Memory Cache + RDBMS** | Redis + PostgreSQL | Sub-2 ms | Master-Replica + Caching | Fast lookup with strong relational integrity |
 
-### Benefits
-- **Fast queries** (filter, sort, paginate metadata without scanning blobs).
-- **Search** across attributes.
-- **Transactional updates** (rename = metadata change, not file move).
+### Metadata Schema Example
 
-### Pitfalls
-- **Consistency**: S3 upload + metadata insert must both succeed (transactional outbox).
-- **Sync drift**: metadata may not match actual blob (cleanup jobs).
+| Column Name | Data Type | Description | Indexing Strategy |
+| :--- | :--- | :--- | :--- |
+| `file_id` | UUID / INT64 | Unique file identifier | Primary Key |
+| `parent_directory_id` | UUID / INT64 | Parent folder path link | Secondary B-Tree Index |
+| `file_name` | VARCHAR(255) | Name of the object | Composite Index `(parent_id, file_name)` |
+| `size_bytes` | BIGINT | Payload size | Metrics / Quota audit |
+| `storage_url` | VARCHAR(512) | Direct pointer to Object Store | Internal lookup |
+
+### Consistency & Edge Cases
+
+- **Two-Phase Commit vs Dual Writes**: Deleting a file requires updating the metadata DB and issuing a delete to the object store. Orphaned blobs are swept periodically using async garbage collectors.
 
 ### Key takeaway
-Keep **objects in S3, metadata in a database**. S3 holds bytes; DB holds searchable attributes.
-This split enables fast queries, search, and transactions that S3 alone can't provide.
+
+Metadata storage decouples **lightweight directory attributes from heavy payloads**, enabling rapid metadata operations, custom indexing, and granular access control.

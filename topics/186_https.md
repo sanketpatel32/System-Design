@@ -1,50 +1,48 @@
 # HTTPS
-
 > **Category:** Security
 
 ---
 
-HTTPS = **HTTP over TLS**. Same protocol, encrypted.
+### Overview
+**HTTPS (Hypertext Transfer Protocol Secure)** is the secure version of HTTP that uses TLS to encrypt all communication between a client (e.g., browser or mobile app) and a server. It protects data against eavesdropping, tampering, and man-in-the-middle (MitM) attacks.
 
-### Why HTTPS
-- **Confidentiality**: ISP can't read traffic.
-- **Integrity**: traffic can't be modified.
-- **Authentication**: cert proves the site is real.
-- **Required for HTTP/2, HTTP/3** (modern perf).
-- **Required for many browser features** (geolocation, camera, service workers).
+### Protocol Layering & Connection Lifecycle
 
-### Setup
-1. Get a certificate (Let's Encrypt, ACM, paid CA).
-2. Configure web server (NGINX, Apache) to listen on 443 with the cert.
-3. Redirect HTTP → HTTPS.
-4. Set HSTS header.
-
-### Let's Encrypt
-- Free, automated certs.
-- ACME protocol: Certbot, Lego, etc.
-- Auto-renew via cron.
-- 90-day cert lifetime (forces automation).
-
-### Performance
-- TLS handshake adds 1-2 round trips (TLS 1.3 = 1).
-- HTTP/2 (and HTTP/3) multiplexing makes HTTPS faster than HTTP/1.1.
-- Connection reuse (keep-alive) amortizes handshake.
-- 0-RTT resumption skips handshake on repeat visits.
-
-### HSTS
 ```
-Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-```
-- Forces browser to use HTTPS for the domain.
-- Prevents downgrade attacks.
-- Preload list: built into browsers.
++-------------------------------------------------------------+
+| Application Layer            | HTTP / HTTP/2 / HTTP/3      |
++-------------------------------------------------------------+
+| Security Layer               | TLS 1.3                      |
++-------------------------------------------------------------+
+| Transport Layer              | TCP (or UDP via QUIC)        |
++-------------------------------------------------------------+
+| Network Layer                | IP                           |
++-------------------------------------------------------------+
 
-### Common issues
-- Mixed content (HTTP subresources break HTTPS).
-- Expired certs → browser warnings.
-- Self-signed certs → warnings unless CA trusted.
-- Old TLS versions (1.0/1.1) — deprecated.
+Lifecycle:
+[ TCP 3-Way Handshake ] ---> [ TLS 1.3 Handshake ] ---> [ Encrypted HTTP Stream ]
+```
+
+### Public Key Infrastructure (PKI) Trust Chain
+
+| Entity | Role in HTTPS |
+|---|---|
+| **Root CA** | Self-signed master authority embedded in browser/OS trust stores (e.g., DigiCert, Let's Encrypt). |
+| **Intermediate CA** | Issued by Root CA to sign end-entity leaf certificates, isolating the Root CA key offline. |
+| **Leaf / Server Certificate**| Issued to domain owner containing domain name (SAN), public key, and CA signature. |
+
+### HTTPS Security Headers Matrix
+
+| Header | Purpose | Example Value |
+|---|---|---|
+| **HSTS** (`Strict-Transport-Security`) | Forces browsers to load site strictly over HTTPS for specified duration | `max-age=31536000; includeSubDomains; preload` |
+| **CSP** (`Content-Security-Policy`) | Prevents XSS by restricting origins for scripts/styles | `default-src 'self' https://trusted.cdn.com` |
+| **X-Content-Type-Options** | Prevents MIME-sniffing vulnerabilities | `nosniff` |
+| **Referrer-Policy** | Controls amount of referrer info sent with requests | `strict-origin-when-cross-origin` |
+
+### Key System Design Trade-offs
+- **Termination at Edge**: Terminating TLS at the API Gateway or Load Balancer offloads CPU-heavy decryption from internal microservices, but requires secure internal network networks (mTLS).
+- **Session Caching**: Caching TLS session keys in distributed memory (Redis) reduces handshake overhead for repeat client connections.
 
 ### Key takeaway
-HTTPS is mandatory. Get free certs from Let's Encrypt, automate renewal, set HSTS, use HTTP/2+
-for performance. No excuses for HTTP today.
+**HTTPS** combines HTTP semantics with TLS encryption. Secure systems must mandate **HSTS** to eliminate downgrade attacks and perform TLS termination at edge load balancers for operational efficiency.

@@ -4,50 +4,50 @@
 
 ---
 
-Design a digital wallet (PayPal, Paytm): store balance, transfer, transactions.
+A Digital Wallet system allows users to store funds, perform peer-to-peer (P2P) transfers, pay merchants, and maintain accurate account balances. It mandates strict double-entry bookkeeping to prevent money creation or loss.
 
-### Requirements
-- **Functional**: hold balance; transfer between users; transactions history.
-- **Non-functional**: strongly consistent; durable.
+### System Requirements
+- **Functional Requirements**:
+  - Store and maintain user account monetary balances.
+  - Support atomic peer-to-peer (P2P) transfers, deposits, and withdrawals.
+  - Provide complete immutable transaction history and statement generation.
+- **Non-Functional Requirements**:
+  - ACID Guarantees: Strict transaction isolation; zero balance inconsistency.
+  - High Availability: 99.999% uptime for balance queries and transfers.
+  - Auditability: Double-entry ledger ensures total debits equal total credits globally.
 
-### Architecture
+### System Architecture
 ```
-[User] -> [Wallet service] -> [Postgres (accounts, transactions)]
-                               [Ledger (double-entry)]
-```
-
-### Double-entry ledger
-- Every transaction: debit + credit.
-- `transfer(A, B, 100)`:
-  - debit A: 100.
-  - credit B: 100.
-- Sum of all entries = 0 (conservation of money).
-
-### Concurrency
-- Use transactions + row locks.
-- `SELECT FOR UPDATE` on accounts.
-- Or optimistic locking with version.
-
-### Data model
-```
-accounts (user_id, balance, version, updated_at)
-transactions (id, from_user, to_user, amount, type, created_at)
-transaction_entries (transaction_id, account_id, debit, credit)
+[ Mobile App ] ---> [ Wallet API Gateway ] ---> [ Wallet Core Engine ]
+                                                       |
+                             +-------------------------+-------------------------+
+                             |                                                   |
+                             v                                                   v
+                [ User Balance Cache (Redis) ]                        [ Ledger Service ]
+                (Read-Heavy Quick Lookup)                       (ACID RDBMS / Double-Entry)
+                             |                                                   |
+                             +-------------------------+-------------------------+
+                                                       |
+                                                       v
+                                           [ Immutable Audit Log ]
 ```
 
-### Money representation
-- Use integers (cents) — avoid floats.
-- Or DECIMAL.
-- Never floating point.
+### Double-Entry Bookkeeping Model
+Every financial movement consists of at least one debit entry and one credit entry. The sum of all debits must equal the sum of all credits for every transaction.
 
-### Idempotency
-- Each transfer has a client-generated ID.
-- Reject duplicates.
+```
+Example: User A transfers $50 to User B
+  Debit:  User A Account  -$50
+  Credit: User B Account  +$50
+  Total Delta = $0
+```
 
-### Audit
-- Append-only ledger.
-- Never delete / modify transactions.
+### Concurrency Control Strategies
+| Strategy | Latency | Throughput | Implementation |
+|---|---|---|---|
+| **Pessimistic Row Locking** | High ($20-50\text{ ms}$) | Low ($\sim 500\text{ TPS/shard}$) | `SELECT ... FOR UPDATE` on sender and receiver wallet rows in lock order by `wallet_id`. |
+| **In-Memory Actor Model** | Ultra-low ($< 2\text{ ms}$) | Extreme ($> 50,000\text{ TPS}$) | Single-threaded actor (e.g. Akka/Java Virtual Threads) processes all operations for a specific wallet partition sequentially. |
+| **Optimistic Versioning** | Low ($5-10\text{ ms}$) | Medium | `UPDATE wallets SET balance = balance - 50, version = version + 1 WHERE wallet_id = ? AND version = ? AND balance >= 50`. |
 
 ### Key takeaway
-Wallet = double-entry ledger (every transaction debits + credits) + strong consistency +
-idempotency. Use integers / DECIMAL for money (never floats). Append-only for audit.
+A digital wallet system must enforce double-entry accounting where money is never directly mutated but moved between ledger entries. Using strict row locking order or actor-based single-thread partition processing prevents deadlocks and balance corruption under concurrent transfers.

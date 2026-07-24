@@ -4,55 +4,45 @@
 
 ---
 
-Two-Phase Commit (2PC) = **a protocol for atomic transactions across multiple
-participants.**
+Two-Phase Commit (2PC) is an atomic commitment protocol that ensures **all database participants in a distributed system commit or abort a transaction together**, regardless of individual node failures.
 
-### The two phases
+### Two-Phase Commit Protocol Sequence
 
-#### Phase 1: Prepare (vote)
 ```
-Coordinator -> all participants: "PREPARE?"
-Participant:  yes (locks resource, writes to log)  |  no (abort)
++---------------+                Phase 1: Prepare                +---------------+
+| Coordinator   | ---------------------------------------------> | Participant A |
++---------------+ <--------------------------------------------- +---------------+
+    |               Returns VOTE_COMMIT or VOTE_ABORT                |
+    |                                                                |
+    | -------------------------------------------------------------> +---------------+
+    | <------------------------------------------------------------- | Participant B |
+    |                                                                +---------------+
+    |
+    |                            Phase 2: Commit / Abort
+    | -------------------------------------------------------------> +---------------+
+    |                                                                | Participant A |
+    |                                                                +---------------+
+    | -------------------------------------------------------------> +---------------+
+    |                                                                | Participant B |
 ```
 
-#### Phase 2: Commit or Abort
-```
-If ALL participants voted yes:
-    Coordinator -> all: "COMMIT"
-    Participant: commits, releases lock, ACKs.
+### Protocol Steps Breakdown
 
-If ANY participant voted no (or timed out):
-    Coordinator -> all: "ABORT"
-    Participant: rolls back, releases lock, ACKs.
-```
+1. **Phase 1 (Prepare Phase)**:
+   - Coordinator sends `PREPARE` request to all participants.
+   - Participants write transaction data to local Write-Ahead Log (WAL), acquire locks, and reply with `VOTE_COMMIT` or `VOTE_ABORT`.
+2. **Phase 2 (Commit / Abort Phase)**:
+   - If ALL participants voted `VOTE_COMMIT`, Coordinator writes `COMMIT` to log and sends `GLOBAL_COMMIT` commands.
+   - If ANY participant voted `VOTE_ABORT` (or timed out), Coordinator broadcasts `GLOBAL_ABORT`.
 
-### Why it works
-- Once a participant votes "yes," it MUST be able to commit (it has locked resources).
-- Coordinator's decision is final — participants must obey.
-- Recoverable via logs (participants preserve the decision even if coordinator dies).
+### Protocol Vulnerabilities & Trade-offs
 
-### Failure handling
-- Participant crashes after "yes": on recovery, asks coordinator "what was the decision?"
-- Coordinator crashes: participants hold locks and wait. New coordinator can take over.
-- Network partition: blocked until resolved.
-
-### Trade-offs
-- ✅ **Atomicity** — all-or-nothing.
-- ✅ Linearizable.
-- ❌ **Blocking** — if coordinator dies, participants block (hold locks).
-- ❌ **Slow** — multiple round trips.
-- ❌ **Single point of failure** (coordinator).
-- ❌ **Coupled** — participants must support the protocol.
-
-### 3PC (three-phase)
-- Adds a "pre-commit" phase to reduce blocking.
-- Still rare; assumes bounded network delays.
-
-### Real-world usage
-- **Within a distributed DB**: CockroachDB, Spanner use consensus-based variants.
-- **XA transactions**: JEE standard for multi-DB.
-- **Cross-service**: rare — Saga is preferred.
+| Vulnerability | Impact | Mitigation Strategy |
+| :--- | :--- | :--- |
+| **Blocking Protocol** | Participants hold database row locks indefinitely while waiting for coordinator | Timeout thresholds & 3PC non-blocking state transitions |
+| **Single Point of Failure** | If Coordinator crashes mid-Phase 2, participants block in uncertain state | Replicated Leader-based Coordinators (Raft-backed 2PC) |
+| **High Latency** | Requires multiple network RTTs and synchronous disk log flushes | Avoid cross-region 2PC transactions |
 
 ### Key takeaway
-2PC gives atomic cross-participant transactions but is **blocking, slow, and brittle**. Use it
-within a distributed database, but for cross-service work, prefer **Saga + outbox** instead.
+
+Two-Phase Commit guarantees **strict cross-node transaction atomicity**, but introduces performance bottlenecks and blocking lock behavior during coordinator outages.

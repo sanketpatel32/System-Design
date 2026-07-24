@@ -4,55 +4,40 @@
 
 ---
 
-Database sharding = **partitioning data across multiple database instances** so each shard
-holds a subset. The fundamental horizontal scaling technique.
+**Database Sharding** is the process of partitioning a single logical database across multiple autonomous database instances (shards). Unlike simple horizontal partitioning on a single machine, each shard in a sharded architecture operates on independent hardware with its own CPU, memory, and disk.
 
-### Why
-- Single DB hit ceiling (CPU, RAM, disk, write throughput).
-- Need more capacity than the biggest instance can give.
+### System architecture
 
-### How
-Pick a **shard key** (user_id, tenant_id, geo) and route:
 ```
-shard = hash(shard_key) % N
+                     +-----------------------------------+
+                     |       Shard Router / Middleware   |
+                     |         (e.g., Vitess / Citus)    |
+                     +-----------------------------------+
+                         /             |             \
+           Hash(User_ID)/              |              \
+               % 3 = 0 /      % 3 = 1  |       % 3 = 2 \
+                      v                v                v
+               +--------------+ +--------------+ +--------------+
+               |   Shard 0    | |   Shard 1    | |   Shard 2    |
+               | (DB Node A)  | | (DB Node B)  | | (DB Node C)  |
+               +--------------+ +--------------+ +--------------+
 ```
 
-### Example
-```
-user_id 12345 -> hash(12345) % 4 = 2 -> shard 2
-```
-All of user 12345's data lives on shard 2.
+### Sharding lifecycle stages
 
-### Shard key choice is critical
-- **High cardinality** — even distribution.
-- **Low skew** — no hot keys.
-- **Query locality** — most queries hit one shard.
-- **Immutable** — changing it means moving data.
+1. **Shard Key Selection**: Identify an attribute present in queries (e.g., `account_id`, `tenant_id`) with high cardinality and even access distribution.
+2. **Routing Middleware**: Position a stateless proxy tier (Vitess, ProxySQL, Citus) to inspect incoming SQL statements, calculate target shard addresses from shard keys, and route queries.
+3. **Scatter-Gather Execution**: For queries lacking a shard key, the middleware executes the query across all shards concurrently, merging the results before returning them to the app.
 
-### Strategies
-- **Hash-based**: even distribution, range queries hard.
-- **Range-based**: range queries easy, hotspots possible.
-- **Directory**: lookup table maps key → shard, most flexible.
-- **Geo**: by region.
+### Sharding trade-off matrix
 
-### Cross-shard challenges
-- **Joins** — can't join across shards; denormalize or app-level join.
-- **Transactions** — distributed transactions (2PC) slow; use Saga.
-- **Aggregations** — `COUNT` needs fan-out + merge.
-- **Global uniqueness** — coordinate ID generation.
-- **Rebalancing** — adding shards moves data.
-
-### Tooling
-- **Vitess** — shards MySQL, used by YouTube, Slack.
-- **Citus** — Postgres extension for sharding.
-- **MongoDB** — built-in sharding.
-- **Cassandra** — built-in via consistent hashing + vnodes.
-
-### When NOT to shard
-- Vertical scaling + replicas + cache still sufficient.
-- You're not ready for the operational complexity.
+| Capability | Unsharded Database | Sharded Database |
+| :--- | :--- | :--- |
+| **Storage & Throughput Limits**| Capped by single node hardware | Linearly scalable by adding shards |
+| **Cross-Entity Joins** | Native fast SQL `JOIN`s | Prohibited or slow scatter-gather execution |
+| **Transactions** | Native single-node ACID | Requires expensive two-phase commit (2PC) |
+| **Schema Changes (DDL)** | Single DDL execution | Operations must be orchestrated across all shards |
 
 ### Key takeaway
-Sharding scales writes and storage beyond one machine. **Pick the shard key carefully**. Don't
-shard until vertical scaling, read replicas, and caching are exhausted — sharding adds huge
-complexity.
+
+Database sharding enables horizontal scaling of database writes and storage capacity. Select high-cardinality shard keys to ensure balanced data distribution, and denormalize schemas to avoid cross-shard joins.

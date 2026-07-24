@@ -4,56 +4,30 @@
 
 ---
 
-Queues and streams are both async messaging, but with different semantics.
+Understanding the differences between **Message Queues** (e.g., RabbitMQ, AWS SQS) and **Event Streams** (e.g., Apache Kafka, AWS Kinesis) is essential for designing event-driven systems. Message queues focus on ephemeral task distribution, while event streams focus on ordered, append-only event log persistence.
 
-### Queue (RabbitMQ, SQS)
-- **Consume-and-delete**: message removed after ACK.
-- **One consumer** per message (within a queue).
-- **No replay**: once gone, gone.
-- **Work distribution**: load balance among workers.
-```
-Producer -> [Queue] -> Worker A (msg 1)
-                     \-> Worker B (msg 2)
-                     \-> Worker C (msg 3)
-```
+### Architectural comparison
 
-### Stream (Kafka, Kinesis)
-- **Append-only log**: messages stay for days/forever.
-- **Multiple consumers** read independently at their own offset.
-- **Replayable**: rewind to any point.
-- **Event log**: source of truth.
 ```
-Producer -> [Stream partition] -> Consumer A (reads from offset 100)
-                              \-> Consumer B (reads from offset 50)
-                              \-> Consumer C (replays from 0)
+ Message Queue Model (Ephemeral Task Delegation)
+ Producer ---> [ Message Queue ] ---> Consumer A (Processes & Destroys Message)
+
+ Event Stream Model (Immutable Replay Log)
+ Producer ---> [ Partition Log: 0, 1, 2, 3... ] ---> Consumer Group 1 (Offset: 2)
+                                              ---> Consumer Group 2 (Offset: 0 - Replay)
 ```
 
-### Comparison
-| | Queue | Stream |
-|--|-------|--------|
-| Retention | Until consumed | Configurable (days/forever) |
-| Replay | No | Yes |
-| Consumers per message | One | Many (independent offsets) |
-| Ordering | Per queue | Per partition |
-| Use case | Task distribution | Event log, streaming |
-| Throughput | Medium | High |
-| Examples | RabbitMQ, SQS | Kafka, Kinesis |
+### Core Comparison Matrix
 
-### When to use queue
-- Task distribution (work pool).
-- Transient commands ("send email", "resize image").
-- Don't need replay.
-
-### When to use stream
-- Event sourcing (the log is the truth).
-- Multiple independent consumers (analytics, audit, search index).
-- Replay needed (re-process historical data).
-- High throughput.
-
-### Hybrid
-- Use Kafka (stream) as the backbone.
-- Bridge to RabbitMQ / SQS for specific work-queue needs.
+| Architectural Feature | Message Queue (SQS / RabbitMQ) | Event Stream (Kafka / Kinesis) |
+| :--- | :--- | :--- |
+| **Message Lifetime** | Ephemeral (Deleted immediately upon consumer ACK) | Persistent (Retained for fixed duration e.g., 7 days) |
+| **State Tracking** | Managed by Broker | Managed by Consumer (Offset pointer) |
+| **Consumer Model** | Competing Consumers (Each message handled once) | Multi-Group Pub-Sub (Each group gets all messages) |
+| **Replayability** | Cannot replay deleted messages | Supports replaying historical events from any offset |
+| **Ordering Guarantees**| Weak / Local queue ordering | Strict ordering within each stream partition |
+| **Primary Use Cases** | Asynchronous task execution, email sending | Analytics pipelines, CDC, Event Sourcing, Audit logs |
 
 ### Key takeaway
-**Queues** are for transient work distribution (consume-and-delete). **Streams** are persistent
-logs (replayable, multiple consumers). Pick by retention + replay + fanout needs.
+
+Select Message Queues for transient task processing where individual messages are discarded after execution. Select Event Streams when data must be retained, replayed, strictly ordered by partition, or consumed by multiple independent systems.

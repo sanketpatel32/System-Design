@@ -1,49 +1,54 @@
 # Design Notification System
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design a system that sends notifications via email, SMS, push, and in-app.
+### Overview
+A **Notification System** dispatches real-time alerts across multiple communication channels—Mobile Push (APNs/FCM), SMS (Twilio), Email (SendGrid), and In-App WebSockets—at high scale with guaranteed delivery, deduplication, and user preference tracking.
 
-### Requirements
-- **Functional**: send to channels; templates; preferences; scheduled.
-- **Non-functional**: at-least-once delivery; high throughput; low latency.
+### System Architecture & Queue Topology
 
-### Architecture
 ```
-[Trigger] -> [Queue (Kafka/SQS)] -> [Workers] -> [Channel providers]
-                                          |
-                                          v
-                                      [Templates]
-                                      [Preferences]
-                                      [Rate limit]
++--------------------+
+| Publisher Services |
++--------------------+
+          |
+          v POST /v1/notifications
++--------------------+     1. Publish      +--------------------+     2. Consume     +--------------------+
+| Notification API   | ------------------> | Kafka / RabbitMQ   | -----------------> | Worker Pool        |
++--------------------+                     | Message Bus        |                    | (Priority Workers) |
+          |                                +--------------------+                    +--------------------+
+          v Rate Limit / Preference Lookup                                                     |
++--------------------+                                                                         | 3. Dispatch
+| User Settings DB   |                                                                         v
++--------------------+                                                       +------------------------------------+
+                                                                             | APNs | FCM | Twilio | SendGrid     |
+                                                                             +------------------------------------+
 ```
 
-### Channels
-- **Email**: SES, SendGrid.
-- **SMS**: Twilio, SNS.
-- **Push**: APNs (iOS), FCM (Android).
-- **In-app**: WebSocket / polling.
+### Notification Data Schema (PostgreSQL / DynamoDB)
+```json
+{
+  "notification_id": "notif_8819a",
+  "user_id": "usr_102",
+  "channel": "PUSH",
+  "priority": "HIGH",
+  "template_id": "order_dispatched",
+  "template_data": { "order_id": "ord_9981", "eta": "15 mins" },
+  "status": "DELIVERED",
+  "retry_count": 0,
+  "created_at": 1700000000
+}
+```
 
-### Templates
-- Stored in DB / config.
-- Variable substitution: `Hello {{name}}, your order {{order_id}} shipped.`
+### Critical Architectural Strategies
 
-### User preferences
-- Per-channel opt-in.
-- Quiet hours (no notifications 10pm-7am).
-- Digest mode (batched).
-
-### Delivery guarantees
-- **At-least-once** (queue + retries).
-- **Idempotency keys** to prevent duplicates.
-- **DLQ** for undeliverable.
-
-### Fan-out
-- One event → many channels.
-- One event → many recipients (group notification).
+| Strategy | Technical Mechanism |
+|---|---|
+| **Deduplication** | Compute hash `SHA256(user_id + template_id + event_id)`; check key in Redis with 5-min TTL before dispatching. |
+| **User Preferences** | Query User Preference DB before publishing to skip channels explicitly disabled by user. |
+| **Rate Limiting / Quiet Hours**| Defer low-priority notifications scheduled during user-specified quiet hours (e.g., 10 PM - 7 AM). |
+| **At-Least-Once Delivery** | Workers ack Kafka messages only after receiving successful HTTP `200` response from provider (FCM/Twilio). |
 
 ### Key takeaway
-Notification system = queue + workers + multi-channel providers + templates + preferences.
-Async, at-least-once, idempotent. Handle preferences (opt-in, quiet hours, digest).
+Decouple notification triggers from delivery via **distributed message queues (Kafka)**. Enforce user settings, channel rate limits, and idempotent **Redis deduplication keys** before invoking third-party providers.

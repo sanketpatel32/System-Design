@@ -64,26 +64,26 @@ function parseSections(md: string): {
   sections: TopicSection[];
   takeaway: string | null;
 } {
-  // Drop the H1 title line and the category blockquote so they don't pollute intro.
-  const stripped = md
-    .replace(/^# .+\n+/, "")
-    .replace(/^>\s*\*\*Category:\*\*.+\n+/, "")
-    .replace(/^---\n+/, "");
+  // Normalize CRLF to LF
+  const normalized = md.replace(/\r\n/g, "\n").trim();
+
+  // Drop the H1 title line, category blockquote, and horizontal rule from the intro
+  const stripped = normalized
+    .replace(/^#\s+.+\n*/m, "")
+    .replace(/^>\s*\*\*Category:\*\*.+\n*/m, "")
+    .replace(/^---\n*/m, "")
+    .trim();
 
   const lines = stripped.split("\n");
   const intro: string[] = [];
   const sections: TopicSection[] = [];
   let current: TopicSection | null = null;
-  let takeaway: string | null = null;
 
   for (const line of lines) {
     const h = line.match(/^###\s+(.+)$/);
     if (h) {
       const heading = h[1].trim();
       current = { heading, body: "" };
-      if (/key\s*takeaway/i.test(heading)) {
-        // collected separately but also kept in sections for rendering
-      }
       sections.push(current);
       continue;
     }
@@ -97,9 +97,6 @@ function parseSections(md: string): {
   const takeawaySection = sections.find((s) =>
     /key\s*takeaway/i.test(s.heading)
   );
-  if (takeawaySection) {
-    takeaway = takeawaySection.body.trim();
-  }
 
   return {
     intro: intro.join("\n").trim(),
@@ -107,7 +104,7 @@ function parseSections(md: string): {
       ...s,
       body: s.body.trim(),
     })),
-    takeaway,
+    takeaway: takeawaySection ? takeawaySection.body.trim() : null,
   };
 }
 
@@ -127,7 +124,9 @@ function loadAll(): void {
     const match = filename.match(TOPIC_RE)!;
     const id = parseInt(match[1], 10);
     const slug = match[2];
-    const raw = fs.readFileSync(path.join(TOPICS_DIR, filename), "utf8");
+    const raw = fs
+      .readFileSync(path.join(TOPICS_DIR, filename), "utf8")
+      .replace(/\r\n/g, "\n");
     const title = (raw.match(/^# (.+)$/m)?.[1] ?? slug).trim();
     const category = extractCategory(raw);
     const diagrams = extractDiagrams(raw);

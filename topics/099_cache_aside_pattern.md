@@ -1,51 +1,44 @@
-# Cache Aside Pattern
+# Cache-Aside Pattern
 
 > **Category:** Caching
 
 ---
 
-Cache-aside (lazy loading) = **the app manages the cache explicitly** — check cache, on miss
-query DB and fill cache.
+The **Cache-Aside Pattern** (also known as Lazy Loading) is a caching pattern where the application code directly orchestrates reading from and writing to the cache. The cache operates alongside the primary database without direct communication between the two storage systems.
 
-### Flow
+### Pattern workflow
+
 ```
-read(key):
-    value = cache.get(key)
-    if value is None:                  # cache miss
-        value = db.query(key)
-        cache.set(key, value, ttl=300) # fill cache
-    return value
+ [Application] -------- 1. Read Request --------> [Cache Store (Redis)]
+       |                                                 |
+       | 3. Read Miss (Fallback)                         | 2. Cache Hit
+       v                                                 v
+ [Database] <-------------------------------------- [Return Data to Client]
+       |
+       +------ 4. Fetch Row Data
+       |
+       +------ 5. Write Item to Cache for Next Time
 ```
 
-### Pros
-- ✅ **Simple** — explicit, easy to reason about.
-- ✅ **Cache only holds requested data** — no wasted space.
-- ✅ **Cache failure is graceful** — fall through to DB.
+### Step-by-step execution flow
 
-### Cons
-- ❌ **Cache stampede** — many concurrent misses flood the DB.
-- ❌ **Stale data** — between DB update and TTL expiry.
-- ❌ **Write complexity** — app must update/evict cache on writes.
+1. Application receives a request for data item `Key_A`.
+2. Application queries the **Cache**:
+   - **Cache Hit**: Cache returns data directly to the application. Application returns data to client.
+   - **Cache Miss**: Cache returns null.
+3. On **Cache Miss**, the application queries the primary **Database**.
+4. Database returns data to the application.
+5. Application writes the fetched data into the **Cache** (with a defined TTL) and returns it to the client.
 
-### Mitigations
-- **Stampede**: lock + single-fill (only one request queries DB, others wait) or "dogpile
-  effect" prevention via probabilistic early expiration.
-- **Staleness**: shorter TTL, event-driven invalidation, or write-through.
+### Cache-Aside Evaluation Matrix
 
-### Write path
-```
-write(key, value):
-    db.update(key, value)
-    cache.delete(key)   # invalidate; next read refills
-```
-Deleting (not updating) avoids race conditions where a stale read fills the cache after the
-update.
-
-### When to use
-- **Read-heavy** workloads.
-- **Cache miss is acceptable** (not for ultra-low-latency paths).
-- **Heterogeneous data** with varying TTLs.
+| Characteristic | Evaluation | Impact |
+| :--- | :--- | :--- |
+| **Resilience** | High | Cache failures do not break the app; requests fall back to the database |
+| **Cache Size Efficiency**| High | Only requested data is cached (lazy loading avoiding unnecessary caching) |
+| **Initial Read Latency** | Penalty on Miss | First request incurs a cache miss, DB lookup, and cache write step |
+| **Data Stale Risk** | Moderate | Database mutations can create stale cache entries unless explicitly invalidated |
 
 ### Key takeaway
-Cache-aside is the **default** caching pattern — simple and robust. On read miss, fill from DB.
-On write, delete the cache entry (let next read repopulate). Mitigate stampedes with locks.
+
+Cache-Aside provides resilient caching by making the application responsible for cache orchestration. It ensures that only actively queried data occupies cache memory, though initial requests incur a cache miss latency penalty.

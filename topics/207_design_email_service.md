@@ -1,53 +1,50 @@
 # Design Email Service
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design a service to send transactional and marketing emails.
+### Overview
+An **Email Service** sends transactional emails (password resets, order receipts) and bulk marketing campaigns reliably while maintaining high domain deliverability (SPF/DKIM/DMARC) and surviving third-party provider outages via fallback routing.
 
-### Requirements
-- **Functional**: send via template; track opens/clicks/bounces; unsubscribe.
-- **Non-functional**: high throughput; deliverability (avoid spam folder).
+### Architecture with Provider Failover
 
-### Architecture
 ```
-[App] -> [Email API] -> [Queue] -> [Workers] -> [SES/SendGrid]
-                                              |
-                                              v
-                                          [Events (bounces, opens)]
-                                              |
-                                              v
-                                          [Analytics DB]
++---------------+     POST /v1/email     +-------------------+
+| Microservices | ---------------------> | Email Gateway API |
++---------------+                        +-------------------+
+                                                   |
+                                                   v Enqueue Event
+                                         +-------------------+
+                                         | Kafka Email Queue |
+                                         +-------------------+
+                                                   |
+                                                   v Process Task
+                                         +-------------------+
+                                         | Delivery Workers  |
+                                         +-------------------+
+                                            /             \
+                     1. Primary (SendGrid) /               \ 2. Fallback (AWS SES)
+                                          v                 v
+                                  +---------------+  +---------------+
+                                  | SendGrid API  |  | AWS SES API   |
+                                  +---------------+  +---------------+
 ```
 
-### Templates
-- HTML + text versions.
-- Variable substitution.
-- Stored in DB / config.
+### Email Deliverability Authentication Protocols
 
-### Deliverability
-- **SPF**, **DKIM**, **DMARC** DNS records.
-- **Dedicated IP** for high volume.
-- **Reputation monitoring** (bounce rate, complaints).
-- **List hygiene**: remove bounces + unsubscribes.
+| Protocol | Full Name | Technical Purpose |
+|---|---|---|
+| **SPF** | Sender Policy Framework | DNS TXT record listing IP addresses authorized to send mail for domain. |
+| **DKIM** | DomainKeys Identified Mail | Cryptographic public key in DNS; email header signed with private key to prevent tampering. |
+| **DMARC** | Domain-based Message Auth | Defines policy (reject/quarantine) if SPF or DKIM checks fail. |
 
-### Events
-- **Bounces**: hard (invalid) → remove; soft (full inbox) → retry.
-- **Opens**: tracking pixel.
-- **Clicks**: redirect links.
-- **Unsubscribes**: List-Unsubscribe header.
+### Resilience Strategy: Multi-Provider Failover Matrix
 
-### Compliance
-- **CAN-SPAM**: unsubscribe link, physical address.
-- **GDPR**: consent, easy opt-out.
-
-### Scaling
-- Workers consume queue at provider rate limits.
-- Backpressure on burst.
-- Dedupe by message ID.
+| Scenario | Worker Action |
+|---|---|
+| **Primary Provider 200 OK** | Mark job complete; store provider message ID. |
+| **Primary 429 / 5xx Error** | Increment retry counter; trigger **Circuit Breaker** to route remaining jobs to Secondary Provider. |
+| **Hard Bounce (Invalid Email)** | Catch webhook event; add target address to Suppression List table to protect domain reputation. |
 
 ### Key takeaway
-Email service = queue + workers + provider (SES/SendGrid) + event tracking. Focus on
-**deliverability** (SPF/DKIM/DMARC, reputation) and **compliance** (unsubscribe, bounce
-handling).
+Protect domain deliverability using **SPF, DKIM, and DMARC**. Ensure high availability by implementing **message queues** with automated **multi-provider failover** (e.g., SendGrid primary, AWS SES fallback).

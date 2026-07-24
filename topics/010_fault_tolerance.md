@@ -4,29 +4,55 @@
 
 ---
 
-Fault tolerance = **the system keeps working correctly** even when components fail. Failure is
-treated as normal, not exceptional.
+Fault Tolerance is the property that enables a system to **continue operating properly in the event of hardware, software, or network failures** in one or more of its components. A fault-tolerant design prevents isolated failures (faults) from escalating into complete system outages.
 
-### Failure types
-- **Hardware**: disk dies, NIC fails, rack power loss.
-- **Software**: bug, OOM, deadlock, bad deploy.
-- **Network**: partition, packet loss, DNS outage.
-- **Human**: bad config, accidental deletion.
+### Fault Tolerance Architecture & Isolation Boundaries
 
-### Patterns
-- **Redundancy**: N+1 or N+M replicas. Lose one, others carry on.
-- **Quorum**: 3-of-5 nodes agree → tolerate 2 failures.
-- **Graceful degradation**: feature flags turn off non-essential paths.
-- **Bulkheads**: isolate failures (thread pool per tenant) so one slow tenant doesn't stall all.
-- **Retries + circuit breaker**: heal transient faults, stop hammering dead ones.
-- **Idempotency**: safe to retry — no double effects.
+```
++-------------------------------------------------------------------------+
+|                  BULKHEAD & FAULT ISOLATION ARCHITECTURE                |
++-------------------------------------------------------------------------+
 
-### Failure detection
-- **Heartbeats** between nodes (gossip, Raft).
-- **Health checks** at LBs.
-- **Watchdog processes** restart crashed services.
-- **Quorum-based** — if a minority disagrees, treat them as faulty.
+  [ Ingress Traffic ]
+           |
+     +-----+-----+
+     |           |
+     v           v
+  +-----+     +-----+
+  |PoolA|     |PoolB|  (Isolated Bulkheads - Pool A failure doesn't touch B)
+  +-----+     +-----+
+     |           |
+     v           v
+  +-----+     +-----+
+  |Svc A|     |Svc B|
+  +-----+     +-----+
+     |           |  (Degraded Fallback response on Svc B fault)
+     v           v
+  [DB Prim]   [DB Repl]
+```
+
+### Key Fault Tolerance Mechanisms
+
+| Pattern | Mechanism | Example Real-World Implementation |
+| :--- | :--- | :--- |
+| **Redundancy** | Deploying duplicate nodes ($N+1$ or $2N$ redundancy) to take over instantly upon failure. | Multi-AZ deployment of web application servers behind an ELB. |
+| **Consensus Protocols** | Coordinating agreement across distributed nodes to handle leader failure. | Raft consensus algorithm in etcd, Consul, or ZooKeeper. |
+| **Bulkheading** | Isolating resource pools (threads, memory, pools) so failure in one domain doesn't cascade. | Microservice thread pool isolation (Netflix Hystrix). |
+| **Graceful Degradation**| Falling back to reduced service quality when non-critical components fail. | Disabling personalized recommendation carousel when ML cluster fails. |
+| **Retry with Backoff & Jitter**| Automatically retrying failed network requests with exponential delay and randomized jitter. | AWS SDK request retries to prevent thundering herd problem. |
+
+### Types of System Faults
+
+1. **Transient Faults**: Brief network glitches or temporary service bursts. Managed via automatic retries with exponential backoff and jitter.
+2. **Permanent Hardware Faults**: Total failure of a physical server, NIC, or NVMe drive. Managed via automated failover to standby nodes.
+3. **Byzantine Faults**: Malicious or arbitrary software bugs where nodes send conflicting signals. Managed via Byzantine Fault Tolerant (BFT) consensus algorithms.
+
+### Self-Healing Systems
+
+High fault tolerance incorporates automated self-healing mechanisms:
+- **Heartbeat & Health Checks**: Control planes monitor node health every few seconds.
+- **Automated Node Replacement**: Container orchestrators (Kubernetes) automatically kill unhealthy pods and spin up replacements.
 
 ### Key takeaway
-Design assuming **everything will fail**. Quantify the failure model: "tolerate loss of 1 AZ,
-2 nodes, 1 region." Then architect redundancy to meet that.
+
+Fault tolerance ensures systems survive component failures without user-facing outages. Design for failure by establishing **fault isolation boundaries (bulkheads)**, implementing **automated failover and health checks**, and utilizing **exponential backoff with jitter** for network retries.

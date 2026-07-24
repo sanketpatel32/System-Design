@@ -4,47 +4,40 @@
 
 ---
 
-Design a financial ledger: track every money movement.
+A Financial Ledger System is an immutable, append-only system of record that logs all monetary movements within an enterprise. It guarantees zero balance drift, mathematical correctness, and complete audit trails via double-entry accounting invariants.
 
-### Requirements
-- **Functional**: record transactions; balances; history.
-- **Non-functional**: strongly consistent; immutable; auditable.
+### System Requirements
+- **Functional Requirements**:
+  - Append immutable financial journal entries (debits and credits).
+  - Enforce absolute double-entry balance equality: $\sum \text{Debits} = \sum \text{Credits}$.
+  - Support multi-currency ledger accounts and real-time point-in-time balance queries.
+- **Non-Functional Requirements**:
+  - Immutability: Once posted, ledger entries can never be modified or deleted.
+  - High Performance: Low-latency append speeds ($< 10\text{ ms}$) with read-optimized balance projections.
+  - Auditability: Cryptographic hash chains (Merkle Trees) to prove ledger tamper-resistance.
 
-### Double-entry bookkeeping
-- Every transaction affects ≥ 2 accounts.
-- Debits = credits (conservation of money).
-- Example: $100 transfer
-  - Debit Alice: 100
-  - Credit Bob: 100
-
-### Data model
+### System Architecture
 ```
-accounts (id, type, balance)
-transactions (id, reference, timestamp, description)
-entries (transaction_id, account_id, debit, credit)
+[ Financial Services ] ---> [ Ledger API Service ] ---> [ Immutable Journal Log ]
+                                                                |
+                          +-------------------------------------+-------------------------------------+
+                          |                                                                           |
+                          v                                                                           v
+              [ Double-Entry Validator ]                                                      [ Read Projection Engine ]
+              (Check sum(dr) == sum(cr))                                                     (Materialized Account Balances)
+                          |                                                                           |
+                          +-------------------------------------+-------------------------------------+
+                                                                |
+                                                                v
+                                                   [ Merkle Tree Audit Verification ]
 ```
 
-### Properties
-- **Immutable**: never update/delete; only new transactions.
-- **Balanced**: every transaction's debits = credits.
-- **Queryable**: balance = sum of entries.
-
-### Consistency
-- Transactions across accounts atomic.
-- Use DB transactions with row locks.
-
-### Money type
-- Integers (cents) or DECIMAL — never floats.
-
-### Reconciliation
-- Match against external statements (banks).
-- Detect missing / duplicate entries.
-
-### Reporting
-- Balance sheet.
-- P&L.
-- Cash flow.
+### Storage Engine Comparison
+| Storage Model | Implementation | Write Throughput | Auditability |
+|---|---|---|---|
+| **Relational RDBMS Shards** | PostgreSQL / Aurora append-only tables | Moderate ($\sim 5,000	ext{ writes/sec}$) | Standard SQL transaction logs & triggers. |
+| **Event-Sourced Store** | Kafka + EventStore DB | Extreme ($> 100,000	ext{ writes/sec}$) | Native event-sourcing replaying for balance reconstruction. |
+| **Quantum Ledger DB (QLDB)** | Cryptographically verified append-log | High | Immutable SHA-256 hash chains built into database storage layer. |
 
 ### Key takeaway
-Ledger = double-entry (debits = credits) + immutable transactions + atomic across accounts.
-Use integers for money. Reconcile against external statements. Never mutate historical entries.
+A financial ledger system must enforce append-only immutability and double-entry balance validation. Retaining historical journal logs while generating async materialized balance views ensures both mathematical integrity and fast balance lookups.

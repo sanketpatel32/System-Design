@@ -4,55 +4,55 @@
 
 ---
 
-Adaptive Bitrate Streaming (ABR) = **serving multiple quality levels and letting the client
-switch dynamically based on bandwidth.**
+Adaptive Bitrate Streaming (ABR) dynamically detects a client's **real-time network bandwidth and CPU capacity**, switching between higher and lower video quality profiles mid-stream without playback interruption.
 
-### How it works
+### ABR Switching Workflow
+
 ```
-1. Server encodes video at multiple bitrates:
-   240p @ 400kbps, 480p @ 1Mbps, 720p @ 2.5Mbps, 1080p @ 5Mbps, 4K @ 25Mbps
-
-2. Each variant has its own segment playlist (.m3u8).
-
-3. Master playlist lists all variants.
-
-4. Client picks a variant based on measured bandwidth.
-
-5. As bandwidth changes, client switches variants mid-playback.
++-----------------------------------------------------------------------------------+
+|                            Video Player Client Engine                             |
++-----------------------------------------------------------------------------------+
+                                          |
+    +-------------------------------------+-------------------------------------+
+    | 1. High Bandwidth Detected (10 Mbps)|                                     | 2. Bandwidth Drops (1.5 Mbps)
+    v                                                                           v
++-----------------------------------------+                 +-----------------------------------------+
+| Fetch 1080p Segment (chunk_004_1080.ts) |                 | Fetch 480p Segment (chunk_005_480.ts)   |
++-----------------------------------------+                 +-----------------------------------------+
+    |                                                                           |
+    +-------------------------------------+-------------------------------------+
+                                          v
++-----------------------------------------------------------------------------------+
+|                        Continuous Playback Output (Zero Stutter)                  |
++-----------------------------------------------------------------------------------+
 ```
 
-### Why ABR
-- **Mobile users** with variable bandwidth.
-- **Avoid buffering** — drop to lower quality instead of stalling.
-- **Best quality** when bandwidth allows.
-- **Progressive enhancement**.
+### ABR Manifest Structure (`master.m3u8`)
 
-### Bitrate ladders
-- Studios design "ladders" of bitrates optimized for content type.
-- Example for movies:
-  - 240p @ 400kbps (slow mobile)
-  - 360p @ 800kbps
-  - 480p @ 1.5Mbps (fast mobile)
-  - 720p @ 3Mbps (WiFi)
-  - 1080p @ 6Mbps (broadband)
-  - 4K @ 16Mbps (fiber)
+```m3u8
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080
+1080p/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1280x720
+720p/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480
+480p/index.m3u8
+```
 
-### Client logic (ABR algorithm)
-- **Throughput-based**: estimate bandwidth from recent downloads.
-- **Buffer-based**: switch based on buffer fill level.
-- **Hybrid**: combine both.
-- ABR algorithms: Netflix's, Akamai's, YouTube's.
+### Quality Profiles & Adaptation Parameters
 
-### Switching
-- Switch at segment boundary (every ~10s).
-- Avoid mid-segment switch (would break playback).
-- Switch smoothly — don't oscillate too aggressively.
+| Profile Level | Resolution | Target Bitrate | Frame Rate | Network Threshold |
+| :--- | :--- | :--- | :--- | :--- |
+| **Ultra HD** | 3840x2160 | 15,000 kbps | 60 fps | > 25 Mbps |
+| **High** | 1920x1080 | 6,000 kbps | 60 fps | > 8 Mbps |
+| **Medium** | 1280x720 | 3,000 kbps | 30 fps | > 4 Mbps |
+| **Low** | 640x360 | 800 kbps | 30 fps | < 1.5 Mbps |
 
-### Per-title encoding
-- Netflix analyzes content complexity.
-- Action scenes need higher bitrate than static scenes.
-- Assigns per-title bitrates accordingly.
+### Key Adaptation Metrics
+
+- **Buffer Occupancy**: If player buffer falls below threshold (e.g. < 5 seconds), trigger immediate downshift to lower bitrate variant.
+- **Segment Keyframe Alignment**: All quality profiles must feature identical frame timestamps across GOP boundaries for seamless switching.
 
 ### Key takeaway
-ABR encodes at multiple bitrates; client picks based on bandwidth and switches seamlessly.
-Delivers the best quality each user's connection can sustain. Industry standards: HLS, DASH.
+
+ABR eliminates video buffering by **providing multi-bitrate segment variants**, enabling client video players to adjust stream quality dynamically as network conditions fluctuate.

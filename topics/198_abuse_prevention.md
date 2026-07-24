@@ -1,70 +1,44 @@
 # Abuse Prevention
-
 > **Category:** Security
 
 ---
 
-Abuse prevention = **stopping users from misusing your service** for spam, fraud, scraping,
-harassment, illegal content.
+### Overview
+**Abuse Prevention** involves anti-fraud systems, bot detection, heuristics engines, and machine learning classifiers designed to stop bad actors from exploiting legitimate application features (e.g., account takeover, fake account creation, credential stuffing, scraping, and spamming).
 
-### Abuse types
-- **Spam**: mass unsolicited messages.
-- **Fake accounts**: bot signups.
-- **Fraud**: stolen credit cards, fake reviews.
-- **Scraping**: extract data en masse.
-- **Harassment**: targeted attacks.
-- **Illegal content**: CSAM, terrorism, copyright.
-- **Resource abuse**: crypto mining, free-tier abuse.
+### Anti-Abuse Real-Time Pipeline
 
-### Defenses
+```
++------------------+     1. Request + Device Fingerprint     +---------------------+
+| Client Request   | --------------------------------------> | Abuse Protection    |
++------------------+                                         | Middleware / WAF    |
+                                                             +---------------------+
+                                                                        |
+                                                                        | 2. Feature Extraction
+                                                                        v
++------------------+     4. Challenge / Block / Allow       +---------------------+
+| Action Engine    | <------------------------------------- | ML Risk Scoring     |
+| (CAPTCHA/Deny)   |                                        | & Rules Engine      |
++------------------+                                        +---------------------+
+```
 
-#### 1. Account creation
-- **Email verification**.
-- **CAPTCHA** (reCAPTCHA, hCaptcha).
-- **Phone verification** for high-risk.
-- **Reputation checks** (IP, email domain).
-- **Invite-only** during early stage.
+### Core Abuse Prevention Mechanisms
 
-#### 2. Rate limiting
-- Per IP, per user, per device.
-- Stricter for new accounts.
-- Adaptive based on behavior.
+| Abuse Type | Technical Vector | Defense Strategy |
+|---|---|---|
+| **Credential Stuffing** | Automated login attempts via leaked breach lists | Device Fingerprinting, IP Reputation, Rate Limiting, MFA enforcement |
+| **Account Creation Fraud**| Bot registration for promo abuse or spam | Phone verification (SMS/OTP), Turnstile/CAPTCHA, IP velocity checks |
+| **Web Scraping** | High-volume automated data extraction | Dynamic HTML class randomization, TLS fingerprinting (JA3), Rate limits |
+| **Payment / Promo Fraud**| Stolen cards, promo code exploitation | Velocity checks per device/fingerprint, Risk scoring (Stripe Radar) |
 
-#### 3. Content filtering
-- **Profanity / hate filters**.
-- **ML classifiers** for spam, NSFW, violence.
-- **Hash databases** for known illegal content (NCMEC).
-- **Manual review** for flagged items.
+### Signals for Risk Scoring Engine
 
-#### 4. Behavioral analysis
-- Anomaly detection (sudden spikes, unusual patterns).
-- Bot detection (fingerprinting, mouse movement).
-- Graph analysis (connected suspicious accounts).
-
-#### 5. Reporting + moderation
-- User reports.
-- Moderator dashboard.
-- SLA on response time.
-- Shadow-ban / quarantine / suspend.
-
-#### 6. Economic friction
-- Charging for accounts (reduces spam).
-- Proof-of-work for sign-ups.
-- Staking / deposits.
-
-### Operational
-- **Abuse team**: dedicated function.
-- **Metrics**: abuse rate, false positive rate, time-to-takedown.
-- **Feedback loop**: ML models retrained on moderator decisions.
-- **Legal compliance**: illegal content reports to authorities.
-
-### Trade-offs
-- ✅ Protect users + business.
-- ❌ **False positives** (legit users blocked).
-- ❌ **Friction** hurts conversion.
-- Balance: tight enough to stop abuse, loose enough for real users.
+| Signal Category | Indicators Evaluated |
+|---|---|
+| **Network Signals** | Residential vs Datacenter IP, Tor Exit Node, Proxy VPN detection, Geolocation velocity |
+| **Client Signals** | Canvas fingerprinting, User-Agent consistency, TLS JA3/JA4 fingerprint |
+| **Behavioral Signals** | Mouse movement physics, keystroke dynamics, request time intervals |
+| **Velocity Signals** | Account registrations per IP/hour, failed login attempts per device |
 
 ### Key takeaway
-Abuse prevention is a continuous battle. Layer: account verification, rate limiting, content
-filtering (ML), behavioral analysis, moderation. Balance security vs friction — false positives
-hurt real users. Build a dedicated abuse function.
+Abuse prevention requires **multi-signal behavioral analysis**. Protect platforms by combining **TLS/Device fingerprinting**, **IP velocity tracking**, and real-time **risk scoring engines** to challenge bots while preserving smooth user UX.

@@ -4,60 +4,45 @@
 
 ---
 
-A CDN (Content Delivery Network) is a globally distributed network of **edge servers** that
-cache and serve content close to users.
+A Content Delivery Network (CDN) is a geographically distributed network of **Edge Servers** that cache content close to end users, reducing latency, origin load, and network congestion.
 
-### The problem
-- Origin server in Virginia.
-- User in Mumbai → 250ms round trip.
-- 100ms added latency per request.
-- Origin overloaded by global traffic.
+### High-Level CDN Architecture
 
-### The solution
 ```
-[User in Mumbai] -> [CDN edge in Mumbai]   (cache HIT) -> return
-                          |
-                          | (MISS)
-                          v
-                    [Origin in Virginia]
++---------------+                HTTP Request                +------------------+
+| User (London) | -----------------------------------------> | CDN Edge Node    |
++---------------+                                            | (London PoP)     |
+                                                             +------------------+
+                                                                      |
+                                                               (Cache Miss?)
+                                                                      v
++---------------+                 HTTP Request               +------------------+
+| User (Tokyo)  | -----------------------------------------> | Origin Server    |
++---------------+                                            | (US-East AWS)    |
+                                                             +------------------+
 ```
-Edge caches popular content. Most users get a HIT — single-digit ms latency.
 
-### What CDNs do
-- **Cache static assets** (images, JS, CSS).
-- **Cache dynamic content** (with care).
-- **TLS termination** at the edge.
-- **Compression** (gzip, brotli).
-- **DDoS protection** (absorb volumetric attacks).
-- **WAF** (block malicious requests).
-- **Image optimization** (resize, format conversion).
-- **Video streaming** (HLS segment caching).
+### Core Mechanisms
 
-### Popular CDNs
-- **Cloudflare** — popular, free tier, feature-rich.
-- **Akamai** — enterprise, huge footprint.
-- **AWS CloudFront** — integrated with AWS.
-- **Fastly** — programmable, real-time purge.
-- **Google Cloud CDN** / **Azure CDN**.
+1. **DNS Anycast Routing**: Maps client DNS queries to the IP address of the topologically closest CDN Point of Presence (PoP).
+2. **Edge Caching**: Stores static files (JS, CSS, images, video segments) in edge memory/NVMe drives.
+3. **Origin Shielding**: Interposes a secondary caching layer between edge PoPs and the origin server to collapse duplicate cache miss fetches.
 
-### Cache hit ratio
-- Target: > 95% for static content.
-- Higher = better performance, lower origin load.
+### CDN Request Handling Flow
 
-### Cache keys
-- URL + query string (default).
-- `Vary` header (e.g. cache differently per `Accept-Encoding`).
+| Step | Action | Description |
+| :--- | :--- | :--- |
+| **1. DNS Resolution**| Client queries DNS | Anycast DNS resolves domain to closest PoP IP. |
+| **2. Edge Lookup** | Edge server receives HTTP request| Checks local RAM/NVMe cache for URL key. |
+| **3. Cache Hit** | Content found | Edge returns cached response with 200 OK immediately. |
+| **4. Cache Miss** | Content absent | Edge fetches payload from Origin, caches it, and returns to user. |
 
-### Trade-offs
-- ✅ Lower latency globally.
-- ✅ Lower origin load.
-- ✅ DDoS / WAF.
-- ✅ Cheaper bandwidth.
-- ❌ Adds cost per GB.
-- ❌ Cache may serve stale data until TTL/purge.
-- ❌ Dynamic content needs care.
+### System Design Benefits
+
+- **Latency Reduction**: Lowers Round Trip Time (RTT) from 200ms (cross-continental origin) to < 10ms (local PoP).
+- **Origin Offloading**: Absorbs 90-99% of read traffic, protecting backend databases from traffic spikes.
+- **DDoS Mitigation**: Distributed edge PoPs absorb massive volumetric DDoS attacks at the perimeter.
 
 ### Key takeaway
-A CDN is **mandatory** for any globally-served web product. Caches content at the edge, lowering
-latency and origin load. Cloudflare/CloudFront/Fastly are common choices. Aim for > 95% cache
-hit ratio.
+
+CDNs deliver static assets with **ultra-low latency** by caching resources on geographically distributed edge servers, offloading network traffic from origin infrastructure.

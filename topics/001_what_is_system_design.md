@@ -4,43 +4,63 @@
 
 ---
 
-System Design is the **process of defining the architecture, components, modules, interfaces,
-and data flow** of a system to satisfy specified requirements. It bridges the gap between a vague
-product idea ("build Twitter") and a concrete blueprint engineers can build and scale.
+System Design is the **structured architectural process of defining software components, modules, interfaces, data pipelines, and storage engines** to satisfy specified business and technical requirements. It bridges the gap between high-level product vision ("build a global video streaming platform") and actionable blueprint design that engineers can build, scale, and maintain under real-world constraints.
 
-### Why it matters
-- Production systems serve **millions of users** — a design that works for 100 users can collapse
-  at 1M.
-- Almost every senior engineering interview tests it.
-- It forces you to think about **trade-offs** (consistency vs availability, latency vs cost) before
-  writing code.
+### Core System Design Pillars
 
-### The two layers
 ```
-High Level Design (HLD)            Low Level Design (LLD)
---------------------------------   --------------------------------
-Boxes & arrows of services         Classes, interfaces, design patterns
-Data stores, queues, caches        Object relationships, SOLID principles
-Capacity & scalability             API contracts, threading models
-"What" the system does             "How" each component is built
++-----------------------------------------------------------------------+
+|                         SYSTEM DESIGN PROCESS                         |
++-----------------------------------------------------------------------+
+        |                                                 |
+        v                                                 v
++-------------------------------+               +-------------------------------+
+|  Functional Requirements      |               |  Non-Functional Requirements  |
+|  - User Features & Workflows  |               |  - Scalability & Latency      |
+|  - API Endpoint Definitions   |               |  - Availability & Consistency |
+|  - Core Data Models           |               |  - Security & Cost Control    |
++-------------------------------+               +-------------------------------+
+        |                                                 |
+        +-----------------------+-------------------------+
+                                |
+                                v
++-----------------------------------------------------------------------+
+|                        ARCHITECTURE BREAKDOWN                         |
++-----------------------------------------------------------------------+
+|  +-------------------+   +--------------------+   +----------------+  |
+|  | Client & Edge     |-->| Application Layer  |-->| Storage Layer  |  |
+|  | (DNS, CDN, LB)    |   | (Services, Cache)  |   | (SQL, NoSQL)   |  |
+|  +-------------------+   +--------------------+   +----------------+  |
++-----------------------------------------------------------------------+
 ```
 
-### Core dimensions you always balance
-1. **Scalability** — handle growth in users/data/traffic.
-2. **Availability** — stay up (measured in "nines": 99.9%, 99.99%).
-3. **Latency** — respond quickly.
-4. **Consistency** — every read sees the latest write.
-5. **Cost** — don't bankrupt the company.
+### High-Level Design (HLD) vs. Low-Level Design (LLD)
 
-### Typical interview flow (≈45 min)
-1. **Clarify requirements** (5 min) — functional + non-functional.
-2. **Back-of-envelope estimation** (5 min) — QPS, storage, bandwidth.
-3. **API + data model** (5 min).
-4. **High-level diagram** (10 min).
-5. **Deep dive** (15 min) — bottleneck, scale, trade-offs.
-6. **Wrap up** (5 min) — SLOs, monitoring, failure modes.
+System design operates at two distinct abstraction layers, both required to build production systems.
+
+| Dimension | High-Level Design (HLD) | Low-Level Design (LLD) |
+| :--- | :--- | :--- |
+| **Focus** | Overall architecture, macro components, system boundaries | Micro component internals, class hierarchies, design patterns |
+| **Artifacts** | Architecture diagrams, data flow charts, technology stack selection | Class diagrams, sequence diagrams, API contracts, DB schemas |
+| **Scope** | Services, Load Balancers, Caches, Message Queues, Databases | Data structures, algorithms, interface definitions, threading |
+| **Target Audience** | Solutions Architects, Engineering Directors, Tech Leads | Senior Engineers, Developers, Code Reviewers |
+| **Primary Goal** | Scalability, fault tolerance, cost management, availability | Code maintainability, extensibility, modularity, readability |
+
+### The System Design Framework for Interviews
+
+1. **Requirement Clarification (5-7 mins)**: Define functional scope (what to build) and non-functional requirements (throughput, latency, SLAs, storage bounds).
+2. **Back-of-the-Envelope Estimation (5 mins)**: Calculate QPS (queries per second), peak bandwidth, storage footprint over 5 years, and memory caching needs.
+3. **API & Data Model Design (5-8 mins)**: Specify REST/gRPC endpoints, core database schema, primary keys, and indexing strategy.
+4. **High-Level System Architecture (10-15 mins)**: Draw core services, database sharding, caching tiers, message brokers, and load balancing layers.
+5. **Deep Dive & Bottlenecks (10 mins)**: Address single points of failure (SPOFs), race conditions, data consistency models, partition handling, and tail latencies.
+6. **Observability & Edge Cases (3-5 mins)**: Detail logging, metric alerting, distributed tracing, rate limiting, and graceful degradation.
+
+### Key Trade-offs in System Engineering
+
+- **Latency vs. Throughput**: Optimizing for high throughput often requires batching, which increases individual request latency.
+- **Consistency vs. Availability**: Enforcing strong consistency across distributed nodes limits availability during network splits (CAP theorem).
+- **Read Heavy vs. Write Heavy**: Read-heavy workloads benefit from aggressive caching and read replicas, whereas write-heavy systems require append-only logs, message queues, and LSM-tree storage engines.
 
 ### Key takeaway
-System Design is less about memorizing tools and more about **structured reasoning under
-constraints**. Always start with requirements, draw the simplest thing that works, then defend
-every scaling decision.
+
+System Design is not about memorizing specific frameworks, but mastering **structured trade-off analysis under real-world constraints**. Always clarify functional requirements first, establish numeric scaling bounds, draw a minimal working system, and systematically iterate to resolve performance bottlenecks and failure modes.

@@ -1,52 +1,49 @@
 # Design Logging System
-
 > **Category:** Beginner System Design Problems
 
 ---
 
-Design a centralized logging system: collect, store, search logs from all services.
+### Overview
+A **Logging System** (e.g., ELK Stack, Grafana Loki) ingests, buffers, indexes, and queries high-volume unstructured log streams emitted by microservices across distributed infrastructure.
 
-### Requirements
-- **Functional**: ingest logs; search by query; filter by service/time; alert.
-- **Non-functional**: high-throughput ingestion; low-latency search; retention.
+### End-to-End Log Ingestion & Indexing Pipeline
 
-### Architecture (ELK / EFK stack)
 ```
-[Services] -> [Log shipper (Fluentd/Filebeat)] -> [Kafka] -> [Logstash]
-                                                              |
-                                                              v
-                                                       [Elasticsearch] <- search
-                                                              |
-                                                              v
-                                                          [Kibana]
++--------------------------------------------------------------------------+
+| Producer Layer: App Containers -> Write stdout/stderr                     |
+| FluentBit / Vector DaemonSet agent reads local log files                 |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 1. Buffer High-Throughput Stream
++--------------------------------------------------------------------------+
+| Ingestion Buffer: Apache Kafka / Redpanda Cluster                        |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 2. Parse & Index
++--------------------------------------------------------------------------+
+| Processing & Storage: Logstash Consumers -> OpenSearch / Grafana Loki    |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 3. Query
++--------------------------------------------------------------------------+
+| Visualization: Grafana / Kibana Dashboards                               |
++--------------------------------------------------------------------------+
 ```
 
-### Ingestion
-- Apps write to stdout / file.
-- Shipper (Fluentbit, Filebeat) tails logs.
-- Kafka buffers (absorbs bursts).
-- Logstash parses, enriches, indexes.
+### Logging Architecture Comparison: Full Text Index vs Label Index
 
-### Storage
-- **Elasticsearch**: inverted index for full-text search.
-- Time-based indices (one per day).
-- Lifecycle: hot → warm → cold → delete.
+| Architecture | Storage Engine | Indexing Model | Pros | Cons |
+|---|---|---|---|---|
+| **Elasticsearch / OpenSearch** | Lucene Inverted Index | Indexes every token in log payload | Fast arbitrary full-text keyword search | High storage & CPU indexing overhead |
+| **Grafana Loki** | Chunk Store (S3) + Index | Indexes only stream labels (e.g., `app=order-service`) | Low storage footprint (~90% cheaper); uses S3 | Slower full-text grep scans across raw chunks |
 
-### Search
-- Kibana / Grafana UI.
-- Lucene query syntax: `service:auth AND level:ERROR`.
-- Aggregations: counts by service, error rate over time.
+### Log Data Retention Tier Matrix
 
-### Retention
-- Hot: 7-30 days (fast SSD).
-- Warm: 30-90 days.
-- Cold: archive to S3.
-
-### Alerts
-- Error rate spike.
-- Specific error pattern.
-- Disk usage.
+| Storage Tier | Storage Media | Retention Period | Query Latency Target |
+|---|---|---|---|
+| **Hot Tier** | High-performance NVMe SSDs | 1 - 7 Days | Sub-second real-time dashboard searches |
+| **Warm Tier** | Standard SATA SSD / HDD | 8 - 30 Days | 1 - 5 seconds |
+| **Cold / Archive Tier**| AWS S3 Standard-IA / Glacier | 31 Days - 7 Years | Minutes to Hours (Batch audit extraction) |
 
 ### Key takeaway
-Logging system = shipper → Kafka (buffer) → Logstash → Elasticsearch → Kibana. Time-based
-indices + lifecycle management. Alerts on error patterns. The classic ELK stack.
+Buffer high-throughput log streams using **Apache Kafka**. Use **Grafana Loki** (label indexing + S3 chunk storage) to achieve 90% cost savings over full-text indexed engines like Elasticsearch for standard log retention.

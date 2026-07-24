@@ -4,48 +4,40 @@
 
 ---
 
-Design Google Docs-like collaborative editing.
+A Collaborative Document Editor allows multiple users to edit the same rich-text document simultaneously, resolving edit conflicts in real time while displaying cursor locations and revision history.
 
-### Requirements
-- **Functional**: multiple users edit same doc; real-time sync; cursor positions.
-- **Non-functional**: low-latency; conflict-free.
+### System Requirements
+- **Functional Requirements**:
+  - Multi-user real-time concurrent text editing.
+  - Display live collaborator cursors and selection highlights.
+  - Maintain complete version revision history with restore capability.
+- **Non-Functional Requirements**:
+  - Convergence: All users must see identical document states after edits settle.
+  - Sub-50ms Latency: Instant local text updates with async server convergence.
+  - Partition Tolerance: Support offline editing with automatic reconciliation on reconnect.
 
-### Conflict resolution
-
-#### Operational Transformation (OT)
-- Old approach.
-- Transform concurrent ops to maintain consistency.
-- Complex to implement correctly.
-
-#### CRDTs (Conflict-free Replicated Data Types)
-- Modern approach (Yjs, Automerge).
-- Operations commute (apply in any order → same result).
-- Automatic conflict resolution.
-
-### Architecture
+### System Architecture
 ```
-[Editor] <-WebSocket-> [Collaboration server]
-                        [Document state (CRDT)]
-                        [Persistence]
+[ Client Editor A ] <---> [ WebSocket Gateway ] <---> [ Client Editor B ]
+                                |
+                                v
+                   [ Collaboration Engine Node ]
+                   (OT / CRDT Convergence Server)
+                                |
+        +-----------------------+-----------------------+
+        |                                               |
+        v                                               v
+[ Document Snapshot DB ]                       [ Operation Log Store ]
+(PostgreSQL / DynamoDB)                        (Append-Only Change History)
 ```
 
-### CRDT approach
-- Each edit transformed into CRDT operation.
-- Sent to server, broadcast to others.
-- Each client applies locally.
-- Convergent by design.
-
-### Cursor presence
-- Broadcast cursor position.
-- Show other users' cursors.
-
-### History
-- Snapshot periodically.
-- Replay CRDT ops for full history.
-
-### Offline
-- CRDTs support offline editing (sync on reconnect).
+### Concurrency Resolution: OT vs CRDT
+| Criteria | Operational Transformation (OT) | Conflict-Free Replicated Data Types (CRDT) |
+|---|---|---|
+| **Approach** | Transforms operation indexes relative to concurrent ops | Data structure embeds unique IDs for every character |
+| **Centralization** | Requires central server to order operations | Peer-to-peer / Decentralized friendly |
+| **Memory Overhead**| Low (plain text + small transform log) | High (overhead per character ID metadata) |
+| **P2P Offline Use** | Difficult | Exceptional |
 
 ### Key takeaway
-Collaborative editing = **CRDTs** (Yjs, Automerge) for automatic conflict-free merges, or OT for
-classic approach. WebSocket for real-time broadcast. Each edit is a commutative operation.
+Collaborative document editors achieve real-time convergence using Operational Transformation (OT) with central ordering servers or CRDT structures for decentralized offline-first editing.

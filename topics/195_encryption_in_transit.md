@@ -1,61 +1,44 @@
 # Encryption in Transit
-
 > **Category:** Security
 
 ---
 
-Encryption in transit = **encrypting data as it moves** between systems.
+### Overview
+**Encryption in Transit** ensures that data moved across network interfaces—between clients and edge servers, or between internal microservices—is encrypted to prevent eavesdropping, packet sniffing, and man-in-the-middle (MitM) interception.
 
-### Why
-- Networks can be eavesdropped (coffee shop Wi-Fi, ISP).
-- Traffic can be tampered.
-- Compliance (PCI, HIPAA).
-- Defense in depth.
+### End-to-End Encryption vs TLS Termination
 
-### How
-- **TLS** for HTTP, gRPC, SMTP — the standard.
-- **mTLS** for service-to-service.
-- **IPsec / WireGuard** for VPN / network-level.
-- **SSH** for shell access.
+```
+Client             Edge Load Balancer                Backend Microservice A          Backend Microservice B
+  |                        |                                  |                               |
+  | === HTTPS (TLS 1.3) => |                                  |                               |
+  |                        | --- TLS Termination (Plaintext) ->|                               |  [Insecure Network]
+  |                        |                                  |                               |
+  |                        | === Zero Trust mTLS Encryption ================================> |  [Secure Network]
+```
 
-### TLS recap
-- Server cert proves identity.
-- ECDHE for key exchange.
-- AES-GCM / ChaCha20 for bulk encryption.
-- TLS 1.3 is the modern standard.
+### Encryption Protocols across Layers
 
-### Layers
-1. **External** (user → your edge): TLS via HTTPS.
-2. **Edge → internal** (LB → services): TLS or mTLS.
-3. **Service → service** (microservices): mTLS via service mesh.
-4. **Service → DB**: TLS to Postgres / Redis / Kafka.
-5. **Service → external API**: HTTPS.
+| Network Layer | Protocol | Use Case |
+|---|---|---|
+| **Application Layer** | **TLS 1.3 / HTTPS** | Web web apps, REST APIs, gRPC endpoints |
+| **Transport Layer** | **QUIC (HTTP/3)** | Low-latency mobile & streaming encryption |
+| **Network Layer** | **IPsec / WireGuard** | Site-to-site VPNs, inter-cloud VPC peering |
+| **Internal Microservices** | **mTLS (Mutual TLS)** | Service mesh (Istio, Linkerd) pod-to-pod security |
 
-### Internal TLS
-- Internal services often run plain HTTP behind the LB.
-- Risk: anyone on the network can sniff.
-- **Service mesh** (Istio, Linkerd) adds mTLS everywhere transparently.
+### Mutual TLS (mTLS) Architecture
+In standard TLS, only the client validates the server's certificate. In **mTLS**, both parties validate each other's certificates:
 
-### Certificates
-- Public: Let's Encrypt for external.
-- Internal: private CA (cert-manager, step-ca, Vault PKI).
-- Auto-renew via ACME.
+| Step | Action |
+|---|---|
+| **1. Server Cert Validation** | Client verifies server certificate against CA trust store. |
+| **2. Client Cert Request** | Server requests client certificate. |
+| **3. Client Cert Validation** | Server verifies client certificate and validates client identity/SAN. |
+| **4. Encrypted Tunnel** | Established only if both sides possess valid, trusted certificates. |
 
-### Trade-offs
-- ✅ Confidentiality.
-- ✅ Integrity.
-- ✅ Authentication.
-- ❌ Latency (handshake).
-- ❌ CPU cost (encryption).
-- ❌ Cert management complexity.
-
-### Modern best practices
-- HTTPS only (HSTS).
-- TLS 1.3 only.
-- mTLS between services (service mesh).
-- Auto-rotating certs.
+### Performance & Operational Considerations
+- **Hardware Offloading**: Use TLS termination proxies (Envoy, NGINX) to offload cryptographic math.
+- **Automated Cert Lifecycle**: Use **ACME protocol** (Let's Encrypt, Cert-Manager) for short-lived cert auto-renewal.
 
 ### Key takeaway
-Encrypt all traffic, externally (HTTPS) and internally (mTLS). Use TLS 1.3. For internal
-service-to-service, use a service mesh (Istio, Linkerd) to get mTLS without code changes.
-Automate cert management.
+**Encryption in transit** mandates **TLS 1.3** for public ingress traffic and **mTLS** (via Service Mesh) for zero-trust internal microservice communication.

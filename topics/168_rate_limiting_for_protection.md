@@ -4,55 +4,51 @@
 
 ---
 
-Rate limiting for protection = **using rate limits to defend your service** against
-overload, abuse, and DDoS.
+Rate Limiting for Protection is a defense mechanism that **caps incoming traffic volume** at system boundaries to protect downstream services from DDoS attacks, resource starvation, and noisy-neighbor tenants.
 
-### Why
-- A single client hammering your API can take it down.
-- Bugs (infinite retry loops) cause runaway load.
-- Malicious attacks (DDoS, scraping).
-- Noisy neighbors (one tenant exhausting resources).
+### Perimeter Rate Limiting Architecture
 
-### Layers of rate limiting
-| Layer | Limit |
-|-------|-------|
-| Edge / CDN | Per-IP, per-region (Cloudflare) |
-| WAF | Block malicious patterns |
-| API Gateway | Per-user, per-API-key |
-| Service | Per-tenant, per-endpoint |
-| DB | Connection limits, statement_timeout |
+```
++--------+        1. HTTP Request (User IP: 1.2.3.4)        +------------------------+
+| Client | -----------------------------------------------> | API Gateway            |
++--------+                                                  +------------------------+
+                                                                 |
+                                                                 v 2. Check Sliding Counter
+                                                            +------------------------+
+                                                            | Redis Counter Store    |
+                                                            +------------------------+
+                                                                 |
+                                     +---------------------------+---------------------------+
+                                     | Allowed (Count <= Limit)                              | Exceeded (Count > Limit)
+                                     v                                                       v
+                         +------------------------+                              +------------------------+
+                         | Backend Microservice   |                              | Return 429 Too Many    |
+                         +------------------------+                              | Requests + Retry-After |
+                                                                                 +------------------------+
+```
 
-### Limit dimensions
-- **Per IP** — basic abuse protection.
-- **Per user / API key** — fair quotas.
-- **Per endpoint** — protect expensive operations.
-- **Global** — backstop.
-- **Concurrent** — limit parallel requests, not just rate.
+### Rate Limiting Algorithms Matrix
 
-### Algorithms
-- **Token bucket**: bursty but bounded.
-- **Leaky bucket**: smooth.
-- **Sliding window**: precise.
-- **Fixed window**: simple.
+| Algorithm | How It Works | Burst Traffic Support | Memory Efficiency | Best For |
+| :--- | :--- | :--- | :--- | :--- |
+| **Token Bucket** | Tokens refill at fixed rate \(R\); requests consume tokens | Excellent | High | General API Gateways (Envoy, Kong) |
+| **Leaky Bucket** | Requests enter queue; processed at constant rate | Smooths bursts | High | Traffic shaping for smooth writes |
+| **Fixed Window Counter** | Resets count every fixed minute/hour | Poor (Edge spikes) | Maximum | Simple IP rate limiting |
+| **Sliding Window Log** | Logs exact timestamp of every request | Precise | Poor (High RAM)| Strict security access endpoints |
 
-### Response on limit exceeded
-- **429 Too Many Requests**.
-- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`.
-- Optional: queue for later processing instead of rejecting.
+### HTTP 429 Response Standard Headers
 
-### Distributed rate limiting
-- Single in-memory counter doesn't work across instances.
-- **Redis counter with TTL** (atomic via Lua).
-- **Token bucket in Redis** (redis-cell).
-- **Sliding window with sorted sets**.
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+Retry-After: 60
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1774358400
 
-### Adaptive rate limiting
-- Adjust limits based on system load.
-- When CPU high → tighten limits.
-- When healthy → relax.
-- Used by Netflix, Twitter.
+{"error": "Quota exceeded. Try again in 60 seconds."}
+```
 
 ### Key takeaway
-Rate limit at every layer (CDN → WAF → gateway → service). Use **token bucket** for most cases.
-Return 429 with `Retry-After`. For distributed systems, use Redis with atomic Lua scripts.
-Adaptive limits respond to load.
+
+Protect internal services from traffic overload by **enforcing token bucket rate limits at the API Gateway**, returning HTTP 429 status responses with `Retry-After` headers.

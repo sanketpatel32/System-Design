@@ -4,57 +4,54 @@
 
 ---
 
-Block storage = **raw disk volumes** presented to a server, like a physical hard drive. The
-OS formats and uses it directly.
+Block storage splits raw storage capacity into **fixed-size storage chunks (blocks)**, each with a unique address. The operating system formats these blocks with a file system and treats the volume like an attached physical hard drive.
 
-### How it works
+### Architecture & Low-Level Mechanics
+
+Block storage abstracts underlying physical drives into logical volumes (LUNs) attached over high-speed networks (SAN or cloud hypervisors) using protocols such as iSCSI, Fibre Channel, or NVMe-oF.
+
 ```
-[Server]
-   |
-   | iSCSI / Fibre Channel / NVMe-oF
-   v
-[Block storage array]  -> volumes like /dev/sdb
++-----------------------------------------------------------------------------------+
+|                      Database Engine / Virtual Machine OS                         |
+|                 (File System Layer: ext4, xfs, NTFS formatted)                    |
++-----------------------------------------------------------------------------------+
+                                          | Block I/O Operations (Read/Write Sector)
+                                          v
++-----------------------------------------------------------------------------------+
+|                    Storage Controller / HBA (NVMe-oF / iSCSI)                     |
++-----------------------------------------------------------------------------------+
+                                          |
+                +-------------------------+-------------------------+
+                |                                                   |
+                v                                                   v
+    +-----------------------+                           +-----------------------+
+    | Block 0x00A1 (4 KB)   |                           | Block 0x00A2 (4 KB)   |
+    +-----------------------+                           +-----------------------+
+    | High-Speed SSD Array  |                           | High-Speed SSD Array  |
+    +-----------------------+                           +-----------------------+
 ```
-The server sees a raw device, formats with ext4 / NTFS / XFS, mounts it as a filesystem.
 
-### Properties
-- **Block-level**: read/write at the sector level (4K blocks).
-- **Low latency**: often SSD/NVMe-backed.
-- **Single-writer**: one server mounts a volume at a time (usually).
-- **Snapshot capable**: point-in-time copies.
+### Storage Characteristics & Performance Metrics
 
-### Use cases
-- **Database storage** (Postgres, MySQL data volumes).
-- **OS boot volumes** (EC2 EBS root).
-- **Anything needing a filesystem with POSIX semantics**.
+- **Granular Control**: Applications can write directly to raw block sectors without file system overhead.
+- **Ultra-Low Latency**: Delivers sub-millisecond access times and high IOPS (Input/Output Operations Per Second).
+- **Single Instance Attachment**: Most block volumes attach to one compute instance at a time (POSIX multi-attach is rare and requires cluster file systems).
 
-### AWS EBS (typical block storage)
-- Volumes attached to one EC2 instance.
-- Types: gp3 (SSD), io2 (high IOPS), st1 (HDD throughput).
-- Snapshots backup to S3.
-- Multi-attach (one volume to multiple instances) for specialized cases.
+### Block Storage Performance Comparison
 
-### Pros
-- ✅ **Lowest latency** storage (after local NVMe).
-- ✅ **POSIX filesystem** on top.
-- ✅ **Snapshot / clone** support.
-- ✅ Predictable performance.
+| Type / Tier | Protocol | Target IOPS | Typical Latency | Best Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **Local NVMe SSD** | PCIe Direct | 100,000+ IOPS | < 100 µs | High-performance caches, ephemeral DBs |
+| **Cloud Provisioned IOPS**| iSCSI / NVMe-oF | 10,000 - 256,000 IOPS | < 1 ms | Production RDBMS (PostgreSQL, Oracle) |
+| **Cloud General Purpose**| Virtualized SAN | 3,000 - 16,000 IOPS | 1 - 3 ms | Web servers, dev/test environments |
 
-### Cons
-- ❌ **Single-AZ** (usually) — not multi-region by default.
-- ❌ **One writer** — can't share between instances.
-- ❌ **Capacity bound** per volume.
-- ❌ Pay for provisioned capacity, not used.
+### Key Trade-offs
 
-### vs Object Storage
-| | Block | Object |
-|--|-------|--------|
-| Access | Block device | HTTP API |
-| Semantics | POSIX | REST |
-| Scale | TB per volume | PB / trillions |
-| Latency | Sub-ms to ms | 10s of ms |
-| Sharing | One instance | Many |
+- ✅ **Maximum Performance**: Low latency and high throughput necessary for transactional databases.
+- ✅ **Random Write Efficiency**: Allows modifying tiny 4KB blocks within huge files without rewriting the whole file.
+- ❌ **Higher Cost**: Expensive per gigabyte compared to object or file storage.
+- ❌ **Limited Reach**: Cannot be accessed directly via internet HTTP APIs.
 
 ### Key takeaway
-Use block storage (EBS) for **databases and single-instance workloads** needing a filesystem and
-low latency. Use object storage (S3) for shared, internet-scale data.
+
+Block storage delivers **sub-millisecond performance and raw volume access**, making it the primary storage abstraction for high-throughput transactional databases and virtual machine disks.

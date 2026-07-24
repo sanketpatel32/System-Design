@@ -4,56 +4,40 @@
 
 ---
 
-LLD: model a library.
+Object-Oriented Low-Level Design (LLD) for a Library Management System managing book cataloging, rack locations, member borrowing quotas, fine calculations, and hold reservations.
 
-### Requirements
-- Books, members, librarians.
-- Checkout, return, reserve.
-- Fines for overdue.
+### System Requirements & Component Model
+- Manage physical book items across library racks (`Book` vs `BookItem`).
+- Track member borrowing limits (max 5 books for 14 days) and overdue fines.
+- Support book search by title, author, subject, and publication date.
 
-### Classes
+### Class Model Diagram
 ```
-class Book:
-    isbn
-    title
-    author
-    status  # AVAILABLE, CHECKED_OUT, RESERVED
-
-class BookItem:  # physical copy
-    id
-    book
-    status
-
-class Member:
-    id
-    name
-    checked_out[]
-
-class Librarian:
-    add_book(), remove_book(), member_management()
-
-class Library:
-    catalog  # isbn -> Book
-    items[]
-
-class Loan:
-    member
-    item
-    due_date
-    returned_at
-    fine
++-------------------+          +-------------------+          +-------------------+
+|       Book        | 1     *  |     BookItem      | *     1  |       Rack        |
++-------------------+ --------> +-------------------+ --------> +-------------------+
+| - isbn: string    |          | - barcode: string |          | - number: int     |
+| - title: string   |          | - status: Status  |          | - location: string|
+| - authors: List   |          | - price: double   |          +-------------------+
++-------------------+          +-------------------+
+                                         |
+                                         v (issued via)
+                               +-------------------+
+                               |     BookLending   |
+                               +-------------------+
+                               | - creationDate    |
+                               | - dueDate         |
+                               | - returnDate      |
+                               +-------------------+
 ```
 
-### Operations
-- `checkout(member, item)`: validate, create loan, set status.
-- `return(item)`: close loan, calculate fine if overdue.
-- `reserve(member, book)`: queue for when available.
-- `search(title/author)`: filter catalog.
-
-### Patterns
-- **Repository** for catalog.
-- **Factory** for loan creation.
+### Core Entity Specifications
+| Class | Key Attributes | Core Responsibilities |
+|---|---|---|
+| `Book` | `isbn`, `title`, `authors`, `subject` | Metadata representation of a book title. |
+| `BookItem` | `barcode`, `isReferenceOnly`, `status`, `rack` | Physical copy of a book in the library. |
+| `Member` | `memberId`, `borrowedItems`, `totalFines` | Tracks member borrowing history and quota. |
+| `FineService` | `dailyFineRate` | Calculates overdue fines based on elapsed days past due date. |
 
 ### Key takeaway
-Library LLD = Book + BookItem (physical copy) + Member + Librarian + Loan classes. Loan tracks
-checkout/return/fines. Reservation queue for unavailable books.
+Library management LLD decouples conceptual metadata (`Book`) from physical inventory (`BookItem`), using strategy patterns for fine calculation and status management for loans.

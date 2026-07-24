@@ -4,30 +4,50 @@
 
 ---
 
-Durability = **once data is acknowledged written, it persists** — even across power loss, disk
-failures, or node crashes.
+Durability is the guarantee that **once a transaction is committed or a write operation is acknowledged, the saved data will persist permanently** and will not be lost due to system crashes, power outages, or hardware failures.
 
-### Measured in nines
-S3 advertises **11 nines** (99.999999999%) — i.e. expected loss of 1 object per 100,000 over
-10,000 years.
+### Multi-Tier Durability Architecture
 
-### How durability is achieved
-- **Replication**: copies on multiple disks/hosts/AZs.
-- **Erasure coding**: data + parity shards across hosts (more space-efficient than replication).
-- **WAL / journal**: append-only log before applying to data files (PostgreSQL, MySQL InnoDB).
-- **FSync**: writes flushed to disk before ack.
-- **End-to-end checksums**: detect silent corruption (bit rot).
-- **Backup + offsite copy**: protect against site loss.
+```
++-------------------------------------------------------------------------+
+|                      MULTI-TIER DURABILITY FLOW                         |
++-------------------------------------------------------------------------+
 
-### Durability vs availability
-A stored object is **durable** even if it's temporarily **unavailable** (e.g. the only online
-replica is down). Conversely, an available object can be **non-durable** (in-memory only).
+  [ Write Request ] 
+          |
+          v
+  +--------------------------------+
+  | In-Memory Buffer / WAL (Disk)  |  (Step 1: Synchronous Write-Ahead Log)
+  +--------------------------------+
+          |
+          +------------------------+
+          |                        |
+          v                        v
+  +---------------+        +------------------+
+  | Primary DB    |=======>| Secondary Nodes  | (Step 2: Multi-AZ Replication)
+  | Local NVMe    | Sync   | (Cross-Region)   |
+  +---------------+        +------------------+
+          |
+          v
+  +--------------------------------+
+  | Blob Storage Backup (S3)       |  (Step 3: Point-in-Time Backups)
+  +--------------------------------+
+```
 
-### Trade-offs
-- **Synchronous replication** = max durability, adds write latency.
-- **Async replication** = lower latency, small data-loss window on failover.
-- **Erasure coding** = better space efficiency, slower reads on degraded nodes.
+### Durability Mechanisms & Standards
+
+| Mechanism | Description | Use Case / System | Durability SLA |
+| :--- | :--- | :--- | :--- |
+| **Write-Ahead Logging (WAL)**| Appending writes sequentially to persistent disk log before applying changes to main DB tables. | PostgreSQL, MySQL InnoDB | Zero data loss on power failure |
+| **Multi-AZ Synchronous Sync**| Replicating written blocks across multiple physically isolated Availability Zones. | AWS Aurora, CockroachDB | Protection against data center disasters |
+| **Erasure Coding & RAID** | Splitting data into fragments, expanding and encoding with redundant parity bits. | Object Storage (AWS S3) | 99.999999999% (11 Nines) |
+| **Point-in-Time Recovery (PITR)**| Continuous WAL archiving combined with periodic database snapshots. | Production RDBMS backups | Recovery to specific second |
+
+### Metrics: RPO and RTO
+
+- **Recovery Point Objective (RPO)**: The maximum acceptable amount of data loss measured in time during a disaster (e.g., RPO = 0 means zero data loss).
+- **Recovery Time Objective (RTO)**: The maximum acceptable duration of system downtime after a failure before services are fully restored.
 
 ### Key takeaway
-Durability is a **data-loss** guarantee, not a responsiveness one. Define how much data you can
-lose (RPO) and pick a strategy that meets it.
+
+Durability guarantees that committed data is never lost. Achieve high durability by using **Write-Ahead Logging (WAL)**, **multi-AZ synchronous replication**, and **erasure coding in object storage** to protect against hardware failure.

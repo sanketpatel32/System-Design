@@ -4,53 +4,56 @@
 
 ---
 
-A signed URL = **a temporary, token-authorized URL** giving a client direct access to an
-object in S3/GCS/Azure, bypassing your app.
+A signed URL (or presigned URL) provides **temporary, cryptographically signed access** to a specific storage resource without requiring clients to possess IAM credentials or route data through application servers.
 
-### Why
-- Without signed URLs: client → your app → S3 (your app proxies bytes — wastes bandwidth and
-  CPU).
-- With signed URLs: client → S3 directly (your app is unburdened).
+### Architectural Sequence Diagram
 
-### Flow
 ```
-1. Client:    "I want to download photo X."
-2. Your app:  generates signed URL (valid for 5 min).
-3. Client:    downloads directly from S3 via the signed URL.
-4. S3:        verifies signature, serves object.
-```
-
-### Generation
-```python
-url = s3.generate_presigned_url(
-    'get_object',
-    Params={'Bucket': 'photos', 'Key': 'cat.jpg'},
-    ExpiresIn=300   # 5 minutes
-)
++--------+              +----------------------+              +----------------+
+| Client |              | App Auth Server      |              | Storage (S3)   |
++--------+              +----------------------+              +----------------+
+    |                               |                                  |
+    | 1. Request Upload Permission  |                                  |
+    |------------------------------>|                                  |
+    |                               | 2. Verify IAM & Create HMAC      |
+    |                               |    Signed URL (TTL = 15m)       |
+    |<------------------------------|                                  |
+    | Returns Presigned PUT URL     |                                  |
+    |                                                                  |
+    | 3. Upload File Directly (HTTP PUT with Signed Query Params)      |
+    |----------------------------------------------------------------->|
+    |<-----------------------------------------------------------------|
+    | Returns 200 OK (Data bypasses App Server entirely!)             |
 ```
 
-### Use cases
-- **Downloads**: let users download files directly from S3.
-- **Uploads**: let users upload directly (POST pre-signed) without going through your app.
-- **Temporary sharing**: share a private file with someone for a limited time.
-- **Mobile apps**: reduce app server bandwidth.
+### Presigned URL Security Anatomy
 
-### Security
-- **TLS** mandatory.
-- **Short TTL** (5-15 min) limits exposure.
-- **Scoped** to a specific object + HTTP verb.
-- Signed by your IAM credentials; can't be forged.
+Presigned URLs append authentication criteria directly into HTTP URL query parameters:
 
-### Trade-offs
-- ✅ Offloads bandwidth from your app.
-- ✅ Fast (direct from S3).
-- ❌ Client must handle errors (S3 returns them, not your API).
-- ❌ Can't run app-level logic (auth, logging) on the request.
+```
+https://my-bucket.s3.amazonaws.com/uploads/photo.jpg
+  ?X-Amz-Algorithm=AWS4-HMAC-SHA256
+  &X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20260724%2Fus-east-1%2Fs3%2Faws4_request
+  &X-Amz-Date=20260724T120000Z
+  &X-Amz-Expires=900
+  &X-Amz-SignedHeaders=host
+  &X-Amz-Signature=a3b8f... (Cryptographic HMAC Hash)
+```
 
-### Hybrid pattern
-- App handles auth and decides "is this user allowed?".
-- If yes, returns signed URL → client downloads directly.
+### Direct Access Strategy Matrix
+
+| Strategy | Payload Data Route | App Server Load | Granular Expiration | Security Scope |
+| :--- | :--- | :--- | :--- | :--- |
+| **Signed URLs** | Client -> Storage | Minimal (Auth only) | Yes (e.g., 5 to 60 minutes)| Single File/Object |
+| **Signed Cookies** | Client -> Storage / CDN | Minimal (Auth only) | Yes | Multiple Files / Path Prefix |
+| **Proxy Gateway** | Client -> Server -> Storage | Extreme (Double Egress) | N/A (Server Session) | Full Application Control |
+
+### Key Security Best Practices
+
+- **Short Time-To-Live (TTL)**: Restrict expiration intervals to the minimum operational window (e.g., 5–15 minutes).
+- **Enforce Headers**: Sign `Content-Type` and `Content-Length` headers so clients cannot upload unauthorized executable file types or massive payload sizes.
+- **CORS Configuration**: Restrict allowed HTTP origins on storage buckets to trusted application domains.
 
 ### Key takeaway
-Use **signed URLs** to let clients upload/download objects directly from S3, bypassing your app.
-App does auth, returns short-TTL URL; S3 does the bytes. Saves bandwidth and CPU.
+
+Signed URLs offload **large data transfers from application servers** by issuing short-lived, cryptographically signed HTTP authorization tokens for direct client-to-storage interactions.

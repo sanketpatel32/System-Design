@@ -4,57 +4,37 @@
 
 ---
 
-Active-passive = **one region/instance serves traffic (active), another stands ready
-(passive)**. The passive takes over on failure.
+Active-Passive Architecture is a high-availability deployment model where **one primary node/region processes 100% of live traffic**, while one or more passive standby instances remain idle or synchronized, ready to take over during failover.
 
-### Topology
+### Active-Passive Hot Standby Sequence
+
 ```
-[Region 1 - Active]    [Region 2 - Passive]
-        |                      ^
-        | replicate data       |
-        +----------------------+
-                                |
-   On failure: DNS failover ----+
+                                  +-----------------------+
+                                  | Global DNS / Router   |
+                                  +-----------------------+
+                                    /                              1. Live Traffic (100%)  /                     \ 2. Standby Route (0% Traffic)
+                                  v                       v
+                      +-------------------+       +-------------------+
+                      | Active Node       |       | Passive Standby   |
+                      | (Processing Req)  |       | (Warm Replica)    |
+                      +-------------------+       +-------------------+
+                                |                           ^
+                                +--- Async DB Replication --+
 ```
 
-### How failover works
-1. Health checks detect Region 1 is down.
-2. DNS records updated to point to Region 2.
-3. Region 2 promoted to active.
-4. Traffic flows to Region 2.
+### Active-Passive Variants Matrix
 
-### Trade-offs
-- ✅ **Simple** compared to active-active.
-- ✅ **No data conflicts** (only one writer).
-- ✅ Cheaper than full active-active (passive can be smaller).
-- ❌ **Wasted capacity** (passive idle).
-- ❌ **Failover takes time** (DNS TTL, data promotion).
-- ❌ **Data loss** with async replication (RPO > 0).
+| Variant | Standby State | Failover Time (RTO) | Cost Overhead | Use Case |
+| :--- | :--- | :--- | :--- | :--- |
+| **Cold Standby** | Instance powered off; turned on during disaster | 15 - 60 Minutes | Lowest | Non-critical internal batch apps |
+| **Warm Standby** | Instance running at reduced capacity | 1 - 5 Minutes | Medium | Mid-tier web applications |
+| **Hot Standby** | Fully provisioned running replica synced in real time| Sub-Second to Seconds | High | Relational DB primary/replica setups |
 
-### RPO and RTO
-- **RPO**: how much data is lost (replication lag at moment of failure).
-- **RTO**: how long until service is back (DNS TTL + promotion).
-- Typical: RPO seconds to minutes, RTO 5-30 minutes.
+### System Trade-offs
 
-### Replication
-- **Async** (most common): low impact on writes, but RPO > 0.
-- **Synchronous**: RPO = 0, but adds write latency.
-
-### When to use
-- DR strategy where cost matters.
-- When active-active conflicts are too hard.
-- For stateful systems that can't easily multi-write.
-
-### Variations
-- **Pilot light**: passive is minimal (just data); scale up on failover.
-- **Warm standby**: passive is fully deployed but at smaller scale.
-
-### Testing
-- Failover must be drilled regularly.
-- Run game days: actually switch traffic to passive.
-- Measure RTO.
+- ✅ **Simple Conceptual Model**: Eliminates write-conflict resolution since all updates occur on a single active primary node.
+- ❌ **Resource Underutilization**: Passive standby compute resources sit idle during normal operating conditions.
 
 ### Key takeaway
-Active-passive is the **simplest multi-region DR strategy**. Passive replicates data, takes over
-on failure. Trade-offs: wasted capacity, failover delay. Acceptable RTO/RPO for many
-applications.
+
+Active-Passive architectures deliver **simple, conflict-free high availability** by concentrating writes on a primary node while maintaining warm standby instances for rapid failover.

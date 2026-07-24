@@ -4,55 +4,35 @@
 
 ---
 
-A CDN (Content Delivery Network) cache = **edge servers worldwide that serve cached content
-close to users**. The first major caching layer beyond the browser.
+A **Content Delivery Network (CDN) Cache** is a geographically distributed network of Edge Edge Points of Presence (PoPs) that cache static and dynamic web content close to end users. CDN caching reduces latency, offloads origin server bandwidth, and provides DDoS mitigation.
 
-### What CDNs cache
-- **Static assets**: images, CSS, JS, fonts.
-- **Static HTML**.
-- **API responses** with explicit cache headers.
-- **Video / audio streaming segments**.
+### Request routing architecture
 
-### Why
-- **Latency**: user in Mumbai fetches from a Mumbai edge, not your Virginia datacenter.
-- **Throughput**: offloads 90%+ of traffic from your origin.
-- **Cost**: CDN bandwidth is cheaper than origin egress.
-- **Availability**: edge can serve even if origin is down.
-
-### How it works
 ```
-User in Tokyo
-   |
-   v
-CDN edge in Tokyo (cache HIT?) -> return immediately
-   |
-   v (cache MISS)
-Origin in Virginia -> fetch, cache at edge, return
+ Client (London) -------> CDN Edge PoP (London) [CACHE HIT] --------> Fast Response (10ms)
+                               |
+                           Cache Miss
+                               v
+                       Origin Server (US-East) --------------------> Response (150ms)
 ```
 
-### Cache keys
-- URL + query string.
-- `Vary` header (e.g. cache separately for different `Accept-Language`).
+### Core mechanisms & optimizations
 
-### TTL
-- Set via `Cache-Control: max-age` from origin.
-- Long TTL for static assets (1 year for hashed assets).
-- Short TTL for dynamic content (60s).
+1. **Edge Request Termination**: CDN PoPs terminate TCP and TLS connections close to the user, eliminating multi-roundtrip TLS handshake latency to distant origin servers.
+2. **Cache Invalidation & Purging**:
+   - **Time-Based Expiration**: Controlled by `Cache-Control: max-age` and `s-maxage` HTTP headers.
+   - **Instant Purge**: Manual or API-driven cache purging by Tag, URL, or Prefix when content is updated.
+3. **Dynamic Content Optimization**: CDN Edge Workers (Cloudflare Workers, AWS Lambda@Edge) execute lightweight code at the edge to transform responses, run AB tests, or authenticate requests.
 
-### Invalidation
-- **TTL expiry** — natural.
-- **Purge** — explicit API call ("invalidate /images/foo.png").
-- **Versioned URLs** — `/app.v123.js` instead of invalidating.
-- **Surrogate keys** — Cloudflare / Fastly tag groups of URLs.
+### CDN Caching Configuration Matrix
 
-### Trade-offs
-- ✅ Massive latency + throughput win.
-- ✅ Cheaper than origin.
-- ❌ Adds cost per GB delivered.
-- ❌ Cache may serve stale content for up to TTL.
-- ❌ Dynamic / personalized content needs care.
+| Header / Technique | Function | Edge Impact |
+| :--- | :--- | :--- |
+| **`s-maxage=<seconds>`** | Overrides `max-age` specifically for shared CDN caches | Prevents browser cache policies from affecting CDN edge TTLs |
+| **`Cache-Control: public`**| Explicitly allows CDNs to cache responses | Enables edge caching for public API responses |
+| **Origin Shield** | Centralized caching tier positioned between CDN edges and origin | Reduces origin load during cache stampedes across edge PoPs |
+| **Stale-While-Revalidate**| Serves stale cached content while fetching updates in background | Delivers low latency while updating stale assets |
 
 ### Key takeaway
-For any web product serving users globally, a CDN is mandatory. Cache static assets at the edge
-with long TTLs; use purge or versioned URLs for updates. The CDN typically handles 90%+ of
-traffic.
+
+CDN caching minimizes user latency by serving content from geographically distributed edge PoPs. Use appropriate `s-maxage` headers, Origin Shields, and targeted purge APIs to maintain high edge hit ratios.

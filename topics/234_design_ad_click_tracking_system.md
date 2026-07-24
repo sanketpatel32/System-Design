@@ -1,44 +1,58 @@
 # Design Ad Click Tracking System
-
 > **Category:** Search and Recommendation Systems
 
 ---
 
-Design a system to track ad impressions and clicks for billing + analytics.
+### Overview
+An **Ad Click Tracking System** processes high-volume advertisement click events with exact-once processing guarantees, detecting click fraud, updating advertiser budgets, and generating accurate billing analytics.
 
-### Requirements
-- **Functional**: record impressions, clicks; aggregate; bill advertisers.
-- **Non-functional**: high write throughput; accurate; real-time dashboards.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[Browser] -> pixel (impressions) -> [Collector] -> [Kafka] -> [Aggregator]
-        -> click redirect -> [Collector]                          |
-                                                                 v
-                                                          [Time-series DB]
-                                                          [Reporting DB]
++--------+     1. Click Ad Redirect     +-------------------+
+| Client | ---------------------------> | Ad Click Gateway  |
++--------+                               +-------------------+
+    ^                                             |
+    | 2. 302 Redirect to Advertiser               v 3. Log Raw Click Event
+    +---------------------------------- +-------------------+
+                                        | Kafka Event Bus   |
+                                        +-------------------+
+                                                  |
+                                                  v 4. Exactly-Once Processing
+                                        +-------------------+
+                                        | Apache Flink      | ---> [ Fraud Detection Engine ]
+                                        | Streaming Engine  |
+                                        +-------------------+
+                                                  |
+                                                  v 5. Aggregate Billing & Aggregates
+                                        +-------------------+
+                                        | ClickHouse /      |
+                                        | Druid OLAP DB     |
+                                        +-------------------+
 ```
 
-### Impression tracking
-- Pixel / beacon in ad.
-- POST to collector on render.
+### Click Fraud Detection Signals
 
-### Click tracking
-- Click → redirect URL.
-- Server logs click, then redirects.
+| Fraud Category | Detection Mechanism |
+|---|---|
+| **Duplicate Clicks** | De-duplicate identical `(user_id, ad_id)` clicks within a 5-minute sliding window. |
+| **Bot Traffic** | Detect abnormal click rates per IP/Device Fingerprint via Flink window aggregations. |
+| **Click Farms** | Blacklist IP ranges exhibiting zero post-click landing page engagement duration. |
 
-### Aggregation
-- Count per (advertiser, campaign, ad) per minute/hour/day.
-- Stream processing (Flink).
-
-### Billing
-- Per impression (CPM) or per click (CPC).
-- Join clicks + impressions + spend rate.
-
-### Real-time
-- Clicks stream in.
-- Sub-minute dashboards.
+### Real-Time OLAP Storage Engine (ClickHouse / Druid)
+```sql
+CREATE TABLE ad_clicks (
+    click_id UUID,
+    ad_id BIGINT,
+    advertiser_id BIGINT,
+    user_id VARCHAR,
+    ip_address VARCHAR,
+    cost_per_click DECIMAL(10,4),
+    is_valid_click BOOLEAN,
+    created_at DATETIME
+) ENGINE = MergeTree()
+ORDER BY (advertiser_id, ad_id, created_at);
+```
 
 ### Key takeaway
-Ad tracking = pixel (impressions) + redirect (clicks) → Kafka → aggregator → dashboards +
-billing. Stream processing for real-time aggregations. Per-campaign/per-ad granularity.
+Ad click tracking mandates **Exactly-Once Semantics (EOS)** using **Apache Kafka + Flink**, filtering click fraud using sliding windows before writing to **ClickHouse OLAP databases** for real-time advertiser billing.

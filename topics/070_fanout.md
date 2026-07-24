@@ -4,46 +4,53 @@
 
 ---
 
-Fanout = **one input event triggers many downstream actions**. The classic example: a
-Twitter post triggers notifications to millions of followers.
+**Fanout** describes the architectural process where a single incoming event, trigger, or API call is propagated to multiple downstream services, messaging queues, or target entities concurrently. Fanout is widely used in social media activity feeds, notification engines, and event-driven microservices architectures.
 
-### Push vs Pull fanout (Twitter's dilemma)
-| | Fanout-on-write (push) | Fanout-on-read (pull) |
-|--|------------------------|------------------------|
-| On post | Write to every follower's inbox | Do nothing |
-| On read | Read pre-built inbox | Query all followees, merge |
-| Best for | Read-heavy, small followings | Users with huge followings |
-| Worst for | Celebrities (millions of writes per post) | Slow feed generation |
+### System architecture
 
-### Hybrid (real Twitter)
-- **Normal users**: fanout-on-write (push to followers' inboxes).
-- **Celebrities**: fanout-on-read (their tweets pulled at read time).
-- Threshold by follower count (e.g. > 100k followers → celebrity mode).
-
-### Other fanout patterns
-- **Pub/sub**: one message → all subscribers (Kafka, SNS, Redis pub/sub).
-- **Webhooks**: one event → many registered URLs.
-- **Search indexing**: one DB write → many index updates.
-- **Cache invalidation**: one update → many cache evictions.
-- **Notifications**: one event → email + push + SMS + in-app.
-
-### Challenges
-- **Volume** — a single event can spawn millions of operations.
-- **Latency** — async processing avoids blocking the original write.
-- **Failure** — one slow consumer shouldn't stall the others.
-- **Ordering** — fanout consumers may race; ensure idempotency.
-
-### Architecture
 ```
-[Post] -> [Kafka topic] -> [Fanout worker]
-                              |
-                              +--> push to inbox (async)
-                              +--> notify (async)
-                              +--> index for search (async)
-                              +--> analytics (async)
+                            +--------------------+
+                            |   Publisher Event  |
+                            +--------------------+
+                                      |
+                                      v
+                            +--------------------+
+                            | Fanout Controller  |
+                            +--------------------+
+                                /     |      \
+                      +--------+   +--+---+   +--------+
+                      |            |          |        |
+                      v            v          v        v
+                 +---------+  +---------+  +---------+ +---------+
+                 | Queue A |  | Queue B |  | Queue C | | Queue D |
+                 +---------+  +---------+  +---------+ +---------+
+                      |            |          |            |
+                      v            v          v            v
+                 +---------+  +---------+  +---------+ +---------+
+                 | Push Svc|  | Email   |  | Analytics| | Feed Svc|
+                 +---------+  +---------+  +---------+ +---------+
 ```
+
+### Fanout execution models
+
+1. **Fanout-on-Write (Push Model)**: When an event occurs, the publisher immediately writes the event payload directly into the recipient datastores or feeds.
+2. **Fanout-on-Read (Pull Model)**: When an event occurs, it is stored only once in the author's outbox. When recipients access the system, they pull and aggregate updates from their followee feeds dynamically.
+3. **Hybrid Model**: Fanout-on-Write for standard users (e.g., < 10,000 followers) combined with Fanout-on-Read for high-follower celebrity accounts to prevent system amplification spikes.
+
+### Fanout model trade-offs
+
+| Dimension | Fanout-on-Write (Push) | Fanout-on-Read (Pull) | Hybrid Model |
+| :--- | :--- | :--- | :--- |
+| **Write Cost** | High ($O(N)$ writes per post) | Extremely Low ($O(1)$ write per post) | Balanced ($O(N)$ for normal users) |
+| **Read Latency** | Extremely Fast ($O(1)$ lookup) | Slow ($O(K)$ queries for $K$ followees) | Fast for all users |
+| **Storage Usage** | High (Duplication across feeds) | Minimal (Single source of truth) | Moderate |
+| **Celebrity Problem** | Catastrophic without caps | Handled naturally | Solves celebrity write spikes |
+
+### Architectural fanout mechanisms
+
+- **Publish-Subscribe Topics**: RabbitMQ Fanout Exchanges or SNS Topics broadcasting messages to multiple bound SQS queues.
+- **Worker Pools**: Async worker clusters popping fanout events from message brokers and writing in parallel batches to storage nodes.
 
 ### Key takeaway
-Fanout is fundamental for social/notification systems. Use **async (queue-based)** fanout to
-decouple producers from millions of consumers. For celebrity skew, hybrid push/pull avoids the
-write-amplification disaster.
+
+Fanout balances write amplification against read performance. Use Fanout-on-Write for immediate read responsiveness, Fanout-on-Read to avoid massive write spikes for high-volume publishers, or a hybrid model for scale.

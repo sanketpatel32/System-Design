@@ -1,43 +1,54 @@
 # Design Discord
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design Discord: voice + text chat for communities (servers, channels).
+### Overview
+**Discord** is a voice, video, and text communication platform handling millions of concurrent users across massive gaming servers (guilds) with low-latency messaging and voice chat.
 
-### Requirements
-- **Functional**: servers, text channels, voice channels, DMs, presence.
-- **Non-functional**: low-latency voice (<500ms); massive concurrent connections.
+### System Architecture Diagram
 
-### Architecture
 ```
-[Client] <-WebSocket-> [Gateway] (text, presence)
-         <-UDP/WebRTC-> [Voice server] (audio)
++---------------+     1. WebSocket Connection     +-------------------+
+| Client App    | <=============================> | Gateway Service   |
++---------------+                                 | (Elixir / Rust)   |
+        |                                         +-------------------+
+        |                                                   |
+        | 4. UDP Voice / Video Packets                      v 2. Fanout Message Event
+        v                                         +-------------------+
++-------------------+                             | Event Router      |
+| WebRTC SFU Media  |                             | (ScyllaDB / DB)   |
+| (Media Node Box)  |                             +-------------------+
++-------------------+                                       |
+                                                            v 3. Persist Messages
+                                                  +-------------------+
+                                                  | ScyllaDB Cluster  |
+                                                  +-------------------+
 ```
 
-### Voice
-- **WebRTC / UDP** for low-latency audio.
-- Server mixes audio for groups (or client-side SFU).
-- Voice regions per channel.
+### Core Architecture Components
 
-### Text
-- WebSocket for messages.
-- Per-channel history.
+| Component | Responsibility | Technology Stack |
+|---|---|---|
+| **Gateway Cluster** | Manages persistent WebSocket connections per user | Elixir (BEAM VM process per conn) |
+| **Storage Engine** | High-throughput, low-latency text channel persistence | ScyllaDB (C++ rewrite of Cassandra) |
+| **Voice Server (SFU)**| Selective Forwarding Unit (SFU) routing WebRTC audio packets | Rust / C++ |
 
-### Servers (guilds)
-- Group of users + channels + roles.
-- Roles → permissions.
+### Text Storage Model (ScyllaDB Schema)
+```sql
+CREATE TABLE discord_messages (
+    channel_id bigint,
+    bucket int, -- Time bucket partition (e.g. 10 days)
+    message_id bigint, -- Snowflake ID
+    author_id bigint,
+    content text,
+    PRIMARY KEY ((channel_id, bucket), message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+```
 
-### Presence
-- Online/idle/DND/offline per user.
-- Real-time updates via WebSocket.
-
-### Scaling
-- Each gateway handles ~50k connections.
-- Voice servers separate (CPU-bound for mixing).
-- Redis for cross-instance pub/sub.
+### Key Technical Trade-offs
+- **ScyllaDB over MongoDB/Cassandra**: Switched from MongoDB to Cassandra, then to ScyllaDB to eliminate JVM garbage collection latency spikes (p99 latency drops from 100ms+ to <5ms).
+- **WebRTC SFU vs MCU**: Uses Selective Forwarding Units (SFU) for voice chat, forwarding raw media streams without expensive server-side audio re-encoding.
 
 ### Key takeaway
-Discord = WebSocket (text/presence) + WebRTC/UDP (voice) + servers (guilds) + roles for
-permissions. Voice needs dedicated servers (CPU-bound mixing). Per-guild isolation.
+Discord scales real-time communication by managing WebSocket connections in **Elixir**, storing chat logs in **ScyllaDB** (partitioned by `channel_id` and time bucket), and routing voice media through **WebRTC SFUs**.

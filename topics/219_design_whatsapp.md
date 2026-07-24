@@ -1,50 +1,40 @@
 # Design WhatsApp
-
 > **Category:** Intermediate System Design Problems
 
 ---
 
-Design WhatsApp: 1:1 + group chat, real-time delivery, read receipts.
+### Overview
+**WhatsApp** is a cross-platform end-to-end encrypted instant messaging platform designed for ultra-low latency messaging, media sharing, presence tracking, and voice/video calling.
 
-### Requirements
-- **Functional**: 1:1 / group chat; send text/media; delivery/read receipts; offline messages.
-- **Non-functional**: low-latency delivery; massive concurrent connections.
+### Architecture Topology Diagram
 
-### Architecture
 ```
-[Client A] <-WebSocket-> [Chat Gateway] <-> [Redis (presence, queues)]
-                          [Message service] -> [DB]
-[Client B] <-WebSocket-> [Chat Gateway]
+Sender Device (Alice)                         Chat Server Gateway                    Receiver Device (Bob)
+       |                                             |                                       |
+       | === 1. WebSocket (Signal Protocol E2EE) ==> |                                       |  (If Online)
+       |                                             | === 2. WebSocket Push ===============>|
+       |                                             |                                       |
+       |                                             | --- 3. Save Offline Msg (If Offline)-> |
+       |                                             |                                       |
+       |                                             |                                 +---------------+
+       |                                             |                                 | Cassandra DB  |
+       |                                             |                                 +---------------+
 ```
 
-### Real-time delivery
-- Each client holds **WebSocket** to a chat gateway.
-- Gateway routes messages via **shared pub/sub** (Redis, Kafka).
+### End-to-End Encryption (Signal Protocol)
+- **Public Key Infrastructure**: Server acts strictly as a cryptographic key directory holding identity keys and pre-keys.
+- **Double Ratchet Algorithm**: Every individual message is encrypted with a unique single-use message key derived from rolling DH ratchets. Server **cannot** decrypt message contents.
 
-### Message storage
-- **Cassandra** for chat history (write-heavy, time-series-like).
-- Sequencing per chat.
+### Message State Transitions & Ephemeral Delivery
 
-### Delivery guarantees
-- **At-least-once**: server stores message until ACK.
-- **Idempotent** delivery (client dedupes by message ID).
+| Message State | Indicator | Server Action |
+|---|---|---|
+| **Sent to Server** | Single Gray Checkmark ($\check$) | Message received by Chat Gateway; stored temporarily in transient store. |
+| **Delivered to Receiver**| Double Gray Checkmark ($\check\check$) | Receiver device ACKs delivery; **server deletes message from disk**. |
+| **Read by Receiver** | Double Blue Checkmark ($\check\check$) | Receiver opens thread; sends Read Receipt payload to sender. |
 
-### Presence
-- "Online/offline/last seen" via Redis (TTL + pub/sub).
-
-### Group chat
-- Fanout on write to all members' inboxes.
-- Or: store once, query per member.
-
-### Media
-- Upload to S3, send link in message.
-
-### Scaling
-- Each gateway instance: ~100k connections.
-- Sticky sessions (client stays on same gateway).
-- Cross-instance routing via Redis pub/sub.
+### Presence Engine (Online/Offline Status)
+- High-throughput heartbeats over open WebSocket connections managed in a distributed memory store (**Erlang / Redis**).
 
 ### Key takeaway
-WhatsApp = WebSockets + shared pub/sub (Redis) + Cassandra for storage + presence via Redis
-TTL. Group chat = fanout. At-least-once delivery + idempotency keys. Sticky sessions for
-WebSocket affinity.
+WhatsApp operates a **stateless message relay**: messages are end-to-end encrypted using the **Signal Protocol** and deleted permanently from server storage as soon as recipient device delivery acknowledgment is received.

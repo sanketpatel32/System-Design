@@ -1,49 +1,38 @@
-# Write Back Cache
+# Write-Back Cache
 
 > **Category:** Caching
 
 ---
 
-Write-back (write-behind) = **the app writes only to cache; the cache asynchronously writes
-to DB later.** Maximum write performance.
+A **Write-Back Cache** (also called Write-Behind Cache) is a caching pattern where write operations update the cache immediately and acknowledge success to the application. The cache layer asynchronously flushes updated ("dirty") data entries to the underlying persistent database in background batches.
 
-### Flow
+### Pattern workflow
+
 ```
-write(key, value):
-    cache.set(key, value)              # 1. write to cache only
-    # return immediately
-    # async: eventually flush to DB
+ [Application] ------ 1. Issue Fast Write ------> [Write-Back Cache (RAM)]
+                                                        |
+ 3. App receives Instant Success ACK <------------------+
+                                                        |
+                                            2. Async Background Batch Flush
+                                                        v
+                                             [Primary Database Disk]
 ```
 
-### Pros
-- ✅ **Ultra-low write latency** — no waiting for DB.
-- ✅ **Batching** — many writes coalesce into one DB write.
-- ✅ **Absorbs spikes** — DB sees smooth load.
+### Core mechanics & capabilities
 
-### Cons
-- ❌ **Data loss risk** — cache crash before flush loses writes.
-- ❌ **Complexity** — need durable cache, flush logic.
-- ❌ **Ordering** — must preserve write order.
-- ❌ **Read inconsistency** — DB lags cache.
+1. **Decoupled Write Path**: Writes complete at memory speed (sub-millisecond), isolating the application from database write latency.
+2. **Write Batching & Coalescing**: Multiple writes to the same record in cache are merged before being flushed to the database, reducing database write operations.
+3. **Data Loss Risk**: If the cache node crashes before flushing dirty entries to disk, un-persisted updates are lost unless backed by persistent write logs or replica nodes.
 
-### Mitigations
-- **Replicate the cache** (Redis + persistence).
-- **Persist cache writes to a WAL**.
-- **Frequent flushes** (every 1s) bound data loss.
-- **Idempotent writes** so re-flush is safe.
+### Write-Back Trade-Off Matrix
 
-### Use cases
-- **Logging / metrics** — accept tiny loss, max throughput.
-- **Counters / analytics** — write heavy, read infrequent.
-- **Gaming leaderboards** — bursty writes.
-- **Database Buffer Pool** — DB pages flushed lazily (Postgres/MySQL).
-
-### Variants
-- **Write-behind with async workers**: cache emits events, workers persist.
-- **Time-based flush**: flush dirty entries every N seconds.
-- **Count-based flush**: flush after K writes.
+| Dimension | Evaluation | Technical Consequence |
+| :--- | :--- | :--- |
+| **Write Latency** | Ultra-Low | Operates at in-memory speed ($< 1$ ms) |
+| **Database Load** | Significantly Reduced | Coalesces multiple updates into single batch writes |
+| **Data Loss Risk** | High without Replication | Node failure before flushing risks losing dirty items |
+| **Implementation Complexity**| High | Requires robust queueing, retry logic, and failover handlers |
 
 ### Key takeaway
-Write-back trades durability for write speed. Use it for high-throughput, loss-tolerant
-workloads (logs, metrics, counters). Never use it for transactional data where loss is
-unacceptable. Always have a flush / persistence plan.
+
+Write-Back caching delivers high write performance and reduces database load by buffering updates in memory and flushing them asynchronously in batches. Mitigate data loss risks using persistent queues or replicated cache clusters.
