@@ -536,6 +536,12 @@ export interface GameSession {
   inspectedEvidenceIds: EvidenceId[];
   revealedNodeIds: NodeId[];
   revealedEdgeIds: EdgeId[];
+  /** Hypothesis ids unlocked via evidence reveal effects. */
+  unlockedHypothesisIds: string[];
+  /** Action ids unlocked via evidence reveal effects. */
+  unlockedActionIds: ActionId[];
+  /** Node-config keys revealed via evidence (e.g. gateway retry policy). */
+  revealedConfigKeys: string[];
   /** Current working architecture (baseline + player edits). */
   currentArchitecture: ArchitectureGraph;
   baselineArchitectureHash: string;
@@ -605,6 +611,20 @@ export interface SimulationRun {
   objectiveResults: ObjectiveResult[];
   summary: SimulationSummary;
   appliedActionIds: ActionId[];
+  /** Per-second timeline samples for playback animation. */
+  timeline: SimulationTimelineSample[];
+}
+
+export interface SimulationTimelineSample {
+  second: number;
+  requests: number;
+  successes: number;
+  failures: number;
+  duplicates: number;
+  duplicateCharges: number;
+  p95LatencyMs: number;
+  /** Which traffic phase this second falls in. */
+  phase: TrafficPhase;
 }
 
 // ---------------------------------------------------------------------------

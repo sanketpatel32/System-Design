@@ -97,6 +97,11 @@ export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
                       {item.title}
                     </span>
+                    {card.isNew && !card.isInspected && (
+                      <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
+                        new
+                      </span>
+                    )}
                     {card.isInspected ? (
                       <CheckCircle2 size={14} className="shrink-0 text-ok" aria-label="Inspected" />
                     ) : card.isUnlocked || card.cost === 0 ? (

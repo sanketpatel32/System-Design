@@ -17,7 +17,6 @@ import type {
   GameCaseDefinition,
   GameCommand,
   GameSession,
-  RevealEffect,
   Result,
 } from "../types";
 import type { GameRuleError } from "../errors";
@@ -98,10 +97,37 @@ function reduceInspectEvidence(
   // Apply reveal effects (reveal nodes/edges/config, unlock hypotheses/actions).
   let revealedNodes = session.revealedNodeIds;
   let revealedEdges = session.revealedEdgeIds;
+  let unlockedHypotheses = session.unlockedHypothesisIds;
+  let unlockedActions = session.unlockedActionIds;
+  let revealedConfigs = session.revealedConfigKeys;
   for (const reveal of evidence.reveals) {
-    const r = applyReveal(reveal, revealedNodes, revealedEdges);
-    revealedNodes = r.nodes;
-    revealedEdges = r.edges;
+    switch (reveal.type) {
+      case "reveal-node":
+        if (!revealedNodes.includes(reveal.nodeId))
+          revealedNodes = [...revealedNodes, reveal.nodeId];
+        break;
+      case "reveal-edge":
+        if (!revealedEdges.includes(reveal.edgeId))
+          revealedEdges = [...revealedEdges, reveal.edgeId];
+        break;
+      case "reveal-config": {
+        const key = `${reveal.nodeId}.${reveal.configKey}`;
+        if (!revealedConfigs.includes(key))
+          revealedConfigs = [...revealedConfigs, key];
+        break;
+      }
+      case "unlock-hypothesis":
+        if (!unlockedHypotheses.includes(reveal.hypothesisId))
+          unlockedHypotheses = [...unlockedHypotheses, reveal.hypothesisId];
+        break;
+      case "unlock-action":
+        if (!unlockedActions.includes(reveal.actionId))
+          unlockedActions = [...unlockedActions, reveal.actionId];
+        break;
+      case "add-metric":
+        // Metrics are derived from evidence at read time; no session field needed.
+        break;
+    }
   }
 
   return appendCommand(
@@ -114,30 +140,12 @@ function reduceInspectEvidence(
         : [...session.inspectedEvidenceIds, evidence.id],
       revealedNodeIds: revealedNodes,
       revealedEdgeIds: revealedEdges,
+      unlockedHypothesisIds: unlockedHypotheses,
+      unlockedActionIds: unlockedActions,
+      revealedConfigKeys: revealedConfigs,
     },
     command
   );
-}
-
-function applyReveal(
-  reveal: RevealEffect,
-  nodes: string[],
-  edges: string[]
-): { nodes: string[]; edges: string[] } {
-  switch (reveal.type) {
-    case "reveal-node":
-      return nodes.includes(reveal.nodeId)
-        ? { nodes, edges }
-        : { nodes: [...nodes, reveal.nodeId], edges };
-    case "reveal-edge":
-      return edges.includes(reveal.edgeId)
-        ? { nodes, edges }
-        : { nodes, edges: [...edges, reveal.edgeId] };
-    default:
-      // reveal-config / unlock-* / add-metric don't touch node/edge visibility
-      // here — they're reflected in the node inspector + action availability.
-      return { nodes, edges };
-  }
 }
 
 // ---------------------------------------------------------------------------

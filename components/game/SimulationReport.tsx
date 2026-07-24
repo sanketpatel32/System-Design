@@ -27,6 +27,7 @@ import { simulateCase } from "@/lib/game/domain/simulation/simulate-case";
 import { hashArchitecture } from "@/lib/game/domain/graph/graph-utils";
 import { selectLatestRun } from "@/lib/game/domain/state/game-selectors";
 import { selectCanRunSimulation } from "@/lib/game/domain/state/game-selectors";
+import { SimulationPlayer } from "./SimulationPlayer";
 
 type Dispatch = (command: GameCommand) => Result<GameSession, GameRuleError>;
 
@@ -109,6 +110,9 @@ export function SimulationReport({ caseDef, session, dispatch }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Animated playback player */}
+      <SimulationPlayer run={latest} />
+
       {/* Run controls */}
       <div className="flex items-center gap-2">
         <button

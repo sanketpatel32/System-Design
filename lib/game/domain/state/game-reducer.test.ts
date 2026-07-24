@@ -441,5 +441,6 @@ function stubRun(id: string): SimulationRun {
       residualRisks: [],
     },
     appliedActionIds: [],
+    timeline: [],
   };
 }

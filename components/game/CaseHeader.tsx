@@ -138,6 +138,7 @@ function ResourceCounter({
   max: number;
 }) {
   const low = value <= Math.ceil(max * 0.25);
+  const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return (
     <span
       className="inline-flex items-center gap-1.5 text-sm"
@@ -148,6 +149,13 @@ function ResourceCounter({
       </span>
       <span className="font-mono font-semibold text-ink">{value}</span>
       <span className="hidden text-ink-3 sm:inline">/{max}</span>
+      {/* Mini depletion bar */}
+      <span className="hidden h-1 w-8 overflow-hidden rounded-full bg-paper-3 md:inline-block" aria-hidden>
+        <span
+          className={`block h-full rounded-full transition-[width] ${low ? "bg-warn" : "bg-accent/60"}`}
+          style={{ width: `${pct * 100}%` }}
+        />
+      </span>
       <span className="sr-only">{label}: {value} of {max}</span>
     </span>
   );

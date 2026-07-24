@@ -23,7 +23,9 @@ import type {
   SimulationEvent,
   SimulationRun,
   SimulationSummary,
+  SimulationTimelineSample,
   RequestCohort,
+  TrafficPhase,
 } from "../types";
 import type { Rng } from "./seeded-rng";
 import { createRng } from "./seeded-rng";
@@ -62,6 +64,7 @@ export function simulateCase(
     objectiveResults,
     summary: timeline.summary,
     appliedActionIds,
+    timeline: buildTimelinePlayback(timeline.perSecond, caseDef),
   };
 }
 
@@ -492,6 +495,28 @@ function capacityOverloadErrorRate(utilization: number): number {
   if (utilization <= 1.0) return 0.02;
   if (utilization <= 1.2) return 0.02 + ((utilization - 1.0) / 0.2) * 0.18;
   return Math.min(0.6, 0.2 + ((utilization - 1.2)) * 0.4);
+}
+
+/** Map per-second samples to the playback timeline, tagging the traffic phase. */
+function buildTimelinePlayback(
+  perSecond: PerSecondMetrics[],
+  caseDef: GameCaseDefinition
+): SimulationTimelineSample[] {
+  return perSecond.map((ps) => {
+    const phaseDef = caseDef.trafficScenario.phases.find(
+      (p) => ps.second >= p.startSecond && ps.second < p.endSecond
+    );
+    return {
+      second: ps.second,
+      requests: ps.requests,
+      successes: ps.successes,
+      failures: ps.failures,
+      duplicates: ps.duplicates,
+      duplicateCharges: ps.duplicateCharges,
+      p95LatencyMs: ps.p95LatencyMs,
+      phase: phaseDef?.phase ?? "warm-up",
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -22,6 +22,7 @@ import { createSession } from "../domain/state/game-state";
 import { applyGameCommand } from "../domain/state/game-reducer";
 import type { GameRuleError } from "../domain/errors";
 import { loadSession, saveSession } from "../infrastructure/local-session-repository";
+import { track } from "../infrastructure/analytics-adapter";
 
 type State =
   | { kind: "loading" }
@@ -146,6 +147,7 @@ export function useGameSession(
       if (result.ok) {
         sessionRef.current = result.value;
         dispatch({ type: "APPLIED", session: result.value });
+        trackCommandEvent(stamped, result.value, caseDef);
       } else {
         dispatch({ type: "REJECTED", error: result.error });
       }
@@ -172,7 +174,12 @@ export function useGameSession(
     const next: GameSession = { ...current, status: "INVESTIGATION" };
     sessionRef.current = next;
     dispatch({ type: "APPLIED", session: next });
-  }, []);
+    track({
+      event: "system_game_case_started",
+      case_id: caseDef.id,
+      session_id: next.id,
+    });
+  }, [caseDef.id]);
 
   return {
     state,
@@ -182,4 +189,70 @@ export function useGameSession(
     reset,
     hydrated: hydratedRef.current,
   };
+}
+
+/**
+ * Emit the analytics event matching a successful command. Never logs free-text
+ * reasoning (spec §17) — only structured ids and counts.
+ */
+function trackCommandEvent(
+  command: GameCommand,
+  session: GameSession,
+  caseDef: GameCaseDefinition
+): void {
+  const base = { case_id: caseDef.id, session_id: session.id };
+  switch (command.type) {
+    case "INSPECT_EVIDENCE": {
+      const ev = caseDef.evidence.find((e) => e.id === command.evidenceId);
+      track({
+        ...base,
+        event: "system_game_evidence_inspected",
+        evidence_id: command.evidenceId,
+        investigation_points_spent: ev?.cost ?? 0,
+      });
+      break;
+    }
+    case "SUBMIT_HYPOTHESIS":
+      track({
+        ...base,
+        event: "system_game_hypothesis_submitted",
+        phase: session.status,
+      });
+      break;
+    case "APPLY_DESIGN_ACTION": {
+      const action = caseDef.availableActions.find((a) => a.id === command.actionId);
+      track({
+        ...base,
+        event: "system_game_action_applied",
+        action_id: command.actionId,
+        change_budget_spent: action?.cost ?? 0,
+      });
+      break;
+    }
+    case "RUN_SIMULATION": {
+      const passed = command.run.objectiveResults.every(
+        (o) => o.status !== "failed"
+      );
+      track({
+        ...base,
+        event: "system_game_simulation_run",
+        run_number: session.simulationRuns.length,
+        passed,
+      });
+      break;
+    }
+    case "ACCEPT_SOLUTION": {
+      const score = session.score;
+      track({
+        ...base,
+        event: "system_game_case_completed",
+        score_band: score?.rank ?? "unknown",
+        elapsed_seconds: Math.round(
+          (Date.now() - new Date(session.createdAt).getTime()) / 1000
+        ),
+      });
+      break;
+    }
+    // REVERT_DESIGN_ACTION and ROLLBACK_TO_BASELINE emit no dedicated events.
+  }
 }
