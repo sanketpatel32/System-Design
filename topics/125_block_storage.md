@@ -4,54 +4,66 @@
 
 ---
 
-Block storage splits raw storage capacity into **fixed-size storage chunks (blocks)**, each with a unique address. The operating system formats these blocks with a file system and treats the volume like an attached physical hard drive.
+Block storage abstracts physical storage media into raw, fixed-sized contiguous chunks called **blocks** (typically 4KB or 512 bytes). Unlike file or object storage, block storage provides **no file system or directory hierarchy abstraction**; it exposes raw Logical Block Addresses (LBAs) directly to the guest operating system, which formats them with file systems like ext4, XFS, or NTFS.
 
-### Architecture & Low-Level Mechanics
+### Low-Level Architecture & Block Layout
 
-Block storage abstracts underlying physical drives into logical volumes (LUNs) attached over high-speed networks (SAN or cloud hypervisors) using protocols such as iSCSI, Fibre Channel, or NVMe-oF.
+In block storage, disk controllers write raw binary blocks to storage sectors via low-level storage area networks (SAN) or direct bus interfaces.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                      Database Engine / Virtual Machine OS                         |
-|                 (File System Layer: ext4, xfs, NTFS formatted)                    |
-+-----------------------------------------------------------------------------------+
-                                          | Block I/O Operations (Read/Write Sector)
-                                          v
-+-----------------------------------------------------------------------------------+
-|                    Storage Controller / HBA (NVMe-oF / iSCSI)                     |
-+-----------------------------------------------------------------------------------+
-                                          |
-                +-------------------------+-------------------------+
-                |                                                   |
-                v                                                   v
-    +-----------------------+                           +-----------------------+
-    | Block 0x00A1 (4 KB)   |                           | Block 0x00A2 (4 KB)   |
-    +-----------------------+                           +-----------------------+
-    | High-Speed SSD Array  |                           | High-Speed SSD Array  |
-    +-----------------------+                           +-----------------------+
++----------------------------------------------------------------------------------------------------+
+|                               Application / Database System (e.g., PostgreSQL)                      |
++----------------------------------------------------------------------------------------------------+
+                                                  |
+                                   Direct Block I/O (LBA 0x004A...N)
+                                                  v
++----------------------------------------------------------------------------------------------------+
+|                                Operating System Device Driver (e.g., /dev/sda)                     |
++----------------------------------------------------------------------------------------------------+
+                                                  |
+                      Low-Latency Network / Storage Bus Protocol (iSCSI / NVMe-oF / EBS)
+                                                  v
++----------------------------------------------------------------------------------------------------+
+|                                Block Storage Controller (SAN / Virtual Volume)                     |
+| +--------------------+ +--------------------+ +--------------------+ +--------------------+        |
+| | Block 0 (4KB)      | | Block 1 (4KB)      | | Block 2 (4KB)      | | Block 3 (4KB)      |        |
+| +--------------------+ +--------------------+ +--------------------+ +--------------------+        |
++----------------------------------------------------------------------------------------------------+
 ```
 
-### Storage Characteristics & Performance Metrics
+### Storage Interface & Protocol Matrix
 
-- **Granular Control**: Applications can write directly to raw block sectors without file system overhead.
-- **Ultra-Low Latency**: Delivers sub-millisecond access times and high IOPS (Input/Output Operations Per Second).
-- **Single Instance Attachment**: Most block volumes attach to one compute instance at a time (POSIX multi-attach is rare and requires cluster file systems).
+| Interface / Protocol | Transport Medium | Typical IOPS / Latency | Primary Use Case |
+| :--- | :--- | :--- | :--- |
+| **NVMe-oF (Over Fabrics)** | Ethernet / InfiniBand | Sub-100 microseconds, 1M+ IOPS | High-Performance Distributed DBs |
+| **iSCSI** | Standard IP Networks (TCP/IP) | 1-5 milliseconds, 50k-100k IOPS | Enterprise Virtualization (VMware/KVM) |
+| **Fibre Channel (FC)** | Dedicated Optical SAN Cables | Sub-millisecond, High Throughput | Mission-Critical Banking Databases |
+| **AWS EBS / Cloud Disks** | Cloud Hypervisor Network | Provisioned (e.g., io2: 64k IOPS) | Cloud VMs, Relational Databases |
 
-### Block Storage Performance Comparison
+### Key Characteristics & Mechanics
 
-| Type / Tier | Protocol | Target IOPS | Typical Latency | Best Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **Local NVMe SSD** | PCIe Direct | 100,000+ IOPS | < 100 µs | High-performance caches, ephemeral DBs |
-| **Cloud Provisioned IOPS**| iSCSI / NVMe-oF | 10,000 - 256,000 IOPS | < 1 ms | Production RDBMS (PostgreSQL, Oracle) |
-| **Cloud General Purpose**| Virtualized SAN | 3,000 - 16,000 IOPS | 1 - 3 ms | Web servers, dev/test environments |
+1. **Raw Sector Addressing**: Data is stored in unformatted blocks identified solely by index numbers (LBA).
+2. **High-Performance Random I/O**: Delivers ultra-low latency and maximum Input/Output Operations Per Second (IOPS) suitable for heavy transactional workloads.
+3. **Exclusive Volume Mounts**: Typically attached to a single host instance at a time (e.g., single-attach Cloud Elastic Block Store).
+4. **Copy-on-Write Snapshots**: Provides point-in-time volume snapshots by freezing block mapping tables and duplicating modified blocks.
 
-### Key Trade-offs
+### Data Model & Volume Metadata Descriptor
 
-- ✅ **Maximum Performance**: Low latency and high throughput necessary for transactional databases.
-- ✅ **Random Write Efficiency**: Allows modifying tiny 4KB blocks within huge files without rewriting the whole file.
-- ❌ **Higher Cost**: Expensive per gigabyte compared to object or file storage.
-- ❌ **Limited Reach**: Cannot be accessed directly via internet HTTP APIs.
+| Attribute | Data Type | Description |
+| :--- | :--- | :--- |
+| `volume_id` | `UUID` | Unique identifier for the block storage volume |
+| `capacity_bytes` | `UINT64` | Total provisioned size of the volume in bytes |
+| `block_size` | `UINT32` | Size of individual block allocation unit (e.g., 4096 bytes) |
+| `attached_node_id` | `VARCHAR(64)` | Host/Instance identifier currently mounting the raw device |
+| `iops_provisioned` | `UINT32` | Allocated IOPS throughput limit |
+
+### Trade-offs & Production Considerations
+
+- ✅ **Maximum I/O Performance**: Eliminates metadata lookups and protocol overhead present in file/object storage.
+- ✅ **Database Compatibility**: Ideal for relational databases (MySQL, PostgreSQL) and NoSQL engines requiring direct control over block flushes (`fsync`).
+- ❌ **Single Instance Attachment**: Most block storage devices cannot be shared concurrently across hundreds of compute nodes.
+- ❌ **High Infrastructure Cost**: Provisioning dedicated IOPS and SAN hardware incurs higher costs per gigabyte than object storage.
 
 ### Key takeaway
 
-Block storage delivers **sub-millisecond performance and raw volume access**, making it the primary storage abstraction for high-throughput transactional databases and virtual machine disks.
+Block storage delivers **ultra-low latency and high random IOPS** by exposing raw storage sectors directly to operating systems and databases, making it the bedrock for performance-critical database storage.

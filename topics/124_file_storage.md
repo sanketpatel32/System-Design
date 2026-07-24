@@ -4,53 +4,70 @@
 
 ---
 
-File storage presents data in a **hierarchical tree structure of folders and files**, accessed through standard POSIX file system interfaces over networks (e.g., NFS, SMB/CIFS).
+File storage (also known as File-Based Storage or Network-Attached Storage - NAS) organizes data into a **hierarchical tree of folders, directories, and files**. It presents files to operating systems and applications using standardized **POSIX file system APIs**, supporting byte-range reads/writes, file locking, and directory hierarchy traversals.
 
-### Architecture Overview
+### Architecture & Hierarchical System Structure
 
-File storage abstracts disk blocks into human-readable paths with directory hierarchies, metadata attributes (permissions, timestamps, file size), and file locks.
+In file storage, files are accessed via hierarchical paths (`/usr/local/data/image.jpg`). The file system controller translates path lookups into Inode data structures and physical disk block locations.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                            Client Application / OS                                |
-+-----------------------------------------------------------------------------------+
-                                          | POSIX (open, read, write, close)
-                                          v
-+-----------------------------------------------------------------------------------+
-|                        Network File Protocol (NFS / SMB)                          |
-+-----------------------------------------------------------------------------------+
-                                          |
-                        +-----------------+-----------------+
-                        |                                   |
-                        v                                   v
-             +---------------------+             +---------------------+
-             | Metadata Server     |             | Data Storage Server |
-             | (Inodes, Tree Path) |             | (File Payloads)     |
-             +---------------------+             +---------------------+
++---------------------------------------------------------------------------------------------------+
+|                                  Client Operating System / POSIX API                             |
++---------------------------------------------------------------------------------------------------+
+                                                  |
+                         POSIX Calls (open, read, write, flock, readdir)
+                                                  v
++---------------------------------------------------------------------------------------------------+
+|                                      Virtual File System (VFS)                                    |
++---------------------------------------------------------------------------------------------------+
+                                                  |
+              +-----------------------------------+-----------------------------------+
+              | Network Protocol Layer (NFS / SMB / CIFS)                             |
+              +-----------------------------------+-----------------------------------+
+                                                  |
+                                                  v
++---------------------------------------------------------------------------------------------------+
+|                         NAS Controller / Hierarchical File System Engine                          |
+|  Root (/) ---> /home ---> /user1 ---> file.txt [Inode 4021: Permissions, Size, Pointer Block]    |
++---------------------------------------------------------------------------------------------------+
 ```
 
-### Technical Attributes & API Capabilities
+### POSIX Semantics & Key Characteristics
 
-- **Hierarchical Namespace**: Files are referenced via absolute path paths (e.g., `/var/log/app/output.log`).
-- **File Locking**: Supports shared and exclusive locks (`flock`) to prevent concurrent write corruption.
-- **Shared Access**: Multiple compute nodes can mount the same file system concurrently.
+- **Hierarchical Pathing**: Files are uniquely identified by human-readable nested directory paths.
+- **Shared Access Protocols**: Supported across network boundaries using **NFS (Network File System)** for Linux/Unix and **SMB/CIFS** for Windows.
+- **File Locks**: Provides shared read locks (`LOCK_SH`) and exclusive write locks (`LOCK_EX`) via POSIX `flock` or `fcntl`.
+- **In-Place File Mutations**: Supports partial byte updates, random writes, and appends without rewriting the entire file payload.
 
-### Storage System Matrix
+### Storage Paradigm Comparison Matrix
 
-| Dimension | File Storage | Block Storage | Object Storage |
+| Feature | File Storage (NAS) | Block Storage (SAN) | Object Storage (S3) |
 | :--- | :--- | :--- | :--- |
-| **Data Organization** | Hierarchical Tree | Raw Fixed Blocks | Flat Namespace |
-| **Access Protocol** | NFS, SMB/CIFS, POSIX | iSCSI, Fibre Channel, NVMe | HTTP REST (GET, PUT, DELETE) |
-| **Latency** | Low (Milliseconds) | Ultra-Low (Sub-millisecond) | Medium (Tens of ms) |
-| **Scalability** | Moderate (PB Scale) | Fixed Volume Capacity | Massive (EB Scale) |
-| **Best For** | Shared App Files, Legacy Apps | Database Data Files, VM Disks | Unstructured Media, Data Lakes |
+| **Data Organization** | Hierarchical Tree | Raw Addressable Sectors (LBAs) | Flat Key-Value Store |
+| **Access Interface** | POSIX APIs (NFS, SMB) | Fibre Channel, iSCSI, NVMe | HTTP REST API (GET, PUT) |
+| **Metadata** | Basic (POSIX permissions, dates) | Minimal (Sector offsets) | Rich User-Defined Custom Headers |
+| **Modification** | In-Place Partial Update | In-Place Sector Update | Immutable (Full Overwrite) |
+| **Scalability Limit** | Terabytes to Petabytes | Terabytes to Petabytes | Exabytes (Virtually Unlimited) |
+| **Cost per GB** | Moderate / High | High | Low |
 
-### System Design Trade-offs
+### Inode Data Model Schema
 
-- ✅ **POSIX Compatibility**: Legacy software works out-of-the-box without rewriting storage code.
-- ✅ **Shared Access**: Ideal for multi-server workloads needing simultaneous read/write to shared directories.
-- ❌ **Scalability Limits**: Heavy directory traversal overhead and lock contention slow down operations at millions of files.
+| Metadata Attribute | Data Type | Description |
+| :--- | :--- | :--- |
+| `inode_number` | `UINT64` | Unique internal file system identifier |
+| `file_permissions` | `UINT16` | Octal permission mask (e.g., `0644` rwxr-xr-x) |
+| `owner_uid / gid` | `UINT32` | User ID and Group ID of the file owner |
+| `file_size` | `UINT64` | File payload size in bytes |
+| `timestamps` | `TIMESTAMP` | Created (`ctime`), Modified (`mtime`), Accessed (`atime`) |
+| `block_pointers` | `ARRAY[INT64]`| Direct and indirect block pointers to underlying physical sectors |
+
+### Trade-offs & Production Considerations
+
+- ✅ **Shared Network File Access**: Multiple compute nodes can concurrently mount, read, and write to the same shared directory.
+- ✅ **Legacy Compatibility**: Applications written for standard OS file systems work seamlessly without API modification.
+- ❌ **Metadata Bottleneck**: Traversing deep directory trees with millions of small files creates heavy lock contention on directory Inodes.
+- ❌ **Scalability Limits**: Difficult to scale globally across multiple cloud regions while maintaining strict POSIX locks.
 
 ### Key takeaway
 
-File storage provides **POSIX-compliant shared access with hierarchical paths**. It is ideal for shared application state, legacy enterprise migrations, and content management systems, but scales less efficiently than object storage for billions of files.
+File storage provides **hierarchical directory structures and POSIX shared file access**. It is ideal for shared application configurations, legacy enterprise software, and shared developer workspaces, but suffers from metadata bottlenecks at extreme scale.

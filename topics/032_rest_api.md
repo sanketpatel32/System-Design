@@ -4,47 +4,50 @@
 
 ---
 
-REST = **Representational State Transfer**. An architectural style for web APIs built on HTTP,
-centered on **resources** identified by URLs.
+**REST (Representational State Transfer)** is an architectural style for designing networked APIs using stateless, client-server communication over standard HTTP. Introduced by Roy Fielding, REST treats data resources as URIs that can be manipulated using standard HTTP verbs.
 
-### The 6 constraints (Fielding)
-1. **Client-server** — separation of concerns.
-2. **Stateless** — each request contains all info needed; no server session.
-3. **Cacheable** — responses declare cacheability.
-4. **Uniform interface** — resources, verbs, hypermedia.
-5. **Layered** — intermediaries (proxies, gateways) allowed.
-6. **Code-on-demand** (optional) — server can ship executable code (JS).
+### REST Architectural Interaction Topology
 
-### Resource-oriented URLs
 ```
-GET    /users              list users
-POST   /users              create user
-GET    /users/123          fetch one user
-PUT    /users/123          replace user
-PATCH  /users/123          partial update
-DELETE /users/123          delete user
-GET    /users/123/orders   nested resource (user's orders)
++-------------------------------------------------------------------------+
+|                       REST ARCHITECTURE TOPOLOGY                        |
++-------------------------------------------------------------------------+
+
+  [ Client / SPA / Mobile ]
+             |
+             |  1. Request: GET /v1/users/42 (Accept: application/json)
+             v
+  +-----------------------------------------------------------------------+
+  | REST API SERVER                                                       |
+  | Stateless Request Processing -> Fetches Entity -> Serializes to JSON |
+  +-----------------------------------------------------------------------+
+             |
+             |  2. Response: 200 OK (Content-Type: application/json)
+             v  Payload: {"id": 42, "name": "Alice", "role": "admin"}
+  [ Client Application ]
 ```
 
-### Stateless
-Each request carries everything needed (auth token, pagination cursor). The server doesn't
-remember the client between requests → trivial horizontal scaling.
+### The 6 Core Constraints of REST Architecture
 
-### Why REST dominates
-- Simple, ubiquitous, every language has HTTP clients.
-- Plays well with caching (CDN, browser).
-- Self-descriptive via URLs and status codes.
+| Constraint | Description | Engineering Benefit |
+| :--- | :--- | :--- |
+| **Client-Server** | Separation of user interface concerns from data storage concerns. | Independent evolution of web/mobile clients and server backends. |
+| **Statelessness** | Every request contains all session data required; server stores no client context. | Massive horizontal scalability across stateless application servers. |
+| **Cacheability** | Responses must implicitly or explicitly define themselves as cacheable (`Cache-Control`). | Reduces network latency and server load via browser/CDN caches. |
+| **Uniform Interface**| Consistent resource identification (URIs), representation manipulation, and self-descriptive messages. | Simplified client integrations and uniform system design. |
+| **Layered System** | Client cannot tell whether it is connected directly to end server or proxy/load balancer. | Enables transparent insertion of CDNs, API Gateways, and Caches. |
+| **Code on Demand**| Optional capability where servers temporarily extend client functionality by transferring executable code (e.g., JS). | Extends client capabilities dynamically. |
 
-### REST weaknesses
-- **Over-fetching** — getting the whole user when you need just the email.
-- **Under-fetching** — need 5 round trips to render a page (the "N+1" problem).
-- **Versioning pain** — schema changes break clients.
-- **Multiple updates** — "rename user and update billing" isn't one resource.
+### REST Resource Blueprint & Endpoint Design
 
-### When REST falls short
-- Mobile apps that need curated payloads → consider GraphQL.
-- Internal microservices needing strict schemas → gRPC.
+| Operation | HTTP Verb | Example RESTful Endpoint | Response Code |
+| :--- | :--- | :--- | :--- |
+| **List Users** | `GET` | `/v1/users?page=1&limit=20` | `200 OK` |
+| **Get User** | `GET` | `/v1/users/42` | `200 OK` / `404 Not Found` |
+| **Create User** | `POST` | `/v1/users` | `201 Created` |
+| **Replace User**| `PUT` | `/v1/users/42` | `200 OK` |
+| **Delete User** | `DELETE` | `/v1/users/42` | `204 No Content` |
 
 ### Key takeaway
-REST is the default for public HTTP APIs. Master resource naming, statelessness, and HTTP status
-codes — then know when GraphQL or gRPC are better fits.
+
+REST is a **stateless, resource-oriented architectural style** built on standard HTTP verbs and URIs. Decouple clients and servers by creating uniform JSON interfaces, enforcing stateless requests, and leveraging HTTP caching headers.

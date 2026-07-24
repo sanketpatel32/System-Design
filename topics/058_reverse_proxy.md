@@ -4,45 +4,43 @@
 
 ---
 
-A reverse proxy sits **in front of your servers** and forwards client requests to them.
-It's the Swiss-army knife of edge infrastructure.
+A **Reverse Proxy** is an intermediate server placed in front of one or more backend web servers. Unlike a forward proxy (which shields client IPs when accessing the internet), a reverse proxy **shields backend servers by intercepting and handling incoming client requests** before forwarding them to internal application nodes.
+
+### Forward Proxy vs. Reverse Proxy Topology
 
 ```
-Client -> [ Reverse Proxy ] -> App server(s)
++-------------------------------------------------------------------------+
+|                  FORWARD PROXY vs. REVERSE PROXY                        |
++-------------------------------------------------------------------------+
+
+  FORWARD PROXY (Protects Clients):
+  [ Client A ] --+
+  [ Client B ] --+--> [ Forward Proxy ] ----> [ Public Internet ]
+
+  REVERSE PROXY (Protects Servers):
+  [ Public Internet Clients ] ----> [ Reverse Proxy (Nginx) ]
+                                            |
+                         +------------------+------------------+
+                         v                                     v
+               [ Internal App Server 1 ]             [ Internal App Server 2 ]
 ```
 
-### What it does
-- **TLS termination** — HTTPS ends here; plain HTTP to backends.
-- **Load balancing** — distribute across many backends.
-- **Routing** — `/api/*` to one service, `/static/*` to another.
-- **Caching** — store hot responses.
-- **Compression** — gzip/brotli for clients.
-- **Rate limiting** — protect backends.
-- **Authentication** — validate JWT before forwarding.
-- **DDoS protection** — absorb slow-loris, SYN floods.
-- **Observability** — centralized logging/metrics.
-- **Canary / blue-green** deploys via routing.
+### Technical Capability Breakdown
 
-### Reverse vs forward proxy
-| | Reverse | Forward |
-|--|---------|---------|
-| Hides | Servers | Clients |
-| Used by | Web services | Corporate egress |
-| Example | NGINX, Cloudflare | Squid, corporate proxy |
+| Capability | Technical Mechanism | Benefit |
+| :--- | :--- | :--- |
+| **Security & Anonymity** | Masks internal IP addresses and server topology. | Prevents direct external attacks against backend servers. |
+| **TLS / SSL Termination**| Offloads TLS decryption at proxy edge. | Reduces CPU cryptographic overhead on backend servers. |
+| **Static Asset Caching**| Caches static assets (images, CSS, JS) in memory/disk. | Diverts static traffic away from application servers. |
+| **Response Compression**| Compresses HTTP responses using Gzip / Brotli. | Saves egress bandwidth and speeds up client load times. |
+| **Security Filtering** | Implements Web Application Firewall (WAF) rules. | Blocks SQL Injection, XSS, and bot traffic at edge. |
 
-### Popular options
-- **NGINX** — battle-tested, ubiquitous.
-- **HAProxy** — excellent L4 + L7, very fast.
-- **Envoy** — modern, programmable, Istio's data plane.
-- **Traefik, Caddy** — auto-TLS, container-friendly.
-- **Cloudflare, AWS CloudFront** — managed, edge-deployed.
+### Popular Reverse Proxy Software
 
-### Common patterns
-- **Edge proxy** (Cloudflare) → **ingress proxy** (NGINX in k8s) → **service mesh sidecar**
-  (Envoy) → service.
-- Each layer handles different concerns; don't duplicate.
+- **Nginx**: Extremely fast event-driven C proxy, high concurrent connection handling.
+- **HAProxy**: High-performance TCP/HTTP load balancer and proxy engine.
+- **Envoy**: Modern cloud-native proxy designed for microservice service meshes (Istio).
 
 ### Key takeaway
-A reverse proxy is **mandatory** in any production web stack. It centralizes TLS, routing,
-caching, rate limiting, and observability so your services stay simple. NGINX/Envoy/Cloudflare
-are the dominant choices.
+
+Deploy a **Reverse Proxy** (like Nginx or HAProxy) at the perimeter edge to shield backend servers, handle TLS termination, serve static cached assets, and enforce WAF security policies.

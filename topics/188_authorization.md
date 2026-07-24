@@ -4,54 +4,63 @@
 ---
 
 ### Overview
-**Authorization (AuthZ)** is the process of determining whether an authenticated identity has permission to perform a specific action on a specific resource. It answers the security question: *"Are you allowed to do this?"*
+**Authorization (AuthZ)** is the security framework that determines whether an authenticated identity has permission to perform a specific action on a targeted resource. It answers the fundamental question: *"Are you allowed to do this?"*
 
-### Authorization Decision Pipeline
+Authorization takes place after successful Authentication. Enterprise systems implement authorization models ranging from simple **Role-Based Access Control (RBAC)** to fine-grained **Attribute-Based Access Control (ABAC)** and Google Zanzibar-style **Relationship-Based Access Control (ReBAC)**.
+
+### Enterprise Policy Decision Topology (PDP / PEP Pattern)
 
 ```
-+--------------+    1. Request (Subject, Action, Resource)    +-------------------+
-| API Gateway  | -------------------------------------------> | Policy Engine     |
-| / Service    |                                              | (OPA / Cedar)     |
-+--------------+                                              +-------------------+
-       ^                                                                |
-       |                                                                | 2. Evaluate Policy
-       |             3. Decision (Allow / Deny)                         v
-       +------------------------------------------------------ +-------------------+
-                                                               | Policy Rules /    |
-                                                               | ACL Data Store    |
-                                                               +-------------------+
++-------------------+     1. Request (POST /document/99)    +--------------------+
+| Client / User     | -----------------------------------> | Policy Enforcement |
++-------------------+                                      | Point (PEP / GW)   |
+                                                           +--------------------+
+                                                                     |
+                                                                     v 2. Check Permission
+                                                           +--------------------+
+                                                           | Policy Decision    |
+                                                           | Point (PDP / OPA)  |
+                                                           +--------------------+
+                                                                     |
+                                                                     v 3. Query Tuple/Rules
+                                                           +--------------------+
+                                                           | Policy Store / DB  |
+                                                           | (Zanzibar Tuples)  |
+                                                           +--------------------+
 ```
 
-### Authorization Models Comparison
+### Authorization Architectural Models
 
-| Model | Mechanics | Ideal Use Case | Pros | Cons |
-|---|---|---|---|---|
-| **RBAC** (Role-Based) | Permissions mapped to Roles; Users assigned Roles | Corporate enterprise systems | Simple to manage & audit | Role explosion as conditions grow |
-| **ABAC** (Attribute-Based)| Rules rely on Subject, Resource, Action, & Context (IP, Time) | Fine-grained compliance systems | Extremely flexible & dynamic | Complex rule engine evaluation |
-| **ReBAC** (Relationship-Based)| Access granted based on graph relationships (e.g., Google Zanzibar) | Google Drive, Notion, Social Networks | Scales to billions of object-level permissions | Complex graph storage infrastructure |
-| **ACL** (Access Control List)| Explicit list of permissions per resource | File systems, S3 bucket policies | Direct object permission control | Difficult to audit enterprise-wide |
+| Model | Structural Basis | Rule Complexity | Ideal Scale |
+|---|---|---|---|
+| **RBAC (Role-Based)** | Binds permissions to statically defined roles (e.g., `Admin`, `Editor`, `Viewer`). | Low complexity; static role assignments. | Small to medium enterprise web applications. |
+| **ABAC (Attribute-Based)** | Evaluates dynamic attributes of User, Resource, and Context (e.g., `Time < 5pm`, `IP == Corp`).| High complexity; dynamic policy evaluation via OPA (Open Policy Agent). | Highly regulated systems with contextual policy rules. |
+| **ReBAC (Relationship-Based)**| Evaluates graph paths of ownership and membership (e.g., `User X is member of Team Y which owns Doc Z`).| Graph traversal engine; extreme scalability (Google Zanzibar pattern). | Large-scale collaborative platforms (Google Docs, Figma). |
 
-### API Policy Definition Example (Open Policy Agent - Rego)
-```rego
-package httpapi.authz
+### API Interface & Policy Evaluation Schema
 
-default allow = false
+| API Endpoint / Evaluator | Method | Request Context Payload | Decision Output |
+|---|---|---|---|
+| `POST /v1/authorize` | POST | `{"user_id": "u123", "action": "READ", "resource": "doc_99"}` | `{"allow": true, "reason": "MATCH_ROLE_EDITOR"}` |
+| `POST /v1/check_tuple` | POST | `{"namespace": "doc", "object": "99", "relation": "viewer", "subject": "user:123"}` | `{"allowed": true}` |
 
-# Allow admin users full access
-allow {
-    input.user.role == "admin"
-}
+### Policy Data Model (ReBAC Tuple Schema)
 
-# Allow document owners to read/write their document
-allow {
-    input.method == "GET"
-    input.user.id == input.document.owner_id
-}
-```
+| Field Name | Data Type | Storage Engine | Description / Purpose |
+|---|---|---|---|
+| `namespace` | String | CockroachDB / Spanner | Resource type category (e.g., `document`, `folder`, `organization`). |
+| `object_id` | String | Distributed SQL | Unique ID of the target resource. |
+| `relation` | String | Distributed SQL | Permission relation (e.g., `owner`, `editor`, `viewer`, `parent_folder`). |
+| `subject_type` | String | Distributed SQL | Identity classification (`user`, `group`, `service_account`). |
+| `subject_id` | String | Distributed SQL | Unique ID of the authorized subject. |
 
-### Architecture Enforcement Patterns
-- **PEP (Policy Enforcement Point)**: API Gateway or Middleware intercepting incoming requests.
-- **PDP (Policy Decision Point)**: Microservice or embedded library (e.g., OPA) evaluating authorization policies.
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Centralized Authorization (OPA / Zanzibar)**| Single source of truth for authorization logic; easy compliance auditing. | Introduces network latency on every authorization decision hop. | Multi-tenant SaaS platforms with complex permission structures. |
+| **Decentralized / Local In-Memory AuthZ** | Sub-millisecond policy check execution within microservice memory. | Permission revocation lag; policy sync discrepancies across nodes. | Ultra-low latency microservice architectures. |
+| **RBAC over ReBAC** | Extremely straightforward database design (`user_roles`, `role_permissions`). | Explodes in complexity ("role explosion") when fine-grained per-object permissions are needed. | Standard SaaS administrative portals. |
 
 ### Key takeaway
-**Authorization** grants or denies permissions. Modern microservice architectures decouple enforcement from business logic by establishing a centralized Policy Decision Point using **RBAC** or **ReBAC (Zanzibar model)**.
+**Authorization** controls resource access post-authentication. Scalable system designs decouple Policy Enforcement Points (PEP) from Policy Decision Points (PDP), transitioning from simple RBAC to graph-based ReBAC (Zanzibar) or attribute-based ABAC (OPA) as permission complexity grows.

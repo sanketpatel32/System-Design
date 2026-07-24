@@ -4,41 +4,42 @@
 
 ---
 
-API versioning lets you **evolve** the contract without breaking existing clients. Critical
-for any public API.
+**API Versioning** is the practice of managing changes to an API interface without breaking existing client integrations. When non-backward-compatible modifications occur (removing fields, altering data types, or changing endpoint semantics), a new version must be exposed.
 
-### Why version
-- Renaming a field breaks every client reading it.
-- Removing a field breaks every client reading it.
-- Changing a type (string → int) breaks every client.
-- New required field breaks every client.
+### API Version Routing Topology
 
-### Approaches
-| Method | Example | Pros | Cons |
-|--------|---------|------|------|
-| URL path | `/v1/users` | Obvious, cacheable | URL churn |
-| Query param | `/users?version=1` | URL stable | Easy to forget |
-| Header | `Accept: application/vnd.acme.v1+json` | Clean URL | Hard to test in browser |
-| Content negotiation | `Accept` header | RESTful | Less discoverable |
+```
++-------------------------------------------------------------------------+
+|                    API GATEWAY VERSION ROUTING                          |
++-------------------------------------------------------------------------+
 
-**Recommendation**: **URL path** (`/v1`, `/v2`). Easiest for clients, easiest to route in LBs,
-easy to debug.
+  [ Ingress Request ]
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | API GATEWAY (Inspects URI / Header / Query Param)                     |
+  +-----------------------------------------------------------------------+
+          |                                       |
+          | (Route /v1/users)                     | (Route /v2/users)
+          v                                       v
+  [ Legacy V1 Service Cluster ]          [ Modern V2 Service Cluster ]
+  {"user_name": "Alice"}                 {"first_name": "Alice", "last_name": "Smith"}
+```
 
-### Backward vs forward compatibility
-- **Backward compatible** (preferred): old clients work with new server. Add fields, don't remove
-  or rename.
-- **Forward compatible**: new clients work with old server. Hard — usually just retry/fallback.
+### API Versioning Strategies Comparison
 
-### Deprecation workflow
-1. Mark old version **deprecated** in docs and headers (`Sunset`, `Deprecation`).
-2. Add metrics on which clients still call it.
-3. Email top consumers, give 6-12 month window.
-4. Return 410 Gone after the sunset date.
+| Strategy | Implementation Syntax | Pros | Cons | Industry Use Cases |
+| :--- | :--- | :--- | :--- | :--- |
+| **URI Path Versioning** | `https://api.com/v1/users` | Highly explicit, easy to route at Gateway, easily tested in browser. | Pollutes URI space; feels like different resource. | Google, Twitter, GitHub |
+| **Custom Request Header**| `X-API-Version: 2` | Clean URIs; separates resource path from metadata. | Harder to test in browser; breaks simple browser caching. | Stripe (Date-based versioning) |
+| **Accept Header (Content Negotiation)**| `Accept: application/vnd.company.v2+json` | RESTfully pure; leverages media type negotiation. | High complexity for clients and API gateway routing logic. | GitHub Enterprise API |
+| **Query Parameter** | `https://api.com/users?version=2` | Simple implementation; easy default fallback. | Can be missed by caching proxies if query params are ignored. | Amazon AWS APIs |
 
-### Real-world
-- Stripe, GitHub: URL versioning (`/v1`, `/v2`), backward compatible within a version.
-- Twilio: URL versioning with multi-year deprecations.
+### Non-Breaking vs. Breaking Changes
+
+- **Non-Breaking (No New Version Needed)**: Adding new optional request parameters, adding new fields to JSON response payloads.
+- **Breaking (Requires New Major Version)**: Renaming/deleting response fields, changing field data types (string to array), altering authentication mechanics.
 
 ### Key takeaway
-Always version. Prefer **URL path** versioning. Within a version, only make **backward-
-compatible** changes (add fields, never rename/remove). Sunset old versions on a schedule.
+
+Use **URI Path Versioning (`/v1/resource`)** for public APIs due to its transparency, caching friendliness, and simple Gateway routing. Reserve new major versions strictly for breaking changes.

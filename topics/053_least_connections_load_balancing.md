@@ -4,45 +4,44 @@
 
 ---
 
-Least connections = **send each new request to the server currently handling the fewest
-active connections.** Better than round robin when request cost varies.
+**Least Connections Load Balancing** is a dynamic traffic management algorithm that routes incoming requests to the backend server currently handling the **fewest active open connections**.
 
-### How it works
+### Connection-Aware Traffic Routing Topology
+
 ```
-Current active connections:
-  A: 12
-  B: 8   <- least, send here
-  C: 15
++-------------------------------------------------------------------------+
+|              LEAST CONNECTIONS DYNAMIC ROUTING TOPOLOGY                 |
++-------------------------------------------------------------------------+
 
-New request -> B (now B has 9)
+  Incoming Request: [ New Request X ]
+                           |
+                           v
+           +-------------------------------+
+           | LEAST CONNECTIONS BALANCER    |
+           | Evaluates Active Connection   |
+           | Counter for Each Target Server|
+           +-------------------------------+
+             | (15 Active)   | (4 Active)    | (22 Active)
+             v               v               v
+    +--------------+  +--------------+  +--------------+
+    | Server 1     |  | Server 2     |  | Server 3     |
+    | [Busy]       |  | [SELECTED]   |  | [Overloaded] |
+    +--------------+  +--------------+  +--------------+
 ```
 
-### Why it beats round robin
-- Round robin ignores that server A might be stuck on 5 long-lived requests.
-- Least-connections adapts to **variable request duration**.
+### Load Balancing Algorithm Comparison
 
-### When to use
-- **Long-lived connections** (WebSockets, streaming).
-- **Variable-cost requests** (some take 10ms, some take 10s).
-- **Mixed-capacity servers** (with weighted variant).
+| Algorithm | Routing Basis | Dynamic State Tracking | Best Workload Type |
+| :--- | :--- | :--- | :--- |
+| **Round Robin** | Fixed sequential loop | None (Stateless) | Uniform short HTTP requests |
+| **Least Connections** | Fewest active concurrent connections | Tracks open TCP/HTTP sockets per node | **Long-lived persistent connections (WebSockets, SQL pools, streaming)** |
+| **Least Response Time**| Lowest active connections + lowest latency | Tracks connections + ping RTT latency | High-responsiveness web services |
 
-### Variant: weighted least connections
-Multiplies connection count by a server weight so bigger servers handle proportionally more.
+### Ideal Use Cases
 
-### Variant: least response time
-Combines connection count + average response time. More accurate, harder to compute (needs EWMA
-of latency per server).
-
-### Trade-offs
-- LB must **track active connections** per server (stateful LB).
-- Slow to react to a server that just got fast.
-- Needs accurate bookkeeping; connection churn can mislead.
-
-### Where it shines
-- Chat / messaging (long-lived WS).
-- File upload / video streaming.
-- API gateways with mixed endpoint costs.
+- **Long-Lived Connections**: WebSockets, SSH sessions, gRPC streams, and database connection pools.
+- **Variable Execution Workloads**: E-commerce checkouts where some transactions execute in 10ms while others (reports, image processing) take 10 seconds.
 
 ### Key takeaway
-Pick **least connections** when request durations vary widely or connections are long-lived.
-For uniform, short-lived, stateless traffic, round robin (or weighted) is fine and cheaper.
+
+Least Connections load balancing dynamically directs traffic to the server with the **fewest active open connections**. Use it for long-lived connection workloads (**WebSockets, database pools, long polling**) and variable execution tasks.

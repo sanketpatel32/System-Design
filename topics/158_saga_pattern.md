@@ -4,42 +4,65 @@
 
 ---
 
-The Saga Pattern manages **distributed transactions across microservices as a sequence of local transactions**. If any local step fails, the Saga executes a series of **compensating transactions** to roll back prior state changes.
+The Saga pattern manages **distributed transactions across microservices as a sequence of local transactions**. Each local transaction updates the database within a single service and publishes an event or message to trigger the next local transaction in the saga. If a local transaction fails, the saga executes a series of **compensating transactions** in reverse order to undo changes.
 
-### Choreography vs Orchestration Architecture
+### Saga Architecture: Orchestrated vs Choreographed
+
+Sagas avoid distributed database locks by executing local transactions sequentially and relying on compensating workflows for failure recovery.
 
 ```
-Choreography (Event-Driven):
-[Order Service] --- OrderCreated ---> [Payment Service] --- PaymentCharged ---> [Inventory Service]
-       ^                                     | (Fails!)                                 |
-       +--- CancelOrder <--- PaymentFailed --+                                          v
-
-Orchestration (Central Coordinator):
-                               +-----------------------+
-                               | Saga Orchestrator     |
-                               +-----------------------+
-                                   |       ^       |
-                     1. CreateOrder|       |       | 3. Charge (Fails!)
-                                   v       |       v
-                             +---------------------------+
-                             | Services (Order / Payment)|
-                             +---------------------------+
-                                   |
-                                   v 4. Execute Compensating Rollback (Cancel Order)
+Orchestrated Saga Architecture:
++----------------------------------------------------------------------------------------------------+
+|                                      Saga Orchestrator Service                                     |
++----------------------------------------------------------------------------------------------------+
+     |                        ^                       |                       ^
+  1. Execute Order         2. Success             3. Execute Payment       4. Payment FAILED!
+     v                        |                       v                       |
++------------------+ +------------------+   +------------------+ +------------------+
+| Order Service    | | Order DB         |   | Payment Service  | | Payment DB       |
+| (Local Tx 1 OK)  | | (Order Created)  |   | (Tx 2 Fails!)    | | (Insufficient) |
++------------------+ +------------------+   +------------------+ +------------------+
+     ^                                                                        |
+     |                     5. Trigger Compensating Action                     |
+     +------------------------------------------------------------------------+
+       - Executes `CancelOrder()` to undo Local Tx 1! State restored eventually!
 ```
 
-### Saga Execution Modes Matrix
+### Orchestration vs Choreography Matrix
 
-| Variant | Control Flow | Coupling Level | Complexity | Best Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **Choreography** | Decoupled Pub/Sub Events | Extremely Low | Hard to trace workflows | Simple 2-3 step microservice pipelines |
-| **Orchestration**| Centralized State Controller | Low-Medium | Easy to visualize and audit | Complex enterprise e-commerce checkout flows |
+| Aspect | Orchestrated Saga | Choreographed Saga |
+| :--- | :--- | :--- |
+| **Control Model** | Central Saga Orchestrator directs execution flow | Decentralized; services listen to event bus topics |
+| **Coupling** | Services coupled to Orchestrator commands | Loosely coupled via domain events |
+| **Visibility** | High (Orchestrator tracks state in one place) | Low (Saga state is distributed across services) |
+| **Complexity** | Centralized coordinator logic | Harder to debug and trace circular dependency chains |
+| **Best Fit** | Complex workflows with many steps | Simple workflows with 2-4 microservices |
 
-### Forward & Backward Recovery
+### Forward Recovery vs Compensating Transactions
 
-- **Forward Recovery**: Retries a failed transaction step until it succeeds (used when failure is transient).
-- **Backward Recovery (Compensating Transactions)**: Executes explicit undo actions (e.g., `RefundPayment`, `ReleaseInventory`) in reverse order when a step fails permanently.
+- **Compensating Transaction ($C_i$)**: Undoes the semantic effect of local transaction $T_i$ (e.g. `RefundPayment` compensates `ChargePayment`). Compensating operations must be **idempotent and retryable**.
+- **Forward Recovery**: If a transient failure occurs (e.g. service timeout), the saga retries the failed step until success rather than triggering compensation.
+
+### Key Trade-offs & Isolation Challenges
+
+- ✅ **High Scalability & Performance**: Eliminates long-held distributed database locks present in 2PC.
+- ❌ **Lack of Isolation (ACID 'I')**: Intermediate uncommitted states are visible to external systems. Applications must handle anomalies like dirty reads using counter-measures (e.g. semantic locking states like `PENDING_APPROVAL`).
+### Choreographed Saga Implementation Event Flow
+
+```
+1. Order Service creates Order in `PENDING` state -> Emits `OrderCreatedEvent`
+2. Payment Service consumes `OrderCreatedEvent` -> Charges Credit Card -> Emits `PaymentProcessedEvent`
+3. Inventory Service consumes `PaymentProcessedEvent` -> Discovers Item Out of Stock!
+   -> Emits `InventoryAllocationFailedEvent`
+4. Payment Service consumes Failure -> Executes Compensating Action `RefundPayment()`
+5. Order Service consumes Failure -> Updates Order state to `CANCELLED`
+```
+
+### Rules for Designing Compensating Transactions
+
+1. **Idempotency**: Compensating actions must be idempotent; retrying a refund 5 times must only yield 1 refund.
+2. **Cannot Fail Unrecoverably**: Compensating steps must be guaranteed to eventually succeed via retries.
 
 ### Key takeaway
 
-The Saga pattern replaces blocking locks with **local transactions and compensating actions**, achieving eventual consistency across decoupled microservices.
+The Saga pattern breaks distributed transactions into **sequential local transactions coordinated via events or an orchestrator**, using idempotent compensating transactions to undo partial failures.

@@ -4,41 +4,53 @@
 
 ---
 
-Rate limiting caps how many requests a client can make in a time window. Protects the API
-from abuse, runaway scripts, and noisy neighbors.
+**API Rate Limiting** caps the number of requests a client can transmit to an API within a specified time window. Rate limiting protects backend services from DDoS attacks, runaway web crawlers, noisy neighbors, and resource starvation.
 
-### Why rate limit
-- **Protect the service** from overload / DDoS.
-- **Fairness** between tenants.
-- **Monetization** (free vs paid tiers).
-- **Cost control** (expensive endpoints).
+### Distributed Rate Limiter Topology
 
-### Common algorithms
-| Algorithm | How |
-|-----------|-----|
-| **Fixed window** | Count requests per fixed window (e.g. 100/min). Bursty at edges. |
-| **Sliding window log** | Track each request timestamp. Precise but memory-heavy. |
-| **Sliding window counter** | Hybrid: weighted average of current + previous window. |
-| **Token bucket** | Bucket of N tokens, refills at R/sec. Allows bursts. |
-| **Leaky bucket** | Queue processes at fixed rate. Smooths traffic. |
+```
++-------------------------------------------------------------------------+
+|                  DISTRIBUTED RATE LIMITER ARCHITECTURE                  |
++-------------------------------------------------------------------------+
 
-### Where to limit
-- **Per IP** — basic abuse protection.
-- **Per user / API key** — fair quota.
-- **Per endpoint** — protect expensive operations.
-- **Global** — backstop against the whole system.
+  [ Ingress Request ] (Header: Authorization / IP / API-Key)
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | API GATEWAY RATE LIMITING MIDDLEWARE                                  |
+  +-----------------------------------------------------------------------+
+          |
+          v (Atomic Lua Script Check)
+  [ Redis Cluster: Key = "ratelimit:user_42" TTL = 60s ]
+          |
+          +-----------------------+-----------------------+
+          | (Counter <= Limit)    | (Counter > Limit)     |
+          v                       v                       v
+  [ Forward to Backend Svc ]      [ Return HTTP 429 Too Many Requests ]
+  X-RateLimit-Remaining: 49       Retry-After: 30
+```
 
-### Distributed rate limiting
-A single in-memory counter doesn't work across instances. Options:
-- **Redis** counter with TTL.
-- **Redis + Lua** for atomic check-and-increment.
-- **Token bucket in Redis** (e.g. redis-cell).
-- **Dedicated service** (e.g. Stripe's rate limits, Envoy, API Gateway).
+### Rate Limiting Algorithms Comparison
 
-### Response
-- Return **429 Too Many Requests**.
-- Include headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`.
+| Algorithm | Mechanism | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| **Token Bucket** | Tokens refill at rate $R$/sec into bucket of capacity $N$. Request consumes 1 token. | Allows short bursts; memory efficient. | Token refill math tuning required. |
+| **Leaky Bucket** | Requests queue in bucket and leak out at fixed smooth rate. | Smooths bursty traffic into steady output rate. | Bursts are delayed; queue overflow drops requests. |
+| **Fixed Window Counter** | Counts requests in fixed time windows (e.g., 100 req/min). | Extremely memory simple. | Edge traffic burst: $2\times$ quota at window boundaries. |
+| **Sliding Window Log** | Stores timestamp of every request in sorted set (Redis ZSET). | 100% accurate sliding window protection. | High memory footprint ($O(N)$ stored timestamps). |
+| **Sliding Window Counter**| Hybrid: weighted sum of current window count + previous window count. | Smooth traffic protection; minimal memory. | Approximates edge window counts (99%+ accuracy). |
+
+### HTTP Standard Rate Limit Headers
+
+```http
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1672531200
+Retry-After: 60
+```
 
 ### Key takeaway
-Rate limit at the **API gateway** before requests hit your app. Use **token bucket** for most
-cases (allows bursts). Return 429 with `Retry-After` so clients back off cleanly.
+
+Enforce rate limiting at the **API Gateway tier** using **Token Bucket** or **Sliding Window Counter** algorithms backed by Redis Lua scripts. Return **HTTP 429 Too Many Requests** with `Retry-After` headers.

@@ -4,47 +4,74 @@
 ---
 
 ### Overview
-An **Email Service** sends transactional emails (password resets, order receipts) and bulk marketing campaigns reliably while maintaining high domain deliverability (SPF/DKIM/DMARC) and surviving third-party provider outages via fallback routing.
+An **Email Service** is a specialized messaging platform designed to generate, sign, queue, and deliver millions of transactional (password resets, invoices) and promotional emails daily while maintaining high domain inbox deliverability.
 
-### Architecture with Provider Failover
+Key technical requirements require cryptographic domain authentication (**DKIM**, **SPF**, **DMARC**), asynchronous queuing, bounce/complaint handling via webhooks, and rate-governed SMTP pool routing.
+
+### Email Delivery System Architecture
 
 ```
-+---------------+     POST /v1/email     +-------------------+
-| Microservices | ---------------------> | Email Gateway API |
-+---------------+                        +-------------------+
-                                                   |
-                                                   v Enqueue Event
-                                         +-------------------+
-                                         | Kafka Email Queue |
-                                         +-------------------+
-                                                   |
-                                                   v Process Task
-                                         +-------------------+
-                                         | Delivery Workers  |
-                                         +-------------------+
-                                            /             \
-                     1. Primary (SendGrid) /               \ 2. Fallback (AWS SES)
-                                          v                 v
-                                  +---------------+  +---------------+
-                                  | SendGrid API  |  | AWS SES API   |
-                                  +---------------+  +---------------+
++--------------------+     1. POST /v1/emails/send          +--------------------+
+| Internal Services  | -----------------------------------> | API Gateway        |
++--------------------+                                      +--------------------+
+                                                                      |
+                                                                      v 2. Enqueue Payload
+                                                            +--------------------+
+                                                            | RabbitMQ / Kafka   |
+                                                            | Email Queue        |
+                                                            +--------------------+
+                                                                      |
+                                                                      v 3. Consume & Sign
+                                                            +--------------------+
+                                                            | Email Workers &    |
+                                                            | DKIM Signer        |
+                                                            +--------------------+
+                                                                      |
+                                                                      v 4. SMTP Handshake
+                                                            +--------------------+
+                                                            | SMTP Relay / AWS   |
+                                                            | SES Gateway        |
+                                                            +--------------------+
+                                                                      |
+                                                                      v 5. Bounce Webhooks
+                                                            +--------------------+
+                                                            | Ingestion Webhook  |
+                                                            | (Suppression List) |
+                                                            +--------------------+
 ```
 
-### Email Deliverability Authentication Protocols
+### Key Technical Mechanics
+1. **Domain Cryptographic Verification:**
+   - **SPF (Sender Policy Framework):** DNS record listing IP addresses authorized to send emails for the domain.
+   - **DKIM (DomainKeys Identified Mail):** Cryptographic RSA signature attached to email headers, verified using public DNS keys.
+   - **DMARC:** Defines recipient server policy when SPF/DKIM verification fails (`none`, `quarantine`, `reject`).
+2. **Suppression List Management:** Automatically intercepts and blocks email delivery to addresses that previously hard-bounced or marked emails as spam complaints, preserving IP sender reputation score.
 
-| Protocol | Full Name | Technical Purpose |
-|---|---|---|
-| **SPF** | Sender Policy Framework | DNS TXT record listing IP addresses authorized to send mail for domain. |
-| **DKIM** | DomainKeys Identified Mail | Cryptographic public key in DNS; email header signed with private key to prevent tampering. |
-| **DMARC** | Domain-based Message Auth | Defines policy (reject/quarantine) if SPF or DKIM checks fail. |
+### API Interface Specifications
 
-### Resilience Strategy: Multi-Provider Failover Matrix
+| Endpoint | Method | Request Payload | Response Payload |
+|---|---|---|---|
+| `/api/v1/emails/send` | POST | `{"to": "user@example.com", "template_id": "welcome_email", "variables": {"name": "Alice"}}` | `{"email_id": "em_9912", "status": "QUEUED"}` |
+| `/api/v1/webhooks/bounce`| POST | `{"email_id": "em_9912", "event": "HARD_BOUNCE", "reason": "550 User unknown"}` | `{"status": "PROCESSED", "suppressed": true}` |
 
-| Scenario | Worker Action |
-|---|---|
-| **Primary Provider 200 OK** | Mark job complete; store provider message ID. |
-| **Primary 429 / 5xx Error** | Increment retry counter; trigger **Circuit Breaker** to route remaining jobs to Secondary Provider. |
-| **Hard Bounce (Invalid Email)** | Catch webhook event; add target address to Suppression List table to protect domain reputation. |
+### Email Dispatch Data Model
+
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `email_id` | UUID | PostgreSQL | Unique Primary Key for email tracking log. |
+| `recipient_email` | String (Indexed)| Relational DB | Target destination address. |
+| `subject` | String | Relational DB | Rendered email subject line. |
+| `status` | Enum | Relational DB | State (`QUEUED`, `SENT`, `DELIVERED`, `BOUNCED`, `COMPLAINT`). |
+| `dkim_signed` | Boolean | Relational DB | Cryptographic signature verification flag. |
+| `smtp_response_code`| String | Relational DB | Raw response received from receiving MX mail server (e.g., `250 2.0.0 OK`). |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Dedicated IP Pools vs Shared IPs** | Protects domain sender reputation from noisy neighbors; optimal deliverability for high volume. | High monthly vendor cost; requires cold IP warm-up process over several weeks. | Enterprise systems sending > 100,000 emails daily. |
+| **Asynchronous Background Delivery Queue**| Instant HTTP 200 OK for caller API; isolates backend from SMTP socket connection delays. | Recipient experiences slight delivery latency (1-5 seconds). | Mandatory requirement for all transactional and bulk email architectures. |
+| **HTML Template Pre-Rendering** | Offloads template compilation overhead from email dispatch worker threads. | Increases storage size of queued messaging events in Kafka/RabbitMQ. | Systems with complex localized HTML email layouts. |
 
 ### Key takeaway
-Protect domain deliverability using **SPF, DKIM, and DMARC**. Ensure high availability by implementing **message queues** with automated **multi-provider failover** (e.g., SendGrid primary, AWS SES fallback).
+An **Email Service** guarantees deliverability through **SPF, DKIM, and DMARC cryptographic signatures**, asynchronous queuing, and automated webhook suppression list management to safeguard domain sender reputation.

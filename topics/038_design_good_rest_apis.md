@@ -4,59 +4,42 @@
 
 ---
 
-A good REST API is **consistent, predictable, and self-describing**. Clients should guess the
-URL of the next resource without docs.
+Designing high-quality RESTful APIs requires creating **intuitive, predictable, scalable, and resilient interfaces** that developers can easily consume. Clean API design adheres to established URI conventions, proper HTTP verbs, consistent error schemas, and backward compatibility rules.
 
-### Resource naming
-- **Nouns, not verbs**: `/users`, `/orders`, not `/getUsers`.
-- **Plural**: `/users/123`, not `/user/123`.
-- **Nested for sub-resources**: `/users/123/orders`.
-- **LowerCase, hyphenated**: `/order-items`, not `/orderItems`.
+### RESTful Resource Naming Architecture
 
-### HTTP verbs (recap)
 ```
-GET    /users         list
-POST   /users         create
-GET    /users/{id}    fetch
-PUT    /users/{id}    replace
-PATCH  /users/{id}    partial update
-DELETE /users/{id}    delete
++-------------------------------------------------------------------------+
+|                  RESTFUL RESOURCE HIERARCHY STRUCTURE                   |
++-------------------------------------------------------------------------+
+
+  /v1/users                             <-- Plural Noun Collection
+    |
+    +---> /v1/users/42                  <-- Specific Resource Instance
+            |
+            +---> /v1/users/42/orders   <-- Sub-resource Collection
+                    |
+                    +---> /v1/users/42/orders/9001  <-- Sub-resource Instance
 ```
 
-### Status codes (use them properly)
-- 200 success, 201 created, 204 no content.
-- 400 bad input, 401 not auth'd, 403 forbidden, 404 missing, 409 conflict, 422 semantics, 429
-  rate limited.
-- 500 server bug, 502/503/504 upstream problems.
+### Core API Design Conventions
 
-### Pagination (always)
-- **Offset / limit**: `?offset=20&limit=20` — simple, slow for deep pages.
-- **Cursor**: `?after=abc123&limit=20` — stable, fast, can't jump to page 50.
-- Return `next_cursor` in the response body.
+| Rule Domain | Correct REST Practice | Bad Anti-Pattern | Reason / Trade-off |
+| :--- | :--- | :--- | :--- |
+| **URI Resource Naming**| Plural Nouns (`/v1/orders`) | Verbs (`/v1/getAllOrders`) | HTTP Verbs (`GET`) already declare the action. |
+| **Hierarchy Representation**| `/v1/users/42/orders` | `/v1/getOrdersForUser?id=42` | URIs model logical entity relationships. |
+| **Filtering Parameters**| `/v1/products?category=tech` | `/v1/techProducts` | Keep resource endpoints clean; use query params for filtering. |
+| **Field Format** | Lower camelCase (`createdAt`) | Mixed case (`Created_At`) | Establish uniform JSON payload keys. |
+| **State Mutations** | `POST /v1/orders/9001/cancel` | `GET /v1/cancelOrder` | Use controller sub-actions when HTTP verbs are insufficient. |
 
-### Consistent envelope
-```json
-{
-  "data": [...],
-  "pagination": {"next_cursor": "..."},
-  "errors": null
-}
-```
-Same shape on every endpoint → clients parse once.
+### API Design Guidelines Checklist
 
-### Idempotency
-- **Idempotency-Key** header on POST/PUT so retries don't double-charge.
-
-### Versioning
-- URL: `/v1/users` (most common).
-- Header: `Api-Version: 1` (cleaner URLs, harder to test).
-
-### Other must-haves
-- **Rate limiting** with 429 + `Retry-After`.
-- **Authentication** (OAuth 2 / JWT).
-- **Errors with codes** — machine-parseable, not just messages.
-- **Pagination, filtering, sorting** as query params.
+1. **Use Plural Nouns**: Model endpoints as collections (`/users`, `/invoices`).
+2. **Nest Related Sub-Resources**: Represent sub-entities under parent resources (`/authors/7/books`).
+3. **Use Standard HTTP Verbs**: Match CRUD operations to `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`.
+4. **Return Consistent JSON Error Payloads**: Structure errors with RFC 7807 (`type`, `title`, `status`, `detail`).
+5. **Support Filtering, Sorting, and Pagination**: Keep responses bounded (`limit`, `offset`, `cursor`).
 
 ### Key takeaway
-Treat your API as a **product**, not a side-effect of code. Consistency beats cleverness — every
-endpoint should behave the way clients guess it does.
+
+Design REST APIs using **plural nouns for resource paths**, standard HTTP verbs for operations, consistent camelCase JSON schemas, and nested URIs for hierarchical sub-resources. Provide clear error details and support pagination across all collection endpoints.

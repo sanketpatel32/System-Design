@@ -4,45 +4,35 @@
 
 ---
 
-Long polling = **the client sends a request, the server holds it open until data is ready (or
-timeout), then responds.** Client immediately re-polls.
+**Long Polling** (also known as HTTP Long Polling or Comet) is a communication technique designed to emulate real-time server pushes over standard HTTP requests. Unlike short polling, the server **holds the HTTP request open** until new data becomes available or a timeout limit is reached.
 
-### Flow
+### Short Polling vs. Long Polling Lifecycle
+
 ```
-Client:  GET /updates
-Server:  (holds connection open for up to 30s)
-Server:  -> response when event arrives OR timeout
-Client:  immediately issues another GET /updates
++-------------------------------------------------------------------------+
+|                  SHORT POLLING vs. LONG POLLING                         |
++-------------------------------------------------------------------------+
+
+  SHORT POLLING:
+  Client ---> HTTP Request ---> Server (No data) ---> Return Empty 200 OK
+  Client ---> HTTP Request ---> Server (No data) ---> Return Empty 200 OK
+
+  LONG POLLING:
+  Client ---> HTTP Request ---> Server (Holds connection open...)
+                                 | (Data becomes available after 15s)
+  Client <--- 200 OK + Data <----+
+  Client ---> Immediately Re-opens HTTP Request ---> Server (Holds...)
 ```
 
-### Why it exists
-Pre-WebSocket, this was the simplest way to get server push without WebSocket support. Still
-useful when:
-- WebSocket is blocked (some corporate proxies).
-- You need just HTTP, no special infra.
-- Infrequent updates.
+### Communication Pattern Trade-offs
 
-### Trade-offs vs WebSockets
-| | Long polling | WebSockets |
-|--|--------------|------------|
-| Protocol | Plain HTTP | WS upgrade |
-| Overhead | High (new request each time) | Low (one connection) |
-| Latency | Extra RTT per message | Minimal |
-| Bidirectional | Yes (via separate POSTs) | Native |
-| Infra | Standard HTTP | Needs WS gateway |
-| Proxy friendly | Better | Worse |
-
-### Implementation tips
-- Set a **max hold time** (e.g. 30s) to avoid proxy timeouts.
-- Use a **message queue / pub-sub** on the server so multiple app instances see the same events.
-- **Backoff** on errors to avoid stampedes.
-
-### Long polling vs SSE vs WS
-- **Long polling** — every client, server-push, no infra.
-- **SSE** — server push over single HTTP stream, simpler than long polling.
-- **WS** — bidirectional, lowest latency, more infra.
+| Feature | Short Polling | Long Polling | WebSockets |
+| :--- | :--- | :--- | :--- |
+| **Request Mechanism** | Client sends periodic requests every $N$ seconds. | Client sends request; server holds connection open until event. | Single upgrade handshake to persistent TCP socket. |
+| **Server Load** | Extremely high (Processes empty requests constantly). | Medium (Holds open HTTP connections; requires thread/epoll handling). | Low per-message overhead (Single open connection per client). |
+| **Real-Time Latency**| High (Delay bounded by polling interval). | Low (Immediate response when data arrives). | Ultra-Low (Instant full-duplex frames). |
+| **Firewall / Proxy Compatibility**| 100% Compatible (Standard short HTTP). | Highly Compatible (Standard HTTP POST/GET). | May be blocked by strict enterprise proxies (if not on Port 443 WSS). |
 
 ### Key takeaway
-Long polling is the **fallback** when WebSocket/SSE aren't available. For greenfield designs,
-prefer WebSocket (bidirectional) or SSE (server push). Use long polling only for legacy/edge
-cases.
+
+Long Polling emulates server pushes by **holding HTTP requests open until data becomes available**. Use Long Polling as a fallback mechanism for legacy web clients or strict firewall environments where WebSockets are blocked.

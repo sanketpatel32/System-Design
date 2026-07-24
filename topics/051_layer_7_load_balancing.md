@@ -4,45 +4,45 @@
 
 ---
 
-Layer 7 (L7) load balancing operates at the **application layer** — it inspects the HTTP
-request (URL, headers, cookies, body) to make routing decisions.
+**Layer 7 (L7) Load Balancing** operates at the **Application Layer** of the OSI model. Unlike Layer 4 load balancers that route raw TCP packets, an L7 load balancer decrypts TLS, parses HTTP/HTTPS requests, and makes intelligent routing decisions based on **URIs, HTTP Headers, Cookies, Query Parameters, and Payload Contents**.
 
-### How it works
+### Layer 7 Content-Based Routing Topology
+
 ```
-Client -> LB
-         LB reads: GET /api/v1/users  Host: api.example.com  Cookie: session=abc
-         LB routes /api/* -> api-service
-         LB routes /static/* -> cdn-origin
-         LB rewrites Host header, sets X-Forwarded-For, terminates TLS
++-------------------------------------------------------------------------+
+|                LAYER 7 CONTENT-BASED ROUTING TOPOLOGY                   |
++-------------------------------------------------------------------------+
+
+  [ Client HTTP Request ] (GET /v1/images/cat.png Cookie: auth=token)
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | LAYER 7 LOAD BALANCER (AWS ALB / Nginx / Envoy)                       |
+  | Decrypts TLS -> Inspects URI Path & HTTP Headers -> Evaluates Rules  |
+  +-----------------------------------------------------------------------+
+          |                                       |
+          | (Route /v1/images/*)                  | (Route /v1/orders/*)
+          v                                       v
+  [ Static Media Server Pool ]            [ Order Service Cluster ]
 ```
 
-### What L7 can do that L4 can't
-- **Path-based routing**: `/api/*` → service A, `/images/*` → service B.
-- **Host-based routing**: `api.x.com` vs `www.x.com`.
-- **Header/cookie inspection**: stick sessions, A/B testing.
-- **TLS termination + SNI**: serve multiple certs on one IP.
-- **Request/response transformation**: rewrite, compress, add headers.
-- **Caching**: serve common GETs from the LB.
-- **Authentication**: validate JWT before forwarding.
-- **Rate limiting** per route.
+### Layer 4 vs. Layer 7 Load Balancing Comparison
 
-### Common L7 LBs / Reverse proxies
-- **NGINX, HAProxy (HTTP mode), Envoy, Traefik, Caddy**.
-- **AWS ALB, GCP HTTP(S) LB, Azure App Gateway**.
-- Often called **reverse proxy** when in front of internal services.
+| Dimension | Layer 4 (Transport Layer) | Layer 7 (Application Layer) |
+| :--- | :--- | :--- |
+| **OSI Layer** | Layer 4 (TCP / UDP) | Layer 7 (HTTP / HTTPS / gRPC / WebSockets) |
+| **Routing Criteria** | Source/Destination IP and Port | URI Path, HTTP Headers, Cookies, Query Params |
+| **TLS Decryption** | Pass-through (No decryption) | Decrypts TLS at Load Balancer (TLS Termination) |
+| **Throughput & CPU** | Extremely high throughput, low CPU | Lower throughput per node, higher CPU overhead |
+| **Smart Routing** | No (Blind packet forwarding) | Yes (Content-based routing, A/B testing, Sticky Sessions) |
+| **Software Examples**| AWS NLB, IPVS, HAProxy (TCP mode) | AWS ALB, Nginx, Envoy, Traefik |
 
-### Reverse proxy vs forward proxy
-- **Reverse** (you use one): client → proxy → your servers. Hides your servers.
-- **Forward** (corporate): client → proxy → internet. Hides clients.
+### Layer 7 Routing Capabilities
 
-### Trade-offs vs L4
-- ✅ Rich features (caching, auth, routing).
-- ✅ Better observability (sees full request).
-- ❌ Slower (must parse HTTP).
-- ❌ Higher CPU/memory.
-- ❌ One more place to break TLS / inspect data.
+1. **Path-Based Routing**: Route `/api/users` to User Service and `/api/payments` to Payment Service.
+2. **Host-Based Routing**: Route `mobile.example.com` and `api.example.com` to different target groups.
+3. **Header & Cookie Inspection**: Enforce **sticky sessions** via session cookies or route internal beta users (`Header: X-Beta=true`) to canary server deployments.
 
 ### Key takeaway
-Use L7 (reverse proxy) when you need **content-aware routing, caching, TLS termination with SNI,
-or HTTP-level policies**. Modern stacks almost always put an L7 LB at the edge (NGINX, Envoy,
-AWS ALB).
+
+Layer 7 load balancers make **content-aware routing decisions** based on HTTP paths, headers, and cookies. Use L7 balancers (AWS ALB, Nginx, Envoy) for microservice path routing, TLS termination, and sticky session management.

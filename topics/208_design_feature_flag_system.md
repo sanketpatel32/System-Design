@@ -4,60 +4,58 @@
 ---
 
 ### Overview
-A **Feature Flag System** (e.g., LaunchDarkly) enables real-time control over feature rollouts, A/B experimentation, and emergency kill switches without deploying new code to production servers.
+A **Feature Flag System** (e.g., LaunchDarkly, Flagsmith) enables software teams to turn features on or off remotely in production without deploying new code. It supports targeted rollouts, A/B testing experiments, percentage-based canary releases, and emergency kill switches.
 
-### Architecture Topology
+Core engineering requirements demand **sub-millisecond local SDK flag evaluation**, real-time flag rule streaming via WebSockets/SSE, and fault-tolerant local fallback defaults if the flag control plane goes down.
+
+### System Architecture & In-Memory SDK Evaluation Topology
 
 ```
-+---------------------+     1. Flag Changes (Rules)     +---------------------+
-| Admin Console UI    | ------------------------------> | Flag Config Service |
-+---------------------+                                 +---------------------+
-                                                                   |
-                                                                   v 2. Push Updates (SSE / WebSockets)
-+------------------------------------------------------------------+
-|                                                                  |
-|   +----------------------------------------------------------+   |
-|   | Application SDK (In-Memory Evaluation Engine)            |   |
-|   | Local Flag Cache Rule Tree                               |   |
-|   +----------------------------------------------------------+   |
-|                                                                  |
-|   Client Code: if (flagSDK.evaluate("new_ui", userContext))  |
-|                                                                  |
-+------------------------------------------------------------------+
++--------------------------------------------------------------------------+
+| CONTROL PLANE DASHBOARD (Admin configures rules: "50% rollout to Tier 1") |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 1. Publish Rule Change
++--------------------------------------------------------------------------+
+| FEATURE FLAG CONTROL SERVICE & CONFIG STORE (Redis Pub/Sub / etcd)       |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 2. Server-Sent Events (SSE) / Streaming Push
++--------------------------------------------------------------------------+
+| APPLICATION MICROSERVICE NODE (Embedded SDK)                             |
+|  [ In-Memory Flag Cache ] <--- 3. Sub-ms Local Rule Evaluation           |
++--------------------------------------------------------------------------+
 ```
 
-### Rule Evaluation Engine Model
-Flags must be evaluated **in-memory within the local SDK** in sub-milliseconds to avoid introducing API network calls into application execution paths.
+### Key Technical Mechanics
+1. **In-Memory SDK Evaluation:** The Feature Flag SDK downloads and maintains rulesets in memory locally. Evaluating `if (sdk.isEnabled("new-checkout", userContext))` takes **< 1 microsecond** with zero network calls.
+2. **Server-Sent Events (SSE) Streaming:** The control plane pushes flag rule updates to application SDKs in real-time over persistent SSE or WebSocket connections, updating local SDK memory within milliseconds.
+3. **Consistent Hashing for Percentage Rollouts:** Computes `MurmurHash3(user_id + feature_key) % 100`. If hash result $< 20$, the user consistently receives the 20% rollout feature without storing per-user state in a database.
 
-```json
-// Feature Flag Rule Definition
-{
-  "flag_key": "checkout_v2_redesign",
-  "state": "ENABLED",
-  "default_variation": false,
-  "rules": [
-    {
-      "attribute": "email",
-      "operator": "ENDS_WITH",
-      "values": ["@company.com"],
-      "variation": true
-    },
-    {
-      "attribute": "user_id",
-      "operator": "PERCENTAGE_ROLLOUT",
-      "percentage": 10,
-      "variation": true
-    }
-  ]
-}
-```
+### API Interface & SDK Specifications
 
-### Consistent Percentage Rollouts Algorithm
-To ensure user `usr_123` consistently receives the exact same variation across sessions without database state storage, compute a hash of the user ID and flag key:
+| Endpoint / Method | Type | Input Context | Output Payload / Result |
+|---|---|---|---|
+| `GET /api/v1/flags/rules` | HTTP / SSE | Headers: `Authorization: Bearer <sdk_key>` | Streams full JSON configuration rule definitions to SDK cache. |
+| `sdk.evaluate(flag_key, context)`| In-Memory | `context: {"user_id": "u99", "country": "US", "app_version": "2.4"}`| Returns `boolean` or `variant_value` instantly from local RAM. |
 
-$$\text{Bucket} = \text{MurmurHash3}(\text{user\_id} + \text{flag\_key}) \pmod{100}$$
+### Feature Flag Rule Schema
 
-If $\text{Bucket} < \text{Rollout Percentage}$, evaluate to `true`.
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `flag_key` | String (Indexed) | PostgreSQL / Redis | Unique flag key identifier (`new-payment-flow`). |
+| `is_enabled` | Boolean | Relational DB | Master kill-switch toggle. |
+| `percentage_rollout`| Integer (0-100) | Relational DB | Targeted rollout percentage threshold. |
+| `targeting_rules` | JSONB | Relational DB | Attribute targeting rules: `{"country": ["US", "CA"], "tier": "PREMIUM"}`. |
+| `version` | Integer | Relational DB | Monotonically increasing version number for SSE cache invalidation. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Local In-Memory SDK Evaluation** | Zero network latency; complete insulation from central control plane outages. | Increases application process RAM usage slightly to store rule definitions. | Mandatory architecture for high-throughput production microservices. |
+| **MurmurHash3 Percentage Hashing** | State-free deterministic user assignment; zero database read/write tracking required. | Cannot easily override individual user assignments unless explicit whitelist rule is added. | Percentage canary releases and A/B experiment rollouts. |
+| **Server-Sent Events (SSE) Streaming**| Real-time push updates within milliseconds when a kill switch is flipped. | Requires maintaining persistent open HTTP connection sockets on control plane. | Enterprise feature management platforms. |
 
 ### Key takeaway
-Feature flags must evaluate **in-memory locally inside the application SDK** using deterministic hashing (e.g., **MurmurHash3**). Synchronize flag rule updates from the control plane using **Server-Sent Events (SSE)**.
+A **Feature Flag System** achieves sub-microsecond evaluation speed by evaluating rule definitions **in-memory inside application SDKs**, using **MurmurHash3 hashing** for state-free percentage rollouts and **Server-Sent Events (SSE)** for real-time rule streaming.

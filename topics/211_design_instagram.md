@@ -4,68 +4,68 @@
 ---
 
 ### Overview
-**Instagram** is a photo and video sharing social network enabling users to upload media, apply filters, follow users, and scroll through personalized timelines and stories.
+**Instagram** is a massive photo and video sharing social network designed to support over 1 billion active users. The platform handles high-volume media uploads, asynchronous image processing, photo filtering, and personalized news feeds served under **< 100ms latency**.
 
-### Capacity Estimation & System Scale
-- **Daily Active Users (DAU)**: 500 Million.
-- **Upload Scale**: 100M photos/videos per day (~1,150 uploads/sec).
-- **Read Scale**: 5B feed views per day (~58,000 views/sec).
-- **Media Storage**: $100\text{M} \times 500\text{ KB} = 50\text{ TB/day} \implies 18.25\text{ PB/year}$.
+Key technical challenges involve **Hybrid Fanout Feed Generation** (handling celebrity "celebrity fanout explosion" without overloading Redis queues), scalable media CDN delivery, and distributed photo storage.
 
-### System Architecture Diagram
+### System Architecture & Hybrid Fanout Topology
 
 ```
-+--------+     1. Direct S3 Upload (Presigned URL)     +-------------------+
-| Client | -------------------------------------------> | Raw Media S3      |
-+--------+                                              +-------------------+
-    ^                                                             |
-    |                                                             v 2. S3 ObjectCreated Event
-    |                                                   +-------------------+
-    |                                                   | Media Processing  |
-    |                                                   | (Lambda/FFmpeg)   |
-    |                                                   +-------------------+
-    |                                                             |
-    | 5. Feed Query (GET /v1/feed)                                | 3. Write Variants to CDN
-    v                                                             v
-+------------------+       4. Fanout Posts to Redis     +-------------------+
-| Timeline Service | <--------------------------------- | Post Service      |
-+------------------+                                    +-------------------+
-        |                                                         |
-        v Push / Pull Fanout Hybrid                               v Write Metadata
-+------------------+                                    +-------------------+
-| User Timeline    |                                    | Cassandra DB /    |
-| Redis Clusters   |                                    | PostgreSQL Shards |
-+------------------+                                    +-------------------+
++--------------------------------------------------------------------------+
+| INSTAGRAM CLIENT APP (Mobile iOS / Android)                              |
++--------------------------------------------------------------------------+
+       |                                                 |
+       | 1. POST /api/v1/posts (Media Upload)            | 2. GET /api/v1/feed
+       v                                                 v
++------------------+                            +------------------+
+| Media Upload     |                            | Feed Service     |
+| Service          |                            +------------------+
++------------------+                                     |
+       |                                                 v Read Feed
+       | 3. Async Image Processing & S3 Upload     +------------------+
+       v                                           | Redis Feed Cache |
++------------------+                               | & User Timelines |
+| Kafka Event      |                               +------------------+
+| Stream           |                                     ^
++------------------+                                     |
+       |                                                 | Push Fanout (Normal Users)
+       v 4. Fanout Engine Evaluates Follower Count       |
++--------------------------------------------------------------------------+
+| FANOUT ENGINE:                                                           |
+| - Normal Users (<10k followers): PUSH to Redis timelines asynchronously  |
+| - Celebrity Users (>10k followers): PULL on-demand at feed query time    |
++--------------------------------------------------------------------------+
 ```
 
-### Core API Specification
+### Key Technical Mechanics & Hybrid Fanout
+1. **Fanout-on-Write (Push Model):** When a user with a modest follower count posts, a background worker pushes the post ID into every follower's Redis timeline list. Fast read performance ($O(1)$ lookup), but slow write fanout if followers total millions.
+2. **Fanout-on-Read (Pull Model):** Posts from high-profile "celebrity" accounts (e.g., > 100,000 followers) are NOT pushed to follower timelines. Instead, when a user opens their feed, the system pulls the celebrity's recent posts and merges them with the cached user timeline in memory.
 
-| Endpoint | Method | Payload / Params | Response |
+### API Interface Specifications
+
+| Endpoint | Method | Request Payload | Response Payload |
 |---|---|---|---|
-| `/api/v1/posts` | `POST` | `{"media_url": "s3://...", "caption": "Hello world"}` | `201 Created` -> `{"post_id": "p_9981"}` |
-| `/api/v1/feed` | `GET` | `?limit=20&max_id=p_8810` | `200 OK` -> `[{"post_id": ..., "media_variants": [...]}]` |
-| `/api/v1/users/{id}/follow`| `POST` | None | `200 OK` -> `{"status": "FOLLOWING"}` |
+| `/api/v1/posts` | POST | `{"caption": "Sunset photo", "image_s3_url": "s3://raw/p1.jpg", "location": "LA"}` | `{"post_id": "p_8821", "status": "PROCESSING"}` |
+| `/api/v1/feed` | GET | `{"user_id": "u_99", "limit": 20, "max_id": "p_8800"}` | `{"posts": [{"post_id": "p_990", "url": "https://cdn.inst.com/p990.webp", "likes": 420}], "next_cursor": "p_8780"}` |
+| `/api/v1/posts/{id}/like`| POST | None | `{"status": "SUCCESS", "likes_count": 421}` |
 
-### Metadata Database Schema (Cassandra Partition Key Model)
-```sql
--- User Timeline Table
-CREATE TABLE user_timelines (
-    user_id uuid,
-    post_id timeuuid,
-    author_id uuid,
-    media_url text,
-    caption text,
-    PRIMARY KEY (user_id, post_id)
-) WITH CLUSTERING ORDER BY (post_id DESC);
-```
+### Data Model & Schema
 
-### Feed Generation Strategy Matrix: Fanout-on-Write vs Fanout-on-Read
-
-| Metric | Fanout-on-Write (Push Model) | Fanout-on-Read (Pull Model) | Hybrid Fanout (Instagram Strategy) |
+| Field Name | Data Type | Storage Engine | Purpose |
 |---|---|---|---|
-| **Mechanism** | On post creation, push post ID to all follower Redis caches. | On feed fetch, fetch posts from followed authors on demand. | **Push** for standard users (<10k followers); **Pull** for celebrities (>10k followers). |
-| **Write Latency** | High write amplification ($O(N)$ followers). | Instant post write ($O(1)$). | Balanced write performance ($O(\text{Followers}_{<10k})$). |
-| **Read Latency** | Sub-second ($O(1)$ Redis cache read). | High read latency ($O(F)$ DB queries). | Low read latency; merges celebrity posts on read. |
+| `post_id` | BigInt (Snowflake) | Cassandra / CockroachDB | Primary Key; includes 41-bit timestamp for natural chronological sorting. |
+| `user_id` | String (UUID) | Relational DB | Post creator identifier. |
+| `media_urls` | JSONB | Relational DB | Map of optimized S3/CDN WebP variant URLs (`thumb`, `full`). |
+| `user_timeline:{id}`| Redis List (ZSET) | Redis Cache | In-memory timeline array containing recent post IDs for user feed. |
+| `likes_counter` | Counter | Redis / Cassandra | Distributed atomic counter tracking post likes. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Hybrid Fanout (Push + Pull)** | Prevents system collapse during celebrity posts while preserving sub-100ms feed reads for normal users. | Increases feed generation query logic complexity (must merge cached push feed with pull feeds). | High-scale social networks with celebrity accounts. |
+| **Cassandra NoSQL Storage** | High-throughput write performance for post metadata; horizontal partition scaling. | Lacks ACID transactional joins; requires application-level data denormalization. | Distributed social media post and timeline index storage. |
+| **CDN Image Optimization (WebP)** | Reduces mobile payload download size by 40%, speeding up feed scroll rendering. | CPU processing overhead on initial image upload worker nodes. | Mobile-first image and video social feeds. |
 
 ### Key takeaway
-Instagram leverages a **Hybrid Fanout Model**: push posts to follower feed caches in **Redis** for standard users, but pull celebrity posts dynamically on read to avoid write amplification bottlenecks.
+**Instagram** achieves fast feed rendering using a **Hybrid Fanout Architecture** (Push for normal accounts, Pull for celebrities) paired with **Redis timeline caching** and **Snowflake ID sorting**.

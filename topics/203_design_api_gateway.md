@@ -4,46 +4,59 @@
 ---
 
 ### Overview
-An **API Gateway** acts as a single entry point reverse proxy for microservice applications, encapsulating internal service architecture and delivering routing, SSL termination, rate limiting, authentication, load balancing, and telemetry aggregation.
+An **API Gateway** is a reverse proxy that acts as the single point of entry for external client applications into an underlying microservices architecture. It abstracts backend service boundaries by consolidating cross-cutting concerns—such as request routing, authentication, SSL termination, rate limiting, logging, response caching, and API versioning.
 
-### Architectural Component Topology
+Modern API Gateways (e.g., Kong, Envoy, KrakenD, AWS API Gateway) operate at high throughput using non-blocking asynchronous I/O primitives.
+
+### API Gateway Core Topology & Feature Architecture
 
 ```
-+---------------+
-| Client Apps   |
-+---------------+
-        |
-        v HTTP/2, HTTPS
-+-------------------------------------------------------------------------+
-|                               API GATEWAY                               |
-|                                                                         |
-|  [ TLS Termination ] --> [ Rate Limiter ] --> [ Authentication/AuthZ ] |
-|                                                      |                  |
-|  [ Metrics & Logging ] <-- [ Request Router ] <------+                  |
-+-------------------------------------------------------------------------+
-        |                                |                                |
-        v gRPC                           v REST                           v WebSockets
-+---------------+                +---------------+                +---------------+
-| Auth Service  |                | Order Service |                | Push Service  |
-+---------------+                +---------------+                +---------------+
++--------------------------------------------------------------------------+
+| CLIENT APPLICATIONS (Web Browsers, Mobile Devices, Third-Party SDKs)     |
++--------------------------------------------------------------------------+
+                                     |
+                                     v HTTPS (Port 443)
++--------------------------------------------------------------------------+
+| API GATEWAY ENGINE                                                       |
+|  [ TLS Termination ] --> [ Rate Limiter (Redis) ] --> [ Auth Verifier ]   |
+|  [ Request Router  ] --> [ Load Balancer        ] --> [ Telemetry Logger]|
++--------------------------------------------------------------------------+
+          |                                  |                                  |
+          | gRPC / HTTP                      | HTTP                             | gRPC
+          v                                  v                                  v
++------------------+                +------------------+                +------------------+
+| User Service     |                | Order Service    |                | Payment Service  |
++------------------+                +------------------+                +------------------+
 ```
 
-### Core API Gateway Functional Capabilities
+### Core API Gateway Capabilities
 
-| Feature Component | Implementation Responsibility |
-|---|---|
-| **Request Routing** | Routes `/api/v1/orders/*` to Order microservice cluster based on path/headers. |
-| **Authentication / JWT** | Validates incoming JWT tokens at edge, passing verified user claims (`X-User-Id`) to internal services. |
-| **Protocol Translation** | Translates client HTTP/JSON requests into internal high-performance gRPC Protobuf payloads. |
-| **Resilience & Circuit Breaking** | Implements retries, timeouts, and circuit breakers (Resilience4j/Envoy) to isolate service failures. |
+| Feature Capability | Technical Mechanism | Architectural Purpose |
+|---|---|---|
+| **Request Routing / Proxying**| Path-based routing (`/users/*` $\rightarrow$ User Service) using dynamic service discovery.| Decouples internal microservice topology from client-facing URLs. |
+| **TLS Termination** | Offloads TLS decryption at the edge; routes plaintext or mTLS internally. | Reduces CPU overhead on internal application microservices. |
+| **Auth Offloading** | Verifies JWT signatures or OAuth tokens at gateway before forwarding requests. | Prevents unauthorized requests from consuming downstream service resources. |
+| **Protocol Translation** | Converts client HTTP/JSON requests into internal high-performance gRPC/Protobuf. | Enables modern mobile clients to communicate with legacy internal RPC services. |
+| **Rate Limiting & WAF** | Enforces per-IP and per-token sliding window counters using Redis. | Protects backend microservices against spike overloads and DDoS attacks. |
 
-### Gateway Technology Comparison
+### Gateway Route Configuration Schema
 
-| Gateway Framework | Processing Model | Performance | Ecosystem |
+| Field Name | Data Type | Storage Engine | Purpose |
 |---|---|---|---|
-| **Envoy / NGINX** | Event-driven C++ asynchronous | Extremely High (Sub-ms latency) | Kubernetes ingress standard (Istio/Kong) |
-| **Spring Cloud Gateway** | Reactive Non-blocking (Project Reactor) | High | Java / Spring Boot microservices |
-| **Kong (Lua / OpenResty)**| NGINX core with Lua plugins | Very High | Dynamic plugin marketplace |
+| `route_id` | String (UUID) | PostgreSQL / Redis | Unique route identifier. |
+| `path_pattern` | String (e.g., `/api/v1/orders/**`)| Relational DB | Inbound URI path matching pattern. |
+| `target_service_id`| String (`order-service`) | Service Discovery (Consul / K8s) | Internal microservice cluster destination. |
+| `auth_required` | Boolean | Relational DB | Flag determining if JWT token check is enforced. |
+| `rate_limit_policy`| String (`100/min`) | Relational DB | Policy key bound to rate limiter engine. |
+| `timeout_ms` | Integer (`3000`) | Relational DB | Gateway timeout threshold before returning HTTP 504 Gateway Timeout. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Centralized Monolithic Gateway** | Easy management, single entry configuration point, simplified TLS certificate storage. | Single point of failure (SPOF); potential throughput bottleneck across large engineering teams. | Small to medium microservice architectures. |
+| **BFF (Backend-For-Frontend) Gateways**| Custom API Gateway per client type (Mobile BFF, Web BFF) optimized for specific payloads. | Increases infrastructure code duplication across gateway instances. | Large organizations with distinct mobile, desktop, and third-party API requirements. |
+| **Plugin Architecture (Kong/Envoy)**| Dynamic enablement of rate limiting, auth, and logging plugins without rebuilding gateway core. | Plugin execution order bugs can accidentally bypass security headers or auth checks. | Microservice architectures requiring customizable cross-cutting policies. |
 
 ### Key takeaway
-An **API Gateway** decouples client applications from internal microservices. Use asynchronous event-driven proxies (**Envoy / NGINX / Kong**) to execute edge concerns (TLS, AuthN, Rate Limiting) without introducing microservice bottlenecks.
+An **API Gateway** acts as the single entry point for microservice architectures by consolidating routing, TLS termination, JWT authentication, and rate limiting at the edge. Use **asynchronous non-blocking I/O** engines (Envoy, Kong) to prevent edge bottlenecking.

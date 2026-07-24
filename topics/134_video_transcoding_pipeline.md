@@ -4,57 +4,59 @@
 
 ---
 
-A Video Transcoding Pipeline converts raw uploaded videos into **multiple resolutions, codecs, and adaptive streaming formats (HLS / DASH)** to support seamless playback across diverse devices and network speeds.
+A video transcoding pipeline transforms raw source videos into multiple **resolutions (1080p, 720p, 480p), bitrates, and adaptive streaming formats (HLS/DASH)**. It enables seamless playback across diverse end-user devices and network speeds.
 
-### Distributed Pipeline Architecture
+### Distributed Transcoding Pipeline Architecture
+
+The pipeline processes raw uploaded videos by splitting them into small temporal segments, encoding segments in parallel across worker pools, and manifest generating for playback.
 
 ```
-+------------------------+      1. Video Created Event      +------------------------+
-| Transcode Queue (Kafka)| -------------------------------> | Pipeline Orchestrated  |
-+------------------------+                                  +------------------------+
-                                                                         |
-                                     +-----------------------------------+-----------------------------------+
-                                     | 2. Split Video into 10s Chunks                                        |
-                                     v                                                                       v
-                         +------------------------+                                              +------------------------+
-                         | Transcode Worker A     |                                              | Transcode Worker B     |
-                         | (Chunk 0-10s -> 1080p)|                                              | (Chunk 10-20s -> 720p) |
-                         +------------------------+                                              +------------------------+
-                                     |                                                                       |
-                                     +-----------------------------------+-----------------------------------+
-                                                                         v 3. Merge & Generate Playlists
-                                                            +------------------------+
-                                                            | Manifest Builder       |
-                                                            | (Creates master.m3u8)  |
-                                                            +------------------------+
-                                                                         |
-                                                                         v 4. Sync to Object Store
-                                                            +------------------------+
-                                                            | CDN / S3 Storage       |
-                                                            +------------------------+
++--------------------+      1. Event Trigger      +--------------------+      2. Split Video      +--------------------+
+|  S3 Raw Bucket     | -------------------------> |  Video Splitter    | -----------------------> |  Task Dispatcher   |
+|  (Source MP4)      |                            |  (FFmpeg / GOP)    |                          |  Queue (Kafka)     |
++--------------------+                            +--------------------+                          +--------------------+
+                                                                                                            |
+                                                                             3. Assign Segments to Worker Pool
+                                                                                                            v
++--------------------+                            +--------------------+                          +--------------------+
+| Segment Worker 1   |                            | Segment Worker 2   |                          | Segment Worker N   |
+| (1080p H.264)      |                            | (720p H.264)       |                          | (480p H.264)       |
++--------------------+                            +--------------------+                          +--------------------+
+          \                                                 |                                               /
+           \------------------------------------------------+----------------------------------------------/
+                                                            | 4. Stitch Segments & Generate Manifests (.m3u8)
+                                                            v
+                                            +-------------------------------+
+                                            |  S3 Transcoded Output Bucket  |
+                                            |  - master.m3u8                |
+                                            |  - /1080p/index.m3u8 + .ts    |
+                                            |  - /720p/index.m3u8 + .ts     |
+                                            +-------------------------------+
 ```
 
-### Transcoding Pipeline Stages
+### Video Codecs & Streaming Protocols Matrix
 
-1. **Preprocessing & Segmentation**: Demuxes source file and splits raw video into uniform 2-10 second GOP (Group of Pictures) chunks.
-2. **Parallel Chunk Transcoding**: Distributes chunk encoding across GPU worker pools in parallel.
-3. **Adaptive Bitrate Encoding**: Produces profile variants (1080p @ 6Mbps, 720p @ 3Mbps, 480p @ 1Mbps) using codecs like H.264, H.265 (HEVC), or AV1.
-4. **Manifest Assembly**: Generates playlist index files (`.m3u8` for HLS or `.mpd` for DASH) detailing chunk segment URLs.
+| Standard / Protocol | Type | Key Characteristic / Use Case | Compression Efficiency |
+| :--- | :--- | :--- | :--- |
+| **H.264 (AVC)** | Video Codec | Universal hardware decoding compatibility (100% devices) | Baseline |
+| **H.265 (HEVC)** | Video Codec | 50% better compression than H.264; required for 4K/HDR | High (Licensing fee costs) |
+| **AV1** | Video Codec | Royalty-free next-gen open codec | Highest (Heavy CPU encoding cost) |
+| **HLS (HTTP Live Streaming)**| Streaming Protocol| Apple-backed; streams `.ts` / `.m4s` chunks via `.m3u8` manifests | Universal Web/Mobile Playback |
+| **DASH (Dynamic Streaming)** | Streaming Protocol| ISO standard; XML `.mpd` manifest streaming | Android / Smart TV native |
 
-### Transcoding Profile Matrix
+### Step-by-Step Transcoding Workflow
 
-| Resolution | Video Bitrate | Audio Bitrate | Frame Rate | Typical Target Device |
-| :--- | :--- | :--- | :--- | :--- |
-| **1080p (FHD)** | 5,000 - 8,000 kbps | 192 kbps | 60 fps | Smart TVs, Desktop Monitors |
-| **720p (HD)** | 2,500 - 4,000 kbps | 128 kbps | 30 fps | Tablets, High-end Mobile |
-| **480p (SD)** | 1,000 - 1,500 kbps | 96 kbps | 30 fps | Standard Mobile Networks |
-| **360p (Low)** | 400 - 700 kbps | 64 kbps | 24 fps | Low Bandwidth 3G Connections |
+1. **GOP-Based Video Splitting**: The video is split at Group of Pictures (GOP) keyframe boundaries into short 2-10 second segment chunks.
+2. **Parallel Transcoding Tasks**: Segment chunks are processed in parallel on GPU/CPU worker instances, producing ladder resolutions (1080p, 720p, 480p, 360p).
+3. **Audio Extraction & Multi-Track**: Audio tracks are extracted into AAC/Opus formats and aligned with localized subtitle tracks.
+4. **Stitching & Manifest Assembly**: Transcoded chunks are assembled into output buckets alongside HLS `.m3u8` playlist manifests.
 
-### Engineering Considerations & Cost Optimization
+### Key Trade-offs & Cost Engineering
 
-- **Spot Instance Utilization**: Transcoding is stateless; execute video chunk rendering on low-cost spot instance worker pools.
-- **Priority Queuing**: Process short clips or premium user uploads ahead of batch background archival videos.
+- ✅ **Optimized Quality of Experience (QoE)**: Users automatically stream resolution matching their dynamic bandwidth.
+- ❌ **Massive Compute & Cost**: Encoding video into 5 resolution ladders across multiple codecs demands high GPU computing power.
+- ❌ **Storage Amplification**: Storing multiple bitrate variants increases output storage footprint by 3x-5x compared to the raw file.
 
 ### Key takeaway
 
-Speed up video transcoding by **chunking source files into short time segments**, processing chunks across parallel GPU worker pools, and outputting HLS/DASH manifest playlists.
+A video transcoding pipeline uses **GOP video splitting and parallel encoding workers** to output adaptive bitrate formats (HLS/DASH), delivering smooth playback across varying network conditions.

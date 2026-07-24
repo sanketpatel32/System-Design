@@ -4,56 +4,70 @@
 ---
 
 ### Overview
-**Reddit** is a network of community forums (subreddits) where users submit content (text, links, images), vote up or down, and participate in nested hierarchical comment threads sorted by real-time ranking algorithms ("Hot", "Top").
+**Reddit** is a community-driven news aggregation, discussion, and content rating platform structured into thousands of topic-specific communities called **Subreddits**. Users submit posts, vote (upvote/downvote), and participate in deeply nested comment threads.
 
-### Architecture Topology Diagram
+Key technical challenges involve calculating real-time post ranking using the **Reddit Hot Algorithm**, supporting high-concurrency upvote/downvote operations, and rendering deeply nested comment trees.
+
+### System Architecture & Reddit Topology
 
 ```
-+--------+     1. Submit Post / Vote     +-------------------+
-| Client | ----------------------------> | API Gateway       |
-+--------+                               +-------------------+
-    ^                                              |
-    | 5. Fetch Subreddit Feed                      v 2. Write Vote / Post
-    |                                    +-------------------+
-    | <--------------------------------- | Vote Service /    |
-    |                                    | Subreddit Service |
-    |                                    +-------------------+
-    |                                              |
-    v                                              v 3. Async Recalculate Rank
-+-------------------+                    +-------------------+
-| Feed Cache        | <----------------- | Real-time Hot     |
-| (Redis Sorted Set)|                    | Score Worker      |
-+-------------------+                    +-------------------+
-                                                   | 4. Persist
-                                                   v
-                                         +-------------------+
-                                         | Cassandra /       |
-                                         | PostgreSQL Shards |
-                                         +-------------------+
++------------------+     1. POST /r/systemdesign/comments   +--------------------+
+| Client Browser   | -------------------------------------> | API Gateway        |
++------------------+                                        +--------------------+
+                                                                      |
+                                                                      | 2. Vote & Comment Events
+                                                                      v
+                                                            +--------------------+
+                                                            | Reddit Core App    |
+                                                            | Service            |
+                                                            +--------------------+
+                                                              /                \
+                                       3. Atomic Vote Count  /                  \ 4. Fetch Comment Tree
+                                                            v                    v
+                                                   +--------------------+  +--------------------+
+                                                   | Vote Cache (Redis) |  | Cassandra DB       |
+                                                   | & Hot Ranker       |  | (Closure Table DB) |
+                                                   +--------------------+  +--------------------+
 ```
 
-### Reddit "Hot" Ranking Algorithm
+### Key Technical Mechanics
+1. **Reddit Hot Ranking Algorithm:** Computes post score $S$ based on upvotes $U$, downvotes $D$, and submission epoch time:
 
-$$S = \log_{10}(z) + \frac{y \cdot t}{45000}$$
+$$w = U - D$$
 
-Where:
-- $z = \max(|\text{ups} - \text{downs}|, 1)$
-- $y = 1$ if $\text{ups} > \text{downs}$, $-1$ if $\text{ups} < \text{downs}$, $0$ if $\text{ups} = \text{downs}$.
-- $t = \text{submission\_time} - \text{epoch\_start}$.
+$$x = egin{cases} 1 & 	ext{if } w > 0 \ -1 & 	ext{if } w < 0 \ 0 & 	ext{if } w = 0 \end{cases}$$
 
-### Nested Comment Thread Data Representation
+$$S(w, t) = \log_{10}(\max(|w|, 1)) + rac{x \cdot (t - t_0)}{45000}$$
 
-| Tree Storage Strategy | Schema Structure | Query Efficiency |
-|---|---|---|
-| **Materialized Path** | `path: "1/4/12/99"` | Fast subtree fetching (`WHERE path LIKE '1/4%'`); path string overhead |
-| **Adjacency List** | `parent_id: "node_12"` | Recursive graph query; slow for deep trees |
-| **Closure Table** | Separate `comment_ancestors` table | Extremely fast depth lookups; write amplification on insert |
+*Key Insight:* The logarithmic scale $\log_{10}(|w|)$ means the first 10 votes have the same ranking impact as the next 100 votes, and $45000$ seconds (12.5 hours) naturally degrades older posts to keep the homepage fresh.
 
-### Subreddit Feed Caching via Redis Sorted Sets
-- **Redis Key**: `subreddit:sysadmin:hot`
-- **Data Structure**: **Sorted Set (ZSET)**.
-- **Score**: Calculated "Hot" floating point rank $S$.
-- **Value**: `post_id`.
+2. **Nested Comment Tree Storage (Path Enumeration / Closure Table):** Stores tree hierarchy using materialized path strings (e.g., `path: "root/c1/c4/c9"`) to allow querying entire nested discussion threads in a single database read.
+
+### API Interface Specifications
+
+| Endpoint | Method | Request Payload | Response Payload |
+|---|---|---|---|
+| `/api/v1/r/{subreddit}/hot`| GET | `{"limit": 25, "after": "t3_991"}` | `{"posts": [{"id": "t3_991", "title": "System Design Guide", "score": 1420}]}` |
+| `/api/v1/vote` | POST | `{"id": "t3_991", "direction": 1}` | `{"status": "SUCCESS", "new_score": 1421}` |
+| `/api/v1/comments/{post_id}`| GET | None | `{"comment_tree": [{"id": "c_1", "path": "c_1", "children": [...]}]}` |
+
+### Data Model & Schema
+
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `post_id` | String (Prefix `t3_`) | Cassandra / PostgreSQL | Unique Thing ID. |
+| `subreddit_id` | String (Prefix `t5_`) | Relational DB | Parent Subreddit community ID. |
+| `upvotes` / `downvotes`| Counter | Redis / Cassandra | Distributed atomic vote counters. |
+| `hot_score` | Double | Redis ZSET | Pre-computed score powering subreddit Hot listing. |
+| `comment_path` | String (Path) | Cassandra | Materialized path (`root/c1/c4`) for single-query tree retrieval. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Reddit Hot Logarithmic Time Decay**| Gives huge early boost to breaking posts while guaranteeing 12-hour content rotation. | Older posts with 50,000+ votes eventually drop off front page completely. | Community news aggregators and discussion boards. |
+| **Materialized Path Comment Storage** | Fetches entire nested comment tree branch in 1 SQL/NoSQL query. | Moving a comment subtree requires updating path strings on all child nodes. | Deeply nested online forum discussion trees. |
+| **Asynchronous Vote Batching in Redis**| Protects primary DB from write collapse during viral post voting bursts. | Real-time score displayed to users may lag by a few seconds. | High-volume voting platforms. |
 
 ### Key takeaway
-Reddit relies on **Redis Sorted Sets (ZSETs)** to store real-time post ranks derived from time-decayed vote algorithms ($S$), and uses **Materialized Paths** for efficient nested comment thread queries.
+**Reddit** maintains a fresh front page using the **Logarithmic Hot Algorithm** (balancing vote margin against a 12.5-hour time decay constant) and renders deeply nested comment threads using **Materialized Path Tree Storage**.

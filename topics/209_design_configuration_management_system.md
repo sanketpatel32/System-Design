@@ -4,46 +4,59 @@
 ---
 
 ### Overview
-A **Configuration Management System** (e.g., Spring Cloud Config, etcd, Consul) manages dynamic runtime application configurations, feature toggles, and environment properties centrally across distributed microservices.
+A **Configuration Management System** (e.g., Spring Cloud Config, Consul Key-Value, etcd) provides centralized storage, version control, and real-time distribution of dynamic application configuration settings across distributed microservices.
 
-### Centralized Architecture with Push Notifications
+It replaces static configuration files and process restarts by pushing configuration updates dynamically over long-polling or gRPC streams while providing audit logging and cryptographic consensus durability.
+
+### System Architecture & Dynamic Sync Topology
 
 ```
-+-----------------------+     1. Commit Config     +---------------------+
-| Developer / Git Ops   | -----------------------> | Git Repository      |
-+-----------------------+                          +---------------------+
-                                                              |
-                                                              v 2. Webhook Event
-                                                   +---------------------+
-                                                   | Config Server       |
-                                                   +---------------------+
-                                                              |
-                                                              v 3. Sync State & Cache
-                                                   +---------------------+
-                                                   | Redis / etcd Cluster|
-                                                   +---------------------+
-                                                              |
-                                                              v 4. Push Dynamic Update (Long Poll / gRPC)
-                                                   +---------------------+
-                                                   | Microservice Nodes  |
-                                                   +---------------------+
++--------------------------------------------------------------------------+
+| ADMIN UI / CI/CD PIPELINE (Writes updated config: "db_pool_size = 50")   |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 1. Write Config Key
++--------------------------------------------------------------------------+
+| CONSENSUS CONFIG STORE (etcd / Raft Cluster / Consul KV)                  |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 2. Watch Notification (gRPC / Long Polling)
++--------------------------------------------------------------------------+
+| APPLICATION MICROSERVICE NODES                                           |
+|  [ In-Memory Config Manager ] ---> 3. Hot-Reloads Settings Dynamically   |
++--------------------------------------------------------------------------+
 ```
 
-### Configuration Data Storage Comparison
+### Key Technical Mechanics
+1. **Raft Consensus Storage Engine:** Uses etcd or Consul backed by the Raft consensus algorithm to guarantee strong consistency ($CP$ in CAP theorem) across distributed configuration nodes.
+2. **Watch Primitive (Long Polling / gRPC Streams):** Microservices open a persistent `Watch` connection to the config store. When a key mutates, the store pushes the diff directly to watching nodes.
+3. **Hierarchical Environment Overrides:** Resolves configuration values hierarchically: `Global Defaults` $\rightarrow$ `Region Overrides` $\rightarrow$ `Environment (Prod)` $\rightarrow$ `Service-Specific Config`.
 
-| Storage Engine | Consistency Model | Watch / Notification Mechanism | Ideal Usage |
+### Configuration Management API Specifications
+
+| Endpoint | Method | Request Payload | Response Payload |
 |---|---|---|---|
-| **etcd** | Strong Consistency (Raft consensus) | Native gRPC Long-polling Watchers | Kubernetes cluster config, core infrastructure |
-| **HashiCorp Consul**| Strong Consistency (Raft) | HTTP Long Polling / Event Streams | Service discovery & dynamic key-value store |
-| **Git Backend + Redis**| Eventual Consistency | Webhooks + Memory Cache | Application properties, YAML configuration files |
+| `/api/v1/config/keys` | POST | `{"key": "prod/payment/timeout_ms", "value": "5000", "comment": "Increase for promo"}` | `{"version": 42, "status": "COMMITTED"}` |
+| `/api/v1/config/watch` | GET | `{"service": "payment-service", "current_version": 41}` | `HTTP 200` (Pushes diff when version increments) |
+| `/api/v1/config/rollback`| POST | `{"key": "prod/payment/timeout_ms", "target_version": 40}` | `{"status": "ROLLED_BACK", "version": 43}` |
 
-### Property Hierarchy & Inheritance Matrix
+### Configuration Storage Data Model
 
-| Level | Precedence | Example |
-|---|---|---|
-| **1. Service Local Override** | Highest | Command line args (`--server.port=8081`) |
-| **2. Environment Specific** | Medium | `application-production.yaml` |
-| **3. Global Service Defaults** | Lowest | `application-default.yaml` |
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `config_key` | String (Indexed) | etcd / PostgreSQL | Hierarchical path identifier (`/prod/us-east/payment/db_max_conn`). |
+| `config_value` | Text / JSONB | etcd / PostgreSQL | Configuration value payload. |
+| `version` | Int64 | etcd (Revision) | Monotonically increasing revision number used for Raft consensus and Watchers. |
+| `created_by` | String | Relational DB | Audit identity user or service account making change. |
+| `checksum_sha256` | String | Relational DB | Cryptographic validation hash verifying config payload integrity. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Consensus-Based Storage (etcd/Raft)**| Strong consistency guarantees; eliminates configuration drift across nodes. | Write operations require Raft quorum agreement, adding slight write latency. | Mission-critical distributed microservice configuration. |
+| **Hot-Reloading In-Memory SDK** | Applies configuration updates instantly without restarting microservice containers. | Application code must be written thread-safely to support runtime state mutation. | High-availability systems where process restarts drop active connections. |
+| **Encrypted Config Secrets (KMS Integration)**| Securely stores DB passwords and API tokens alongside standard config keys. | Key decryption overhead on microservice node startup. | Centralized configuration stores containing sensitive credentials. |
 
 ### Key takeaway
-Centralize configuration management using **etcd** or **Consul** backed by **Git version control**. Provide instant configuration updates to application pods using **gRPC streaming watches** or **long polling**.
+A **Configuration Management System** uses **Raft consensus storage (etcd)** for strongly consistent key-value persistence, leveraging **gRPC Watch streams** to hot-reload configuration changes across microservices without process restarts.

@@ -4,41 +4,69 @@
 
 ---
 
-Alerting automatically **notifies engineering teams of system anomalies or SLA breaches**, routing actionable warnings via channels such as PagerDuty, Slack, or email.
+Alerting is the automated mechanism that **notifies engineering teams when system performance metrics violate defined threshold criteria or SLO error budgets**. Effective alerting routes actionable notifications to on-call engineers while minimizing false positives and alert fatigue.
 
-### Alerting Pipeline & Notification Routing
+### Alerting Pipeline & Escalation Architecture
+
+Alerting engines continuously evaluate time-series metrics against threshold rules, routing notifications to escalation systems like PagerDuty.
 
 ```
-+------------------------+      1. Metric Breach      +------------------------+
-| Prometheus Alert Rules | -------------------------> | Alertmanager           |
-+------------------------+                            +------------------------+
-                                                                  |
-                                                                  v 2. Group, Dedupe & Silence
-                                                      +------------------------+
-                                                      | Notification Router    |
-                                                      +------------------------+
-                                                                  |
-                                     +----------------------------+----------------------------+
-                                     | High Severity (P1)                                      | Low Severity (P3)
-                                     v                                                         v
-                         +------------------------+                                +------------------------+
-                         | PagerDuty (On-Call Call)|                                | Slack / Teams Channel  |
-                         +------------------------+                                +------------------------+
++----------------------------------------------------------------------------------------------------+
+| Time-Series Metric Store (Prometheus / Datadog)                                                    |
++----------------------------------------------------------------------------------------------------+
+                                                  |
+                    1. Evaluates Alert Rule (`error_rate > 2% for 5 mins`)
+                                                  v
++----------------------------------------------------------------------------------------------------+
+| Alerting Rules Engine (Alertmanager)                                                               |
+| - Deduplicates & Groups Identical Alerts                                                           |
+| - Applies Silence Windows & Maintenance Filters                                                    |
++----------------------------------------------------------------------------------------------------+
+                                                  |
+                 +--------------------------------+--------------------------------+
+                 | 2. High Severity (P1/P2)                                        | 3. Low Severity (P3/P4)
+                 v                                                                 v
++------------------------------------+                           +------------------------------------+
+| PagerDuty / OpsGenie               |                           | Slack Channel / Email              |
+| (Triggers Phone Call / SMS On-Call)|                           | (Non-Urgent Ticket Creation)       |
++------------------------------------+                           +------------------------------------+
 ```
 
-### Alert Severity Levels Matrix
+### Alert Severity Level Matrix
 
-| Severity Level | Trigger Condition | Reaction Requirement | Notification Channel |
-| :--- | :--- | :--- | :--- |
-| **P1 - Critical** | Core user functionality down / High error rate | Immediate wake-up response (< 15 mins) | PagerDuty / Phone Call |
-| **P2 - Warning** | Component degraded, but fallback working | Address within business hours | Slack Priority Channel |
-| **P3 - Informational**| Non-critical anomaly (e.g. disk at 75%) | Review during backlog grooming | Slack Async Channel |
+| Severity | Notification Channel | Response SLA | Target Condition | Action Required |
+| :--- | :--- | :--- | :--- | :--- |
+| **P1 - Critical** | Phone Call / SMS (PagerDuty)| Immediate (< 15 mins) | Core service down; total outage | Immediate engineering intervention |
+| **P2 - High** | SMS / Push Notification | Prompt (< 30 mins) | Degraded performance; high error rate | Investigate and mitigate |
+| **P3 - Moderate**| Slack Channel / Email | Same Business Day | Non-critical component failover | File ticket for maintenance |
+| **P4 - Low** | Email Log | Next Sprint | Minor anomaly / storage 70% full | Informational tracking |
 
-### Preventing Alert Fatigue
+### Principles of High-Signal Alerting
 
-- **Alert on Symptoms, Not Causes**: Alert on high user-facing error rates (Symptom) rather than single-server high CPU (Cause).
-- **Service Level Objectives (SLO) Burn Rate Alerting**: Trigger alerts based on how fast the system is consuming its error budget rather than static arbitrary thresholds.
+1. **Alert on Symptoms, Not Causes**: Alert on customer impact (e.g. high HTTP 500 error rate or high latency) rather than internal causes (e.g. CPU at 85%).
+2. **Make Alerts Actionable**: Every P1/P2 alert must link to a specific **Runbook** detailing exact troubleshooting steps. If an alert requires no action, it should not page an engineer.
+3. **Burn-Rate Alerting (SLO Error Budget)**: Alert based on how quickly the SLO error budget is being consumed (e.g. alert if 2% of monthly error budget is burned in 1 hour).
+
+### Key Trade-offs & Production Risks
+
+- ✅ **Minimizes Outage Duration**: Reduces Mean Time to Detect (MTTD) and Mean Time to Resolve (MTTR).
+- ❌ **Alert Fatigue**: Constant noisy, non-actionable pages desensitize engineers, causing real critical outages to be missed.
+### Prometheus Alert Rule Definition Example (`alerts.yml`)
+
+```yaml
+groups:
+  - name: api_alerts
+    rules:
+      - alert: HighHttp5xxErrorRate
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP 5xx error rate detected: {{ $value | printf \"%.2f\" }}%"
+          runbook_url: "https://wiki.example.com/runbooks/high-5xx-errors"
+```
 
 ### Key takeaway
 
-Design alerting to **notify on actionable user-facing symptoms**, leveraging SLO error budget burn rates to eliminate alert fatigue.
+Alert on **symptom-based customer impact and SLO error budget burn rates**, ensuring every paged alert is actionable and linked to a runbook.

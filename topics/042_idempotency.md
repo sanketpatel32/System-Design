@@ -4,42 +4,53 @@
 
 ---
 
-Idempotency = **calling an operation multiple times has the same effect as calling it once.**
-The foundation of safe retries in distributed systems.
+**Idempotency** guarantees that executing an API request **once or multiple times sequentially produces the exact same system state** on the server. In distributed systems where network retries are frequent, idempotency prevents duplicate charges, double orders, or repeated record mutations.
 
-### Why it matters
-Networks fail. Clients retry. Without idempotency, "submit order" called twice = two charges.
+### Idempotency Key Processing Architecture
 
-### Idempotent by HTTP method
-- **GET, PUT, DELETE**: inherently idempotent (do it twice = same state).
-- **POST, PATCH**: NOT idempotent (each call may create/modify).
-
-### Making POST idempotent
-**Idempotency-Key header** (Stripe's pattern, now RFC standard):
 ```
-POST /charges
-Idempotency-Key: client-generated-uuid
-{amount: 100, currency: "usd"}
++-------------------------------------------------------------------------+
+|                  IDEMPOTENCY KEY DEDUPLICATION FLOW                     |
++-------------------------------------------------------------------------+
+
+  Client Request: POST /v1/payments (Header: Idempotency-Key: uuid-123)
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | API GATEWAY / IDEMPOTENCY MIDDLEWARE                                  |
+  +-----------------------------------------------------------------------+
+          |
+          v
+  [ Redis Idempotency Store: Key = "idemp:uuid-123" ]
+          |
+          +-----------------------+-----------------------+
+          | (Key Exists in Redis) | (Key New / Missing)   |
+          v                       v                       v
+  [ Return Cached 201 Response ]  [ Acquire Distributed Lock ]
+  (Zero Duplicate Processing)     [ Execute Payment Logic    ]
+                                  [ Save Result to Redis     ]
+                                  [ Release Lock & Return    ]
 ```
-Server flow:
-1. Check if `key` was seen → return cached result.
-2. Else process, store `(key, user_id, result)` in DB.
-3. Subsequent retries with same key return the same response (even if it was an error).
 
-### Storage
-- Store keys in a **fast, durable store** (Redis + Postgres, or DynamoDB).
-- TTL: typically 24-48 hours (long enough for retries, short enough to bound storage).
-- Scope keys to the **authenticated user** so different users can't collide.
+### HTTP Verbs Idempotency Matrix
 
-### Implementation gotchas
-- Store the key **before** processing — don't let two retries run in parallel.
-- Wrap in a **unique constraint** or use SELECT FOR UPDATE to serialize.
-- Return the **same response code** on retry, even if first was a failure.
+| HTTP Method | Native Idempotency | System Behavior on Duplicate Requests |
+| :--- | :--- | :--- |
+| **GET** | **Yes (Safe)** | Repeated reads return same data without state mutation. |
+| **PUT** | **Yes** | Replaces target resource entirely; state remains identical. |
+| **DELETE** | **Yes** | First call deletes item (204); subsequent calls confirm deletion (204/404). |
+| **HEAD / OPTIONS**| **Yes (Safe)** | Inspects metadata/CORS without state mutation. |
+| **POST** | **No** | Non-idempotent by default; creates duplicate entities unless guarded. |
+| **PATCH** | **Depends** | Idempotent if setting fixed values (`status="active"`); non-idempotent if incrementing (`age=age+1`). |
 
-### Database operations
-- Use **INSERT ... ON CONFLICT DO NOTHING** or upserts.
-- Use **optimistic concurrency** (version field + UPDATE WHERE version = N).
+### Implementation Blueprint for Non-Idempotent Endpoints (`POST`)
+
+1. **Client Generates Unique Idempotency Key**: Client generates a V4 UUID and attaches it in the HTTP request header (`Idempotency-Key: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d`).
+2. **Atomic Check-and-Lock in Distributed Cache (Redis)**: API Gateway checks if the key exists:
+   - If **Key Exists & Processed**: Return the cached HTTP response payload immediately without executing backend payment code.
+   - If **Key Processing**: Return 409 Conflict or wait for lock.
+   - If **Key New**: Save key in Redis with state `IN_PROGRESS` and 24-hour TTL, execute business logic, write final HTTP response into Redis, and return response to client.
 
 ### Key takeaway
-Every mutating API that clients can retry needs an **Idempotency-Key**. It's not optional for
-payments, message sends, webhooks, or anywhere duplicates cause harm.
+
+Idempotency prevents duplicate state mutations during network retries. Enforce idempotency on non-idempotent `POST` operations by requiring an **`Idempotency-Key` request header** validated atomically against a Redis cache store.

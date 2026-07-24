@@ -4,51 +4,64 @@
 
 ---
 
-Metadata storage separates **file/object descriptors** (filename, path, owner, size, permissions, chunk mapping) from heavy binary file payloads to achieve high throughput and fast index querying.
+Metadata storage is a dedicated database system designed to store and query **file descriptors, ownership details, access control lists (ACLs), directory mappings, and chunk pointers**, completely decoupled from raw binary payloads. Decoupling metadata from file data enables sub-millisecond path lookups, rich search queries, and high concurrency.
 
-### Architectural Separation Pattern
+### Decoupled Storage Architecture
 
-High-scale storage architectures isolate metadata reads/writes into low-latency relational or key-value databases, reserving object stores for payload data.
+Decoupling separates lightweight, highly queryable metadata from heavy, immutable file binary payloads.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                             Client Application Interface                          |
-+-----------------------------------------------------------------------------------+
-                                      |
-         +----------------------------+----------------------------+
-         | 1. Query / Update Metadata                              | 2. Fetch / Upload Payload
-         v                                                         v
-+------------------------------------+                    +-------------------------+
-|     Metadata Storage Cluster       |                    |  Object / Blob Storage  |
-|  (NewSQL / Distributed NoSQL)      |                    |    (Raw Data Chunks)    |
-+------------------------------------+                    +-------------------------+
-| Schema: file_id, owner_id, size,   |                    | Chunk 01: [0x8A2...]    |
-| path, checksum, chunk_locations[]  |                    | Chunk 02: [0x4F1...]    |
-+------------------------------------+                    +-------------------------+
+                                  +-----------------------+
+                                  |   Client Application  |
+                                  +-----------------------+
+                                     /                             1. Query / Update Metadata                 2. Download Payload directly
+                                   /                                                       v                       v
+      +---------------------------------------+       +---------------------------------------+
+      |        Metadata Storage Service       |       |        Object Storage (S3 / Blob)     |
+      | - High-IOPS Key-Value / Relational DB |       | - High-Bandwidth Binary Payload       |
+      | - Indexes: Filename, User, Size, Tags |       | - Raw Chunk Extents                   |
+      +---------------------------------------+       +---------------------------------------+
 ```
 
-### Database Selection Matrix for Metadata
+### Why Decouple Metadata from Binary Data?
 
-| Engine Type | Examples | Read Latency | Scaling Strategy | Best For |
+- **Payload Size Variance**: Binary files range from megabytes to gigabytes, whereas metadata records are tiny (typically < 1KB).
+- **Access Patterns**: Metadata requires high IOPS, low-latency relational or key-value queries, while file payloads require high sequential bandwidth.
+- **Search & Indexing**: Users frequently search by file extension, owner, timestamp, or tag without needing to read binary contents.
+
+### Data Model & Table Schema
+
+```sql
+CREATE TABLE file_metadata (
+    file_id         UUID PRIMARY KEY,
+    user_id         UUID NOT NULL,
+    parent_folder_id UUID NULL,
+    file_name       VARCHAR(255) NOT NULL,
+    size_bytes      BIGINT NOT NULL,
+    mime_type       VARCHAR(128) NOT NULL,
+    storage_uri     VARCHAR(1024) NOT NULL,
+    checksum_sha256 CHAR(64) NOT NULL,
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_user_parent ON file_metadata(user_id, parent_folder_id);
+```
+
+### Metadata Storage Database Options Matrix
+
+| Database Technology | Query Capability | Scalability | Latency | Recommended Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Distributed NoSQL** | Cassandra, DynamoDB | Sub-10 ms | Hash Sharding by File ID | Massively scalable key-value metadata |
-| **NewSQL / Distributed SQL**| CockroachDB, TiDB | 10 - 20 ms | Range Sharding by Directory | POSIX file systems requiring ACID tree operations |
-| **In-Memory Cache + RDBMS** | Redis + PostgreSQL | Sub-2 ms | Master-Replica + Caching | Fast lookup with strong relational integrity |
+| **Relational (PostgreSQL/MySQL)**| Complex SQL, Transactions | Vertical + Sharded | Low (Sub-10ms) | File systems requiring transactional directory renames |
+| **Distributed KV (DynamoDB/Cassandra)**| Key-Value lookups, Secondary Indexes | Infinite Horizontal | Ultra-Low (< 5ms) | Dropbox/Drive scale metadata at billions of records |
+| **In-Memory Cache (Redis)**| High-speed lookups | RAM-constrained | Sub-millisecond | Caching hot metadata records and session state |
 
-### Metadata Schema Example
+### Consistency & Cache Synchronization Strategies
 
-| Column Name | Data Type | Description | Indexing Strategy |
-| :--- | :--- | :--- | :--- |
-| `file_id` | UUID / INT64 | Unique file identifier | Primary Key |
-| `parent_directory_id` | UUID / INT64 | Parent folder path link | Secondary B-Tree Index |
-| `file_name` | VARCHAR(255) | Name of the object | Composite Index `(parent_id, file_name)` |
-| `size_bytes` | BIGINT | Payload size | Metrics / Quota audit |
-| `storage_url` | VARCHAR(512) | Direct pointer to Object Store | Internal lookup |
-
-### Consistency & Edge Cases
-
-- **Two-Phase Commit vs Dual Writes**: Deleting a file requires updating the metadata DB and issuing a delete to the object store. Orphaned blobs are swept periodically using async garbage collectors.
+1. **Read-Through / Cache-Aside**: Hot file metadata records are cached in Redis to offload persistent databases.
+2. **CDC (Change Data Capture)**: Database WAL logs push metadata updates via Debezium to Elasticsearch for full-text file searching.
+3. **Transactional Outbox Pattern**: Ensures metadata database updates and message notifications emit atomically.
 
 ### Key takeaway
 
-Metadata storage decouples **lightweight directory attributes from heavy payloads**, enabling rapid metadata operations, custom indexing, and granular access control.
+Decoupling metadata storage from binary file storage is essential for high-scale storage engines. It isolates **high-IOPS transactional metadata queries from high-bandwidth binary downloads**.

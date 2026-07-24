@@ -4,61 +4,60 @@
 ---
 
 ### Overview
-**Pastebin** is a web service that allows users to upload plain text snippets (code, logs, notes) and receive a unique URL to view or share the content.
+**Pastebin** is a text storage web service that allows users to upload raw text snippets (code logs, plain text) and share them via unique URLs. Unlike short URLs, pastebin payloads can be large (up to 10 MB per paste) and require persistent blob storage.
 
-### System Requirements & Capacity Planning
-- **Write Volume**: 1M pastes created per day (~12 writes/sec).
-- **Read Volume**: 10M paste reads per day (~115 reads/sec).
-- **Payload Size**: Max paste size = 1 MB; Average paste size = 10 KB.
-- **Storage Requirement**: $1\text{M} \times 10\text{ KB} = 10\text{ GB/day} \implies 3.65\text{ TB/year}$.
+Core system constraints require **high read availability**, scalable object storage, automatic TTL expiration cleanup workers, and rate-limiting abuse protection.
 
-### System Architecture Diagram
+### System Architecture & Storage Topology
 
 ```
-+--------+     1. POST /api/paste      +-------------------+      2. Save Text Block     +-------------------+
-| Client | --------------------------> | Load Balancer /   | --------------------------> | Object Storage    |
-+--------+                             | API Gateway       |                             | (S3 / MinIO)      |
-    ^                                  +-------------------+                             +-------------------+
-    |                                            |                                                 |
-    |                                            v 3. Save Metadata                                |
-    |                                  +-------------------+                                       |
-    | <--- 4. 201 Created (Paste URL) -| Paste Service     | --------------------------------------+
-    |                                  +-------------------+
-    |                                            |
-    |                                            v 4. Metadata Lookup
-    |                                  +-------------------+
-    | --- 5. GET /p/7xQ9a ------------> | PostgreSQL /      |
-    |                                  | MongoDB Metadata  |
-    +--------------------------------- +-------------------+
++--------------------+     1. POST /api/v1/pastes (Raw Text)  +--------------------+
+| Client Browser     | -------------------------------------> | API Gateway        |
++--------------------+                                        +--------------------+
+         ^                                                              |
+         | 5. Return HTTP 200 + Short Link                              v
+         +--------------------------------------------------- +--------------------+
+                                                              | Paste Service      |
+                                                              +--------------------+
+                                                                /                \
+                                         2. Write Metadata     /                  \ 3. Upload Text Payload
+                                                              v                    v
+                                                   +--------------------+  +--------------------+
+                                                   | Metadata DB        |  | Object Storage     |
+                                                   | (MongoDB/PostgreSQL|  | (AWS S3 Bucket)    |
+                                                   +--------------------+  +--------------------+
 ```
 
-### Core API Interface
+### Key Technical Mechanics
+1. **Metadata vs Payload Separation:** Store metadata (paste ID, author, creation timestamp, expiration TTL, size) in a relational or document database, and store raw text content in AWS S3 object storage.
+2. **KGS (Key Generation Service):** Pre-generates random 6-8 character Base62 keys asynchronously to prevent key generation DB locks during peak write bursts.
+3. **Automated TTL Cleanup Worker:** Background cron task queries metadata for expired pastes, deletes S3 object blobs, and frees metadata keys.
 
-| Endpoint | Method | Request Payload | Response |
+### API Interface Specifications
+
+| Endpoint | Method | Request Payload | Response Payload |
 |---|---|---|---|
-| `/api/v1/pastes` | `POST` | `{"content": "text...", "expire_after": "7d", "title": "log"}` | `201 Created` -> `{"paste_id": "7xQ9a", "url": "..."}` |
-| `/api/v1/pastes/{paste_id}`| `GET` | None | `200 OK` -> `{"content": "text...", "created_at": ...}` |
+| `/api/v1/pastes` | POST | `{"title": "logs.txt", "content": "raw text...", "expire_after": "7d"}` | `{"paste_id": "k8X2p1", "paste_url": "https://pastebin.com/k8X2p1"}` |
+| `/api/v1/pastes/{id}` | GET | None | `{"title": "logs.txt", "content": "raw text...", "views": 104}` |
+| `/api/v1/pastes/{id}` | DELETE | Headers: `Authorization: Bearer <token>` | `{"status": "DELETED"}` |
 
-### Data Model & Storage Strategy
-Decouple metadata storage from text payload storage to maintain low database index bloat:
-1. **Metadata Database (PostgreSQL / DynamoDB)**: Stores small, indexed attributes.
-2. **Object Storage (AWS S3)**: Stores raw text payload files.
+### Data Model & Schema
 
-```json
-// Metadata Record Schema (PostgreSQL)
-{
-  "paste_id": "7xQ9a",
-  "title": "System Log Output",
-  "s3_key": "pastes/2026/07/7xQ9a.txt",
-  "size_bytes": 10240,
-  "user_id": "usr_881",
-  "expire_at": "2026-08-01T00:00:00Z"
-}
-```
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `paste_id` | String (VARCHAR 8) | MongoDB / PostgreSQL | Primary Key / Unique ID of the paste. |
+| `s3_object_key` | String | MongoDB / PostgreSQL | Path reference to raw text file in Object Storage (`pastes/2026/k8X2p1.txt`). |
+| `user_id` | String (UUID) | Relational DB | Owner ID for registered users (Nullable for anonymous pastes). |
+| `size_bytes` | Long | Relational DB | Size of paste payload for quota enforcement. |
+| `expire_at` | Timestamp (Indexed)| Relational DB | Expiration date evaluated by background cleanup worker. |
 
-### Key Technical Challenges & Solutions
-- **Expiration / Purging**: Use database TTL or periodic batch cleanup workers to delete expired S3 objects and metadata.
-- **Abuse Prevention**: Scan incoming text payloads for malware/phishing signatures; enforce IP rate limits.
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **S3 Object Storage vs Database Text Storage**| Cost-effective scaling for large multi-megabyte text payloads; offloads DB RAM. | Requires two network calls (DB lookup + S3 fetch) to serve a single paste. | Production pastebin systems handling large text snippets. |
+| **Asynchronous Pre-Generated KGS Keys** | Guarantees instant key availability without runtime key collision checks. | Unused keys must be managed if background workers crash. | Systems handling heavy write bursts. |
+| **Lazy Deletion vs Active Cron Cleanup** | Lazy deletion deletes S3 objects only when expired link is accessed; active cron cleans up storage systematically.| Lazy deletion leaves expired blobs consuming S3 storage indefinitely if never requested. | Combine both: active cron sweeps S3, lazy check blocks expired reads. |
 
 ### Key takeaway
-Design Pastebin by **decoupling text content from metadata**. Store raw text in object storage (**S3**) and metadata in a relational or Key-Value store, using a **Key Generation Service (KGS)** for unique paste IDs.
+**Pastebin** separates text payload storage (AWS S3 object storage) from indexing metadata (relational/NoSQL database). Use pre-generated Base62 keys for instant uploads and automated TTL background workers for storage cleanup.

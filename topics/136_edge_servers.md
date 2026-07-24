@@ -4,41 +4,60 @@
 
 ---
 
-Edge Servers are computing and caching nodes placed at the **perimeters of network backbones** (PoPs) near internet service providers (ISPs) to execute caching, TLS termination, and serverless edge logic.
+Edge servers are high-performance computing nodes positioned at the **periphery of the network (Points of Presence - PoPs)**, close to end users. They terminate TLS/TCP connections, cache static assets, enforce rate limiting and WAF security rules, and execute serverless code at the edge.
 
-### Edge Server Architecture
+### Edge Server Functional Architecture
+
+An edge server operates as a multi-layered proxy handling incoming client requests before they ever reach the central cloud origin.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                            Edge Point of Presence (PoP)                           |
-+-----------------------------------------------------------------------------------+
-|                                                                                   |
-|  +--------------------+    +--------------------+    +--------------------+  |
-|  | Anycast Router     | -> | TLS / HTTP Reverse | -> | Edge Compute Engine|  |
-|  | (BGP Routing)      |    | Proxy (Nginx/Envoy)|    | (V8 Isolate Worker)|  |
-|  +--------------------+    +--------------------+    +--------------------+  |
-|                                                               |                   |
-|                                                               v                   |
-|                                                      +--------------------+  |
-|                                                      | In-Memory NVMe     |  |
-|                                                      | Cache Store        |  |
-|                                                      +--------------------+  |
-+-----------------------------------------------------------------------------------+
+                                +---------------------------+
+                                |        End User           |
+                                +---------------------------+
+                                              |
+                                    TCP / TLS Handshake
+                                              v
++----------------------------------------------------------------------------------------------------+
+|                                    Edge Server (Point of Presence)                                 |
+| +-------------------------+ +-------------------------+ +-------------------------+                |
+| | Anycast BGP Routing     | | TLS Termination & HTTP/3| | WAF & Rate Limiting     |                |
+| +-------------------------+ +-------------------------+ +-------------------------+                |
+| +-------------------------+ +-------------------------+ +-------------------------+                |
+| | In-Memory RAM Cache     | | SSD Disk Storage Cache  | | Edge Compute Workers    |                |
+| | (Hot Assets)            | | (Warm Assets)           | | (Cloudflare Workers)   |                |
+| +-------------------------+ +-------------------------+ +-------------------------+                |
++----------------------------------------------------------------------------------------------------+
+                                              |
+                                  Persistent Keep-Alive Connection
+                                              v
+                                +---------------------------+
+                                |       Origin Server       |
+                                +---------------------------+
 ```
 
-### Edge Capabilities & Functional Comparison
+### Core Capabilities of Modern Edge Servers
 
-| Capability | Processing Location | Primary Use Case | Example Technologies |
-| :--- | :--- | :--- | :--- |
-| **TLS Termination** | Edge PoP | Offloads CPU-intensive TLS handshakes | Cloudflare, Fastly |
-| **Edge Compute** | V8 Isolates / WebAssembly | A/B testing, header modification, JWT validation | Cloudflare Workers, AWS CloudFront Functions |
-| **Edge KV / Storage**| Globally replicated KV | Auth tokens, feature flags, configuration | Cloudflare KV, DynamoDB Global Tables |
+1. **Anycast IP Routing**: BGP Anycast routes client IP packets to the topologically nearest edge server automatically.
+2. **TLS Termination & Offloading**: Performs heavy RSA/ECDSA TLS handshakes at the edge, maintaining pre-warmed persistent TCP connections back to origin.
+3. **Edge Compute (Serverless at the Edge)**: Executes lightweight V8 Javascript runtime code (e.g., Cloudflare Workers, AWS Lambda@Edge) for A/B testing, header modification, and JWT validation.
+4. **Web Application Firewall (WAF)**: Filters malicious SQL injection, XSS, and volumetric DDoS attacks before traffic reaches origin infrastructure.
 
-### Key Advantages
+### Edge Server vs Origin Server Matrix
 
-- **Terminated Connections**: Establishes TCP/TLS sessions close to users, making HTTP/2 and HTTP/3 multiplexing faster.
-- **Dynamic Request Personalization**: Modifies request headers and routes traffic without hitting origin app servers.
+| Dimension | Edge Server | Origin Server |
+| :--- | :--- | :--- |
+| **Geographic Location** | Distributed globally across 300+ PoPs | Centralized in specific Cloud Regions (e.g. `us-east-1`) |
+| **Primary Focus** | Caching, Connection Termination, Fast Delivery | Business Logic Execution, Transaction Processing |
+| **Storage Capacity** | Transient Ephemeral RAM/SSD Cache | Authoritative Persistent Databases & Storage |
+| **Compute Constraints** | Bounded CPU/RAM (Sub-50ms execution timeouts) | Heavy compute instances, unconstrained memory |
+
+### Key Trade-offs & Operational Rules
+
+- ✅ **Sub-Millisecond TLS Handshakes**: Reduces RTT latency for global users by terminating TLS connections close to the user.
+- ✅ **Distributed DDoS Protection**: Absorbs multi-terabit volumetric attacks across distributed PoP capacity.
+- ❌ **Cold Cache Misses**: Initial requests to cold edge locations still incur full round-trip latency to origin.
+- ❌ **Limited Compute State**: Edge workers are stateless; state persistence requires external distributed key-value stores.
 
 ### Key takeaway
 
-Edge servers terminate TLS sessions and execute **lightweight computation at the network edge**, eliminating origin round-trips for routing, security, and caching.
+Edge servers bring **caching, TLS termination, WAF security, and stateless serverless compute** directly to the network periphery, drastically cutting latency and protecting origin systems.

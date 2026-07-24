@@ -4,48 +4,61 @@
 
 ---
 
-Multipart upload is a strategy that breaks large files into **smaller data chunks (parts)**, uploads them concurrently over network channels, and reassembles them atomically on the storage target.
+Multipart upload is a mechanism for uploading large objects into object storage by **splitting the object into smaller, discrete parts** (typically 5MB to 5GB each). These parts are uploaded independently and concurrently, and then assembled into a single object on completion.
 
-### Protocol Sequence Diagram
+### Multipart Upload Architectural Flow
+
+The multipart upload protocol breaks a single large payload into parallel stream uploads across multiple client network workers.
 
 ```
-+--------+            +--------------------+            +---------------+
-| Client |            | App Gateway / API  |            | Object Store  |
-+--------+            +--------------------+            +---------------+
-    |                           |                               |
-    | 1. Initiate Multipart     |                               |
-    |-------------------------->| Request Upload ID             |
-    |                           |------------------------------>|
-    |                           |<------------------------------| Returns UploadId: 99x
-    |<--------------------------| Return UploadId               |
-    |                           |                               |
-    | 2. Upload Parts Parallel  |                               |
-    |--- Part 1 (Bytes 0-5MB) ->|------------------------------>| Returns ETag: "e1"
-    |--- Part 2 (Bytes 5-10MB)->|------------------------------>| Returns ETag: "e2"
-    |--- Part 3 (Bytes 10-15MB)->|------------------------------>| Returns ETag: "e3"
-    |                           |                               |
-    | 3. Complete Multipart     |                               |
-    |-------------------------->| Send UploadId + Part/ETag List|
-    |                           |------------------------------>| Reassemble Object
-    |<--------------------------| Return 200 OK                 |
++---------------+       1. Initiate Multipart Upload       +------------------------+
+| Client App    | ---------------------------------------> | Object Storage Gateway |
+| (10GB File)   | <--------------------------------------- | (Returns UploadId)     |
++---------------+              Upload ID                   +------------------------+
+        |
+        | 2. Split File & Upload Parts in Parallel
+        +-----------------------+-----------------------+
+        |                       |                       |
+        v (Part 1: 0-100MB)     v (Part 2: 100-200MB)   v (Part N: 9.9-10GB)
++-----------------------+ +-----------------------+ +-----------------------+
+| PUT /part?partNumber=1| | PUT /part?partNumber=2| | PUT /part?partNumber=N|
++-----------------------+ +-----------------------+ +-----------------------+
+        |                       |                       |
+        +-----------------------+-----------------------+
+                                |
+                                v 3. Complete Multipart Upload (ETag List)
+                        +------------------------+
+                        | Object Storage Gateway | ---> Assembles Object Atomically
+                        +------------------------+
 ```
 
-### Multipart Upload Lifecycle API
+### Step-by-Step Upload Protocol & State Machine
 
-| API Action | HTTP Method | Input Parameters | Return Payload |
+1. **Initiate**: Client invokes `InitiateMultipartUpload`. Storage engine creates an `UploadId` tracking session state.
+2. **Upload Parts**: Client splits file and issues `UploadPart` calls concurrently. Storage returns an `ETag` (MD5 checksum) for each completed part.
+3. **Complete**: Client transmits a `CompleteMultipartUpload` request containing the sorted list of `PartNumber` and corresponding `ETag` pairs. The storage engine stitches the chunks into a unified object.
+4. **Abort**: Client or automated policy issues `AbortMultipartUpload` to clear orphaned chunks and reclaim storage.
+
+### API & Payload Specification Matrix
+
+| Protocol Step | HTTP Method & URI | Payload / Parameters | Server Response Data |
 | :--- | :--- | :--- | :--- |
-| **InitiateUpload** | `POST` | `filename`, `content_type`, `size` | `UploadId` |
-| **UploadPart** | `PUT` | `UploadId`, `partNumber`, `Chunk Data` | `ETag` (MD5 Checksum) |
-| **CompleteUpload** | `POST` | `UploadId`, `[{partNumber, ETag}]` | `200 OK` (Final S3 Object URL) |
-| **AbortUpload** | `DELETE` | `UploadId` | `240 No Content` (Cleans temporary parts) |
+| **Initiate** | `POST /object-key?uploads` | Metadata headers | `<UploadId>18273645</UploadId>` |
+| **Upload Part** | `PUT /object-key?partNumber=1&uploadId=18273645` | Raw Binary Chunk Data | `ETag: "a5b3c4d5..."` Header |
+| **Complete** | `POST /object-key?uploadId=18273645` | XML/JSON list of PartNumbers & ETags | 200 OK `<CompleteMultipartUploadResult>` |
+| **Abort** | `DELETE /object-key?uploadId=18273645` | Empty | 204 No Content |
 
-### Key Benefits & Failure Mitigation
+### Key Resilience & Performance Advantages
 
-- ✅ **Resumable Uploads**: If part 4 fails out of 100, only part 4 needs re-transmission.
-- ✅ **Parallel Throughput**: Utilizes multiple TCP streams to maximize internet client bandwidth.
-- ✅ **Memory Efficiency**: Senders stream chunks sequentially from disk without loading multi-gigabyte files into RAM.
-- ❌ **Orphaned Parts Cost**: Incomplete uploads consume storage. Systems set lifecycle rules to auto-abort uploads after 7 days.
+- ✅ **Parallel Throughput**: Maximizes network bandwidth by uploading multiple chunks simultaneously.
+- ✅ **Fault Resilience**: Network failure on a 5GB file only requires retrying the failed 10MB chunk, rather than restarting the entire file.
+- ✅ **Pause and Resume**: Uploads can be paused across network drops or client restarts by persisting completed part ETag lists.
+
+### Trade-offs & Production Considerations
+
+- ❌ **Orphaned Chunk Storage Costs**: Incomplete uploads consume storage space. Systems must configure lifecycle rules to abort uncompleted uploads after 7 days.
+- ❌ **Minimum Part Size**: S3 requires parts to be at least 5MB (except for the last part); uploading smaller chunks results in API errors.
 
 ### Key takeaway
 
-Multipart upload enables **fast, reliable uploads of large files** by parallelizing chunk delivery and isolating retry operations to individual failed parts.
+Multipart upload enables **high-speed, fault-tolerant ingestion of large assets** by uploading independent chunks concurrently and assembling them atomically upon completion.

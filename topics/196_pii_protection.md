@@ -4,35 +4,64 @@
 ---
 
 ### Overview
-**Personally Identifiable Information (PII)** protection involves technical controls, tokenization, anonymization, and data isolation strategies designed to safeguard sensitive personal data (e.g., SSN, email, phone numbers, home address) and comply with privacy regulations (GDPR, CCPA, HIPAA).
+**Personally Identifiable Information (PII)** protection encompasses technical mechanisms designed to safeguard sensitive user data—such as Social Security Numbers (SSN), credit card numbers (PAN), full names, email addresses, and phone numbers—from exposure, unauthorized access, and regulatory non-compliance (GDPR, CCPA, PCI-DSS, HIPAA).
 
-### PII Data Isolation Architecture (Vault Pattern)
+Core architectural patterns rely on **Tokenization**, **Format-Preserving Encryption (FPE)**, data pseudonymization, dynamic masking, and isolated **Token Vaults**.
+
+### PII Tokenization & Isolation Architecture
 
 ```
-[ Application Service ] ---> Writes PII Data ---> [ Isolated PII Vault DB ]
-        |                                                 |
-        | Generates Unique Token                           | Encrypts with KMS
-        v                                                 v
-[ General App Database ] <--- Stores Token (UUID) <-------+
-(Contains NO Raw PII)
++--------------------+     1. Write User Record (with SSN)      +--------------------+
+| Web Application /  | ---------------------------------------> | API Gateway        |
+| Microservice       |                                          +--------------------+
++--------------------+                                                     |
+         ^                                                                 | 2. Intercept & Tokenize PII
+         | 4. Return Non-Sensitive Token ("tok_ssn_99812")                 v
+         +------------------------------------------------------ +--------------------+
+                                                                 | Tokenization Engine|
+                                                                 | & Security Vault   |
+                                                                 +--------------------+
+                                                                           |
+                                                                           v 3. Store Real PII
+                                                                 +--------------------+
+                                                                 | Isolated PII Vault |
+                                                                 | (Encrypted DB)     |
+                                                                 +--------------------+
 ```
 
-### Anonymization & Protection Techniques
+### PII Protection Techniques Comparison
 
-| Technique | Description | Reversible? | Primary Use Case |
+| Technique | Operating Mechanism | Reversibility | Best Use Case |
 |---|---|---|---|
-| **Tokenization** | Replaces PII with non-sensitive surrogate tokens (UUIDs) | Yes (via Token Vault) | Credit Card Processing (PCI-DSS), User ID masking |
-| **Pseudonymization** | Replaces direct identifiers with artificial identifiers | Yes (with secret key) | Analytics data pipelines, GDPR compliance |
-| **Data Masking** | Hides parts of sensitive fields (e.g., `XXXX-XXXX-1234`) | No | Customer support UI, non-prod environments |
-| **Differential Privacy** | Adds mathematical noise to statistical queries | No | Global analytics without exposing individuals |
+| **Tokenization** | Replaces PII with a random non-cryptographic surrogate key (`tok_123`). | Reversible (via Token Vault lookup) | Payment card numbers (PCI-DSS), SSN storage. |
+| **Format-Preserving Encryption (FPE)**| Encrypts PII while preserving original data format/length (e.g., 16-digit CC remains 16 digits). | Reversible (with cryptographic key) | Legacy database columns requiring strict format validation. |
+| **Dynamic Data Masking**| Obfuscates sensitive fields in query responses (e.g., `XXXX-XXXX-XXXX-1234`). | Non-reversible at client UI view | Customer support dashboards, analytics reporting. |
+| **Irreversible Hashing**| Computes salted cryptographic hash (`HMAC-SHA256`). | Non-reversible | User email lookups without storing raw email text. |
 
-### Regulatory & Data Lifecycle Requirements
+### Tokenization API Interface Specifications
 
-| Requirement | Description | Technical Implementation |
-|---|---|---|
-| **Right to be Forgotten** | User request to delete all personal records | Soft deletion -> Async purge job across DBs and search indexes |
-| **Data Residency** | PII must not leave specified geographic boundaries | Multi-region database partitioning (e.g., CockroachDB row-level loc) |
-| **Field-Level Encryption** | Encrypt PII fields in database before write | Client-side envelope encryption with user-scoped KMS keys |
+| Endpoint | Method | Request Payload | Response Payload |
+|---|---|---|---|
+| `/v1/tokenize` | POST | `{"pii_type": "SSN", "value": "000-12-3456"}` | `{"token": "tok_ssn_88219482", "masked": "XXX-XX-3456"}` |
+| `/v1/detokenize` | POST | `{"token": "tok_ssn_88219482"}` | `{"value": "000-12-3456"}` (Requires Privileged Audit Scope) |
+
+### Token Vault Schema & Data Model
+
+| Field Name | Data Type | Storage Engine | Security Profile |
+|---|---|---|---|
+| `token_id` | String (Indexed) | Vault Storage Engine | RandomUUID non-sensitive surrogate token. |
+| `encrypted_pii` | Byte Array (BLOB) | Isolated PostgreSQL DB | AES-256-GCM encrypted raw PII value. |
+| `pii_type` | Enum | Relational DB | Category identifier (`EMAIL`, `SSN`, `PHONE`, `PAN`). |
+| `created_at` | Timestamp | Relational DB | Record creation date for GDPR retention policies. |
+| `access_audit_log` | JSONB | Audit Log Store | Tracks every detokenization request user, IP, and reason. |
+
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Isolated Token Vault** | General application database completely free of raw PII; minimizes GDPR audit scope. | Introduces HTTP latency hop to detokenize data during legitimate user workflows. | High-security financial payment systems and healthcare applications. |
+| **Format-Preserving Encryption (FPE)**| Allows legacy applications to process encrypted data without schema alterations. | Cryptographic key management complexity; slightly lower security than random tokenization. | Legacy enterprise database migrations. |
+| **Client-Side Hashing & Masking** | Prevents raw PII from ever reaching backend analytics or log aggregator systems. | Prevents backend systems from contacting user directly if raw value is lost. | User telemetry analytics and audit logging. |
 
 ### Key takeaway
-Protect PII by isolating sensitive fields into a dedicated **PII Vault**, replacing raw records with **tokens** in general application databases, and enforcing **field-level encryption** and strict audit trails.
+**PII Protection** minimizes regulatory compliance risk by keeping raw personal data out of general microservices and logs. Use isolated **Token Vaults** and **Format-Preserving Encryption** to replace sensitive fields with non-sensitive surrogate tokens.

@@ -4,42 +4,42 @@
 
 ---
 
-WebSockets provide a **single persistent, bidirectional connection** between client and
-server over TCP — full-duplex, low-latency, after an initial HTTP upgrade.
+**WebSockets (WS/WSS)** provide a **full-duplex, persistent, bi-directional communication channel** over a single TCP socket connection. Standardized in RFC 6455, WebSockets allow servers and clients to stream real-time data frame updates instantly with minimal header overhead (2 to 10 bytes).
 
-### Lifecycle
+### WebSocket Connection Upgrade Handshake
+
 ```
-1. Client sends HTTP GET with Upgrade: websocket header.
-2. Server replies 101 Switching Protocols.
-3. Connection upgrades to WebSocket protocol (ws:// or wss://).
-4. Both sides can send/receive messages at any time, until close.
++-------------------------------------------------------------------------+
+|                  WEBSOCKET CONNECTION LIFECYCLE                         |
++-------------------------------------------------------------------------+
+
+  Client                                             Server
+    |                                                  |
+    |--- 1. HTTP GET /chat (Upgrade: websocket) ------>|
+    |<-- 2. HTTP 101 Switching Protocols --------------| (Handshake Complete)
+    |                                                  |
+    |==================================================|
+    |   PERSISTENT FULL-DUPLEX TCP SOCKET CHANNEL      |
+    |                                                  |
+    |---- 3. Client Message Frame (Binary/Text) ------>|
+    |<--- 4. Server Push Frame (Instant Stream) -------|
+    |==================================================|
 ```
 
-### Properties
-- **Bidirectional** — server can push without client polling.
-- **Persistent** — one TCP connection reused for many messages.
-- **Low latency** — no per-message handshake.
-- **Frame-based** — text or binary frames.
-- **Stateful** — server holds connection state per client.
+### Real-Time Communication Protocols Comparison
 
-### When to use WebSockets
-- **Chat / messaging** (WhatsApp, Discord, Slack).
-- **Multiplayer games** (low-latency bidirectional).
-- **Live dashboards** (server pushes metrics).
-- **Collaborative editing** (Google Docs-style).
-- **Notifications** (real-time push).
+| Protocol | Directionality | Transport Layer | Connection Lifetime | Overhead | Typical Use Cases |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **WebSockets** | Bi-directional (Client <-> Server) | Single Persistent TCP Socket | Long-lived persistent connection | Very Low (2-10 B frames) | Real-time chat, multiplayer gaming, collaborative whiteboards |
+| **HTTP Polling** | Unidirectional (Client -> Server) | Short-lived HTTP Requests | Repeated new connections | High (HTTP headers per poll) | Non-critical status updates |
+| **Long Polling** | Unidirectional simulation | Held HTTP Request | Held until server event fires | Medium-High | Legacy notification fallback |
+| **Server-Sent Events (SSE)**| Unidirectional (Server -> Client) | Persistent HTTP/2 Stream | Long-lived HTTP stream | Low (Text Event Stream) | Live financial tickers, AI response streaming (ChatGPT) |
 
-### When NOT to use
-- **One-way server push** → Server-Sent Events (Simpler).
-- **Occasional updates** → long polling (less infra).
-- **Server-to-server streaming** → gRPC streaming.
+### WebSocket Scaling Challenges
 
-### Scaling WebSockets
-Each connection holds server memory → a single box handles ~50k-100k connections. To scale:
-- **Sticky sessions** or **shared pub/sub** (Redis) to route messages across instances.
-- **Dedicated WS gateway tier** (e.g. Centrifugo, AWS API Gateway WS).
-- **Backpressure** — slow clients can buffer unboundedly; cap per-connection queues.
+1. **Stateful Connection Management**: Because WebSocket servers maintain open TCP connections, load balancers must support **sticky sessions** or custom connection routing.
+2. **Horizontal Scale-Out Architecture**: To broadcast messages across multiple WebSocket server nodes, instances use a **Redis Pub/Sub** or **Kafka** message backbone.
 
 ### Key takeaway
-WebSockets are the go-to for **bidirectional real-time** features (chat, games, collab). For
-unidirectional pushes, SSE is simpler. Either way, plan for stateful scaling via shared pub/sub.
+
+WebSockets provide **full-duplex, real-time bi-directional messaging** over a single persistent TCP connection. Use a **Redis Pub/Sub pub/sub cluster** at the backend to broadcast messages across stateless WebSocket gateway nodes.

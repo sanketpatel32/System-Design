@@ -4,53 +4,65 @@
 
 ---
 
-An Image Upload System ingests image files from clients, validates and optimizes them asynchronously, stores original and processed variants in object storage, and serves them via CDN.
+An image upload system ingests, processes, optimizes, and stores user-uploaded images at scale. It handles direct storage upload delegation, asynchronous thumbnail generation, image format compression (WebP/AVIF), and CDN content distribution.
 
-### System Architecture
+### System Architecture & Async Processing Flow
+
+The system uses Presigned URLs for direct ingestion into object storage, triggering asynchronous processing workers via event notifications.
 
 ```
-+--------+       1. Request Signed URL       +--------------------+       2. Write Metadata       +---------------+
-| Client | --------------------------------> | API Gateway / App  | ----------------------------> | Metadata DB   |
-+--------+                                   +--------------------+                               +---------------+
-    |                                                  |
-    | 3. Direct Upload (PUT)                           v 4. Push Processing Event
-    v                                        +--------------------+
-+------------------------------------+       | Message Queue      |
-| S3 Raw Storage Bucket (Original)   |       | (Kafka / SQS)      |
-+------------------------------------+       +--------------------+
-    |                                                  |
-    | Event Notification                               v
-    +------------------------------------->  +--------------------+       Store Optimized   +---------------+
-                                             | Image Workers      | ----------------------> | S3 Web Bucket |
-                                             | (Resize, WebP, Watermark)                   +---------------+
-                                             +--------------------+                                |
-                                                                                                   v
-                                                                                           +---------------+
-                                                                                           | CDN Edge Node |
-                                                                                           +---------------+
++---------------+     1. Request Presigned Upload URL     +-------------------+
+| Client App    | --------------------------------------> | API Backend       |
+|               | <-------------------------------------- | (Generates Token) |
++---------------+       2. Return Presigned URL           +-------------------+
+        |
+        | 3. Direct Upload Raw Image (PUT)
+        v
++-----------------------+     4. S3 ObjectCreated Event    +-------------------+     5. Read Raw / Resize    +-------------------+
+| Object Storage (S3)   | -------------------------------> | Message Queue     | --------------------------> | Image Processing  |
+| - /raw/original.jpg   |                                  | (Kafka / SQS)     |                             | Workers           |
++-----------------------+                                  +-------------------+                             +-------------------+
+        ^                                                                                                              |
+        |                                       6. Save Optimized WebP Variants                                        |
+        +--------------------------------------------------------------------------------------------------------------+
+                                                - /thumbs/thumb.webp
+                                                - /optimized/display.webp
 ```
 
-### Async Processing Pipeline Steps
+### Data Model & Image Metadata Schema
 
-1. **Pre-signed Direct Upload**: Client requests upload URL. Server validates user quota and issues presigned S3 URL. Data bypasses web app servers.
-2. **Virus & Malware Scanning**: Lambda / Worker container scans uploaded file buffer before trigger downstream tasks.
-3. **Thumbnail & Format Generation**: Asynchronously generates multiple resolutions (1080p, 720p, 480p, thumbnail) and converts formats (JPEG/PNG to WebP/AVIF).
-4. **Metadata & CDN Registration**: Image metadata (dimensions, EXIF scrubbed data, hash digest, image URLs) is indexed in DB and cached at CDN edges.
+```sql
+CREATE TABLE user_images (
+    image_id        UUID PRIMARY KEY,
+    user_id         UUID NOT NULL,
+    original_name   VARCHAR(255) NOT NULL,
+    mime_type       VARCHAR(64) NOT NULL,
+    file_size_bytes BIGINT NOT NULL,
+    width_px        INT NOT NULL,
+    height_px       INT NOT NULL,
+    s3_raw_path     VARCHAR(512) NOT NULL,
+    s3_webp_path    VARCHAR(512) NOT NULL,
+    status          VARCHAR(32) NOT NULL DEFAULT 'PROCESSING',
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_user_images ON user_images(user_id, status);
+```
 
-### Image Optimization Matrix
+### Format Optimization & Size Comparison Matrix
 
-| Variant / Format | Compression / Codec | Target Resolution | Relative Size | Ideal Use Case |
+| Format | Compression Type | Browser Compatibility | Avg Relative Size | Primary Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Original Raw** | Uncompressed / PNG | Source | 100% | Archival / Download |
-| **Web Display** | WebP (Quality 80) | 1920x1080 | ~25-30% | Desktop Web Banners |
-| **Mobile Display** | AVIF / WebP | 720x1280 | ~15-20% | Mobile Feed Items |
-| **Thumbnail** | WebP | 150x150 | ~3-5% | User Avatars / Grid Preview |
+| **JPEG** | Lossy | 100% (Universal) | 100% (Baseline) | Legacy photo display |
+| **PNG** | Lossless | 100% (Universal) | 150%-200% | Transparency, icons, graphics |
+| **WebP** | Lossy / Lossless | ~97% Modern Browsers | 60%-70% | Standard web display images |
+| **AVIF** | Lossy / Lossless | ~90% Modern Browsers | 40%-50% | High-efficiency next-gen image delivery |
 
-### Reliability & Resilience Strategies
+### Key System Considerations & Safeguards
 
-- **Deduplication**: Generate SHA-256 hash of raw image payload; skip re-encoding if hash exists in object storage.
-- **Circuit Breaking**: Fall back to serving un-optimized originals directly from S3 if processing worker queue backs up.
+1. **Magic Bytes Validation**: Inspect binary header bytes (e.g. `0xFF 0xD8 0xFF` for JPEG) instead of trusting user file extensions to prevent malicious executable execution.
+2. **Asynchronous Image Resizing**: Perform heavy image scaling and WebP conversion asynchronously off worker threads to maintain fast API response times.
+3. **CDN Caching**: Edge servers cache resized variants using `Cache-Control: public, max-age=31536000, immutable`.
 
 ### Key takeaway
 
-Design image upload systems using **presigned URLs for direct object store ingest** combined with **asynchronous worker queues** for image transformation and CDN distribution.
+An image upload system must **decouple upload ingestion from async processing**, leveraging presigned storage URLs, event-driven queues, and modern image formats (WebP/AVIF) served via CDNs.

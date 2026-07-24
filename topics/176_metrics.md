@@ -4,44 +4,63 @@
 
 ---
 
-Metrics are **numeric, aggregated data points measured over time intervals**, providing quantitative visibility into overall system health, resource utilization, and operational performance.
+Metrics are **numeric aggregations of system data measured over intervals of time**. Unlike logs (which describe individual events), metrics provide low-overhead, real-time numeric time-series data used to monitor system performance, track resource utilization, and trigger automated alerts.
 
-### Prometheus Pull Metrics Architecture
+### Metric Collection Architecture (Push vs Pull Model)
+
+Metric collection systems scrape scrapable HTTP endpoints (Pull) or ingest UDP telemetry batches (Push) to store time-series data.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                         App Pods (Exposing /metrics Endpoint)                     |
-+-----------------------------------------------------------------------------------+
-                                          ^
-                                          | 1. HTTP Pull / Scraping (Every 15s)
-                                          v
-+-----------------------------------------------------------------------------------+
-|                         Prometheus Server Time-Series DB                          |
-+-----------------------------------------------------------------------------------+
-                                          |
-                +-------------------------+-------------------------+
-                | 2. PromQL Queries                                 | 3. Alert Triggers
-                v                                                   v
-+------------------------------------+                    +------------------------------------+
-| Grafana Visualization Dashboard    |                    | Alertmanager (PagerDuty / Slack)   |
-+------------------------------------+                    +------------------------------------+
+Pull-Based Metric Architecture (Prometheus Style):
++--------------------+      1. Expose `/metrics` Endpoint      +-----------------------+
+| Microservice Node  | <-------------------------------------- | Prometheus TSDB Server|
+| (Prometheus Client)| --------------------------------------> | (Periodically Scrapes)|
++--------------------+      2. Returns Text Metrics            +-----------------------+
+
+Push-Based Metric Architecture (StatsD / Datadog Style):
++--------------------+      1. Push UDP Metric Packets         +-----------------------+
+| Microservice Node  | --------------------------------------> | Metric Collector      |
+| (StatsD Client)    |                                         | (StatsD / OpenTelemetry)|
++--------------------+                                         +-----------------------+
 ```
+
+### Metric Types Comparison Matrix
+
+| Metric Type | Behavior & Properties | Common Application | Example Metric |
+| :--- | :--- | :--- | :--- |
+| **Counter** | Monotonically increasing value (only goes up or resets to 0)| Request counts, error counts | `http_requests_total` |
+| **Gauge** | Value that fluctuates up and down | CPU usage, RAM memory, active thread count | `node_memory_utilization` |
+| **Histogram** | Samples observations into configurable quantile buckets | Request latency distribution, payload sizes | `http_request_duration_seconds_bucket` |
+| **Summary** | Calculates client-side quantiles (P50, P90, P99) over sliding windows | Precise latency SLA tracking | `rpc_latency_seconds{quantile="0.99"}` |
 
 ### The Four Golden Signals of Monitoring
 
-| Metric Signal | Definition | Example Units |
-| :--- | :--- | :--- |
-| **Latency** | Time taken to service a request (split by 50th/99th percentile)| Milliseconds (ms) |
-| **Traffic** | Total demand placed on the system | Requests per second (QPS) |
-| **Errors** | Rate of requests that fail | HTTP 5xx count / percentage |
-| **Saturation** | How full system resources are | CPU %, Memory RAM %, IOPS |
+Google's SRE framework highlights four primary metrics for any system:
+1. **Latency**: The time taken to service a request (track P50, P95, and P99 percentiles; avoid averages).
+2. **Traffic**: Demand placed on the system (e.g. HTTP requests per second).
+3. **Errors**: Rate of requests that fail (e.g. HTTP 5xx error rate).
+4. **Saturation**: How full your system resources are (e.g. CPU utilization, memory pressure, queue depth).
 
-### Metric Data Types
+### Key Trade-offs & Cardinality Management
 
-- **Counter**: Monotonically increasing value (e.g. `http_requests_total`).
-- **Gauge**: Instantaneous numerical snapshot that goes up or down (e.g. `memory_usage_bytes`).
-- **Histogram**: Samples observations into configurable buckets for percentile calculations (e.g. `http_request_duration_seconds_bucket`).
+- ✅ **Ultra-Low Storage & Bandwidth Overhead**: Storing numeric time-series data requires far less disk space than full text logs.
+- ❌ **High Cardinality Risk**: Adding labels with millions of unique values (e.g. `user_id` or `email`) to metrics causes time-series database memory usage to explode. Avoid high-cardinality label values.
+### Prometheus Text-Format Metrics Exposition Example
+
+```http
+# HELP http_requests_total Total count of HTTP requests processed
+# TYPE http_requests_total counter
+http_requests_total{method="POST",handler="/checkout",status="200"} 10452
+http_requests_total{method="POST",handler="/checkout",status="500"} 12
+
+# HELP http_request_duration_seconds HTTP request latency distribution
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.05"} 8912
+http_request_duration_seconds_bucket{le="0.1"}  9821
+http_request_duration_seconds_bucket{le="0.5"}  10410
+http_request_duration_seconds_bucket{le="+Inf"} 10464
+```
 
 ### Key takeaway
 
-Track system health using the **Four Golden Signals (Latency, Traffic, Errors, Saturation)** stored as time-series metrics for fast aggregation and alerting.
+Metrics provide **low-overhead numeric time-series monitoring**, structured around Counters, Gauges, and Histograms to track the **Four Golden Signals (Latency, Traffic, Errors, Saturation)**.

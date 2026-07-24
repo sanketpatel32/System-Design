@@ -4,49 +4,65 @@
 ---
 
 ### Overview
-A **Trending Topics System** (e.g., Twitter Trends) detects sudden spikes in topic frequency or hashtag usage over time windows, separating viral news from background baseline traffic.
+A **Trending Topics System** (e.g., Twitter Trending, Google Trends) detects spikes in user interest around specific keywords, terms, or hashtags across high-velocity social event streams in real time.
 
-### Architecture Topology Diagram
+System architecture requires **stream processing engines** (Apache Flink / Spark Streaming), probabilistic data structures (**Count-Min Sketch** for heavy hitters), sliding window aggregation, and exponential decay scoring models.
+
+### System Architecture & Stream Processing Topology
 
 ```
-+---------------+     1. Stream Events     +-------------------+
-| Event Stream  | -----------------------> | Kafka Topic       |
-+---------------+                          +-------------------+
-                                                     |
-                                                     v 2. Process Sliding Window
-                                           +-------------------+
-                                           | Apache Flink /    |
-                                           | Spark Streaming   |
-                                           +-------------------+
-                                                     |
-                                                     v 3. Count Frequencies
-                                           +-------------------+
-                                           | Count-Min Sketch  |
-                                           | Memory State      |
-                                           +-------------------+
-                                                     |
-                                                     v 4. Top-K Heavy Hitters
-                                           +-------------------+
-                                           | Redis Top-K Cache |
-                                           +-------------------+
++--------------------------------------------------------------------------+
+| HIGH-VELOCITY EVENT STREAM (Kafka Event Stream: 100,000 tweets/sec)       |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 1. Consume Stream
++--------------------------------------------------------------------------+
+| APACHE FLINK STREAM PROCESSOR                                            |
+|  [ Token Extractor ] --> [ Count-Min Sketch ] --> [ Sliding Window (1h) ]|
++--------------------------------------------------------------------------+
+                                     |
+                                     v 2. Compute Velocity Spike Score
++--------------------------------------------------------------------------+
+| TREND SCORING ENGINE (Velocity = Current Window Count / Baseline Count)  |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 3. Update Top 50 Trends (Every 10s)
++--------------------------------------------------------------------------+
+| REDIS LEADERBOARD CACHE (ZSET: Score-Sorted Trending Topics)             |
++--------------------------------------------------------------------------+
 ```
 
-### Heavy Hitters & Frequency Algorithms
+### Key Technical Mechanics
+1. **Count-Min Sketch (Probabilistic Heavy Hitters):** A sub-linear memory data structure that counts term frequencies across billions of streaming events using multiple hash functions. Allows tracking heavy hitter hashtags in megabytes of RAM rather than gigabytes.
+2. **Sliding Time Window Aggregation:** Compares term frequency in a short current window (e.g., last 5 minutes) against a historical baseline window (e.g., last 24 hours).
+3. **Trending Velocity Spike Scoring Function:**
 
-| Algorithm | Space Complexity | Accuracy | Mechanics |
+$$\text{Trend Score} = \frac{C_{\text{current}} - C_{\text{expected}}}{\sqrt{C_{\text{expected}} + 1}}$$
+
+*Key Insight:* Measures statistical acceleration/spike rather than absolute volume, preventing perpetually popular terms (e.g., `#love`, `#news`) from dominating the trending list over breaking events (e.g., `#Earthquake`).
+
+### API Interface Specifications
+
+| Endpoint | Method | Request Parameters | Response Payload |
 |---|---|---|---|
-| **Count-Min Sketch** | $O(\epsilon^{-1} \log \delta^{-1})$ | Probabilistic sub-linear estimate | Multi-hash array probabilistic frequency tracker |
-| **Lossy Counting** | $O(\frac{1}{\epsilon} \log(\epsilon N))$ | Guaranteed bound | Fixed bucket interval stream pruning |
-| **Sliding Window Counter**| $O(W)$ | Exact | Tracks precise frequency in sliding time window $W$ |
+| `/api/v1/trends` | GET | `region=US`, `limit=10` | `{"trends": [{"rank": 1, "topic": "#SuperBowl", "tweet_volume": 482000, "spike_score": 94.2}]}` |
 
-### Trending Velocity Score (Z-Score & TF-IDF Derivative)
+### Trending Topics Leaderboard Data Model
 
-$$Z = \frac{x_t - \mu}{\sigma}$$
+| Field Name | Data Type | Storage Engine | Purpose |
+|---|---|---|---|
+| `topic_key` | String (e.g., `#SuperBowl`)| Redis ZSET / Cassandra | Unique hashtag or keyword topic. |
+| `spike_score` | Float | Redis ZSET | Calculated velocity score powering Redis leaderboard order. |
+| `count_min_sketch` | Byte Array | Flink State Store | Probabilistic frequency counter array. |
+| `volume_1h` | BigInt | Redis Cache | Total event volume in current 1-hour window. |
 
-Where:
-- $x_t$: Current frequency count of hashtag in time window $t$.
-- $\mu$: Expected historical mean frequency of hashtag.
-- $\sigma$: Standard deviation of historical frequency.
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Velocity Spike Scoring over Raw Volume**| Detects true breaking events instantly while excluding perpetually popular generic keywords. | Noisy spikes from spam bots can temporarily trigger false-positive trends. | Social media trending topic calculation. |
+| **Count-Min Sketch Data Structure** | Sub-linear memory consumption; processes millions of events per second in RAM. | Over-estimates term frequency slightly due to hash collisions (no under-estimation). | Heavy hitter detection in high-velocity streaming data. |
+| **Apache Flink Stream Processing** | Sub-second event window processing; built-in stateful fault tolerance and event-time semantics.| Operational complexity of managing stateful Flink streaming clusters. | Real-time stream analytics engines. |
 
 ### Key takeaway
-Detect trending topics using **Apache Flink streaming** paired with **Count-Min Sketch** data structures to compute real-time velocity spikes ($Z$-score) with sub-linear memory overhead.
+A **Trending Topics System** detects breaking events by processing streaming events in **Apache Flink**, relying on **Count-Min Sketch** for sub-linear memory frequency tracking and **Velocity Spike Scoring** to measure statistical acceleration over historical baselines.

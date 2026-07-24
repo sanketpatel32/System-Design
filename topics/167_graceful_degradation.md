@@ -4,46 +4,62 @@
 
 ---
 
-Graceful Degradation is a fallback design strategy where a system **intentionally disables non-essential features or reduces response quality** under heavy load or partial outages to keep core functionality operating.
+Graceful degradation is a design strategy where a system, when experiencing severe load or component failures, **intentionally disables non-critical features while keeping core functions operational**. Instead of suffering a total system outage, the system degrades its functionality to maintain baseline service availability.
 
-### Dynamic Degradation Flow
+### Graceful Degradation Architecture
+
+During extreme traffic spikes or backend outages, non-critical microservices are bypassed, serving degraded fallbacks or cached defaults.
 
 ```
-+-----------------------------------------------------------------------------------+
-|                            E-Commerce Homepage Request                            |
-+-----------------------------------------------------------------------------------+
-                                          |
-    +-------------------------------------+-------------------------------------+
-    | Core Services (Always Active)                                             | Secondary Services (Degradable)
-    v                                                                           v
-+-----------------------------------------+                 +-----------------------------------------+
-| Product Catalog & Checkout              |                 | Personalized Recommendations           |
-| (Database / Core API)                   |                 | (ML Recommendation Engine)              |
-+-----------------------------------------+                 +-----------------------------------------+
-    |                                                                           |
-    | (Status: 200 OK)                                                          v (Status: Slow / Outage!)
-    |                                                               +-----------------------------------------+
-    |                                                               | Fallback to Static Bestsellers List     |
-    v                                                               +-----------------------------------------+
-+-------------------------------------------------------------------------------------------------------------+
-| Renders Functional Homepage (Core Purchases Work; Recommendations Fallback to Static List)                   |
-+-------------------------------------------------------------------------------------------------------------+
+Normal Full-Feature Mode:
+Client Request ---> API Gateway ---> Order Service + Recommendation Service + Personalization API
+                                    (All 3 Services Return Data -> Rich UI Rendered)
+
+Graceful Degradation Mode (Under Heavy Surge / Recommendation Outage):
+Client Request ---> API Gateway ---> Order Service (CRITICAL - Processed Normally!)
+                                \--> Recommendation Service (BYPASSED / Degraded!)
+                                     Returns static fallback: "Popular Items List" (from Redis Cache)
+
+Result: User can still complete purchase! Non-critical widget falls back gracefully!
 ```
 
-### Feature Tiers & Degradation Matrix
+### Degradation Strategies Reference Matrix
 
-| Feature Tier | Service Examples | Degradation Behavior Under Load | Impact |
+| Feature Tier | Normal Behavior | Degraded Behavior Under Stress | Benefit / Impact |
 | :--- | :--- | :--- | :--- |
-| **Tier 0 (Critical)** | Auth, Payment, Core Checkout | Never degraded; maximum resource priority | Zero system compromise |
-| **Tier 1 (Important)**| Search, Order History | Serve from stale Redis cache | Minor data freshness delay |
-| **Tier 2 (Secondary)**| Personalization, Analytics | Disable live ML; serve static defaults | Generic recommendation list |
-| **Tier 3 (Optional)** | Live Chat Widget, User Badges | Completely drop component via feature flags | Visual UI omission |
+| **Product Search** | Personalized ML-ranked search results | Fallback to basic keyword search index | Bypasses heavy ML inference model latency |
+| **E-Commerce Home**| Live personalized user recommendations | Serve static cached "Trending Deals" list | Eliminates thousands of complex database queries |
+| **Comments / Reviews**| Live read/write comments stream | Hide comments widget entirely or serve read-only | Saves DB write IOPS for checkout flow |
+| **Image Resolution**| High-density uncompressed media | Serve compressed low-res WebP images | Reduces network bandwidth consumption |
 
-### Implementation Techniques
+### Automated Feature Flags & Shedding
 
-- **Load Shedding**: Drop low-priority background jobs or analytics logging when CPU exceeds 85%.
-- **Stale Cache Serving**: Return expired cached data (`stale-while-revalidate`) if backend DB read operations time out.
+- **Feature Flags / Toggles**: Operators use dynamic configuration flags (e.g. LaunchDarkly) to turn off heavy non-essential UI components instantly during outages.
+- **Load Shedding**: When CPU exceeds 90%, API gateways drop low-priority traffic (e.g. background analytics logging) with `429` or `503` responses while passing high-priority checkout traffic.
+
+### Key Trade-offs & Design Principles
+
+- ✅ **Preserves Core Business Revenue**: Ensures core conversion funnels (checkout, payment) remain online.
+- ❌ **Requires Careful Feature Tiering**: Products must be explicitly architected into critical vs non-critical dependencies ahead of time.
+### Dynamic Degradation Feature Toggle Code Example
+
+```python
+def get_user_dashboard(user_id):
+    dashboard_data = {
+        "user_profile": user_service.get_profile(user_id) # CRITICAL
+    }
+    
+    # Degrade feature gracefully if circuit breaker is open or feature flag disabled
+    if feature_flags.is_enabled("recommendations_widget") and not rec_circuit_breaker.is_open():
+        dashboard_data["recommendations"] = rec_service.get_personalized(user_id)
+    else:
+        # Fallback to static cached trending list
+        dashboard_data["recommendations"] = redis_cache.get("static_trending_items")
+        dashboard_data["is_degraded"] = True
+
+    return dashboard_data
+```
 
 ### Key takeaway
 
-Design systems for **graceful degradation by categorizing feature criticality**, falling back to static defaults or cached data to keep core business workflows operational.
+Graceful degradation maintains core system availability during outages by **bypassing non-critical features and serving cached or simplified fallbacks**.

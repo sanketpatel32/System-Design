@@ -4,45 +4,67 @@
 ---
 
 ### Overview
-A **QR Code Generator System** converts URLs, text strings, or contact data into 2D matrix barcode images (PNG/SVG) and serves them with minimal latency, supporting customization (colors, logos) and click analytics.
+A **QR Code Generator** system converts input payloads (URLs, vCards, text strings, Wi-Fi credentials) into 2D matrix barcode images (PNG, SVG, WebP) that can be scanned by smartphones and optical cameras.
 
-### Architecture Topology
+The system supports **Static QR Codes** (payload baked permanently into the image matrix) and **Dynamic QR Codes** (image encodes a shortened redirect link, allowing the destination payload to be modified post-creation without re-printing).
+
+### System Architecture & Dynamic QR Flow
 
 ```
-+--------+     1. POST /api/v1/qr/generate     +-------------------+
-| Client | -----------------------------------> | API Gateway       |
-+--------+                                      +-------------------+
-    ^                                                     |
-    |                                                     v 2. Check Cache
-    |                                           +-------------------+       Hit       +---------------+
-    |                                           | Redis Image Cache | --------------> | Fast Image    |
-    |                                           +-------------------+                 | CDN Delivery  |
-    |                                                     | Miss                      +---------------+
-    |                                                     v
-    |                                           +-------------------+       Save      +---------------+
-    | <--- 4. Image Binary / S3 CDN Link ------ | QR Generator Engine| -------------> | AWS S3 Bucket |
-    |                                           +-------------------+                 +---------------+
++--------------------------------------------------------------------------+
+| USER BROWSER / CAMERA SCAN                                               |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 1. Scans Dynamic QR Image
++--------------------------------------------------------------------------+
+| CDN EDGE CACHE (Serves Cached QR Image PNG / Handles Redirect)           |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 2. CDN Miss -> HTTP Request
++--------------------------------------------------------------------------+
+| API GATEWAY & QR RENDERING ENGINE                                        |
+|  [ Content Encoder ] --> [ RS Error Correction ] --> [ PNG Renderer ]    |
++--------------------------------------------------------------------------+
+                                     |
+                                     v 3. Write Redirect Mapping & Image Blob
++--------------------------------------------------------------------------+
+| REDIS CACHE & S3 OBJECT STORAGE (Stores Redirect Rules & QR PNG Blobs)  |
++--------------------------------------------------------------------------+
 ```
 
-### Core API Interface
+### Key Technical Mechanics
+1. **Reed-Solomon Error Correction:** Adds redundant data bits allowing QR codes to remain scannable even if up to 30% of the image surface is damaged or covered by a central logo.
+   - **Level L:** 7% error recovery.
+   - **Level M:** 15% error recovery.
+   - **Level Q:** 25% error recovery.
+   - **Level H (High):** 30% error recovery (Required when embedding corporate logos).
+2. **Dynamic QR Redirection Engine:** Encodes a shortened domain URL (e.g., `https://qr.link/a9X1`) in the image matrix. Scanning routes to backend redirect service which resolves destination dynamically.
 
-| Endpoint | Method | Parameters | Response |
+### API Interface Specifications
+
+| Endpoint | Method | Request Payload | Response Payload |
 |---|---|---|---|
-| `/api/v1/qr/generate` | `POST` | `{"data": "https://...", "size": 300, "format": "png", "error_correction": "M"}` | `200 OK` -> Image binary or CDN URL |
-| `/api/v1/qr/dynamic` | `POST` | `{"target_url": "https://..."}` | `201 Created` -> Redirect QR code mapping |
+| `/api/v1/qr/generate` | POST | `{"type": "DYNAMIC", "target_url": "https://example.com", "logo_url": "s3://logo.png", "ecc_level": "H", "format": "png"}` | `{"qr_id": "qr_991", "image_url": "https://cdn.qr.com/qr_991.png", "redirect_key": "a9X1"}` |
+| `/api/v1/qr/{id}` | PUT | `{"target_url": "https://new-destination.com"}` | `{"status": "UPDATED", "target_url": "https://new-destination.com"}` |
 
-### Error Correction Level Matrix
+### Data Model & Schema
 
-| Level | Recovery Capacity | Trade-off | Use Case |
+| Field Name | Data Type | Storage Engine | Purpose |
 |---|---|---|---|
-| **L (Low)** | ~7% damage restored | Smallest matrix grid size | Low-density screen display |
-| **M (Medium)** | ~15% damage restored | Standard balance | Standard URLs on posters |
-| **Q (Quartile)**| ~25% damage restored | Higher grid density | Outdoor print media |
-| **H (High)** | ~30% damage restored | Densest grid; allows embedded logos | Branding with logo overlay in center |
+| `qr_id` | UUID | PostgreSQL | Unique Primary Key for QR metadata record. |
+| `qr_type` | Enum | Relational DB | `STATIC` vs `DYNAMIC`. |
+| `redirect_key` | String (Indexed) | Relational DB / Redis | Short link key encoded in dynamic QR image matrix. |
+| `target_payload` | Text | Relational DB | Destination URL, text string, or vCard payload. |
+| `image_s3_url` | String | Relational DB | S3 object location of generated PNG/SVG image. |
+| `scan_count` | Counter | Redis / ClickHouse | Tracking counter for dynamic QR scan analytics. |
 
-### Static vs Dynamic QR Codes
-- **Static QR Code**: Direct payload (URL/text) embedded directly into the matrix. Immutable once printed.
-- **Dynamic QR Code**: Matrix contains a short URL proxy (e.g., `https://qr.link/a9X2`). Server redirects to dynamic destination URL, allowing real-time target changes and click analytics tracking.
+### Architectural Trade-offs
+
+| Strategy / Choice | Advantages | Disadvantages | Best Used When |
+|---|---|---|---|
+| **Dynamic QR Codes** | Destination payload can be changed anytime after printing; enables scan analytics. | Requires redirect backend uptime; if service goes down, printed QR code breaks. | Marketing campaigns, restaurant menus, product packaging. |
+| **Static QR Codes** | Never expires; zero backend redirection dependency or network latency. | Payload cannot be changed once printed; no scan analytics tracking. | Wi-Fi setup codes, permanent physical product serial numbers. |
+| **Edge CDN Image Caching** | Serves pre-rendered QR image PNG files directly from CDN edge POPs under 10ms. | Dynamic QR customization (colors, logos) requires rendering engine computation on cache miss. | High-volume consumer QR code generation platforms. |
 
 ### Key takeaway
-Design QR Code generators using **Dynamic Short URLs** to allow post-print target modification and analytics tracking. Offload rendering CPU overhead by caching generated matrix images in **Redis** and **CDN**.
+**QR Code Generators** use **Reed-Solomon Error Correction** (Level H) to allow logo overlays without breaking readability. Use **Dynamic QR Codes** to decouple physical printed images from backend target destinations, enabling post-print updates and scan analytics.

@@ -4,51 +4,75 @@
 
 ---
 
-Rate Limiting for Protection is a defense mechanism that **caps incoming traffic volume** at system boundaries to protect downstream services from DDoS attacks, resource starvation, and noisy-neighbor tenants.
+Rate limiting for protection is a defensive control mechanism deployed at API Gateways and ingress proxies to **control the rate of incoming traffic consumed by clients**. It shields backend services against noisy neighbors, volumetric DDoS attacks, resource starvation, and brute-force abuse.
 
-### Perimeter Rate Limiting Architecture
+### Rate Limiter Ingress Architecture
+
+The rate limiter intercepts incoming HTTP requests, evaluating client quota keys against an in-memory counter store (e.g. Redis) before allowing traffic downstream.
 
 ```
-+--------+        1. HTTP Request (User IP: 1.2.3.4)        +------------------------+
-| Client | -----------------------------------------------> | API Gateway            |
-+--------+                                                  +------------------------+
-                                                                 |
-                                                                 v 2. Check Sliding Counter
-                                                            +------------------------+
-                                                            | Redis Counter Store    |
-                                                            +------------------------+
-                                                                 |
-                                     +---------------------------+---------------------------+
-                                     | Allowed (Count <= Limit)                              | Exceeded (Count > Limit)
-                                     v                                                       v
-                         +------------------------+                              +------------------------+
-                         | Backend Microservice   |                              | Return 429 Too Many    |
-                         +------------------------+                              | Requests + Retry-After |
-                                                                                 +------------------------+
++--------------+     1. HTTP POST /api/v1/resource     +--------------------+
+| Client App   | -------------------------------------> | Ingress Gateway    |
++--------------+                                        | & Rate Limiter     |
+                                                        +--------------------+
+                                                           /                                                   2. Check Quota (Redis) /                \ 3. Quota Exceeded!
+                                                           v                  v
+                                                +------------------+  +----------------------+
+                                                | Redis Counter    |  | HTTP 429 Too Many    |
+                                                | Key: `user_101`  |  | Requests             |
+                                                | Count: 101/100   |  | Retry-After: 30      |
+                                                +------------------+  +----------------------+
+                                                                                  |
+                                                                       Returned to Client Immediately!
 ```
 
-### Rate Limiting Algorithms Matrix
+### Rate Limiting Algorithms Comparison Matrix
 
-| Algorithm | How It Works | Burst Traffic Support | Memory Efficiency | Best For |
+| Algorithm | Mechanism | Memory Footprint | Burst Handling | Best Use Case |
 | :--- | :--- | :--- | :--- | :--- |
-| **Token Bucket** | Tokens refill at fixed rate \(R\); requests consume tokens | Excellent | High | General API Gateways (Envoy, Kong) |
-| **Leaky Bucket** | Requests enter queue; processed at constant rate | Smooths bursts | High | Traffic shaping for smooth writes |
-| **Fixed Window Counter** | Resets count every fixed minute/hour | Poor (Edge spikes) | Maximum | Simple IP rate limiting |
-| **Sliding Window Log** | Logs exact timestamp of every request | Precise | Poor (High RAM)| Strict security access endpoints |
+| **Token Bucket** | Tokens refill at fixed rate; requests consume tokens | Low (2 variables) | Excellent (Allows controlled bursts) | General API rate limiting (AWS, Stripe) |
+| **Leaky Bucket** | Requests enter queue; leak out at smooth constant rate | Queue Memory | Smooths Bursts (No burst traffic allowed) | E-commerce checkout queues |
+| **Fixed Window** | Counts requests per fixed time window (e.g. 1 min) | Minimal | Bad (Allows 2x burst across window boundary) | Basic rate protection |
+| **Sliding Window Log**| Logs exact request timestamps in sorted set | High memory | Perfect Precision | High-security financial APIs |
+| **Sliding Window Counter**| Combines current and previous window counts weighted | Minimal | Smooth Approximation | Distributed Redis Rate Limiters |
 
-### HTTP 429 Response Standard Headers
+### Standard Rate Limit HTTP Response Headers
+
+When rate limiting a client, APIs return `429 Too Many Requests` alongside diagnostic headers:
 
 ```http
 HTTP/1.1 429 Too Many Requests
-Content-Type: application/json
-Retry-After: 60
-X-RateLimit-Limit: 1000
+X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 0
-X-RateLimit-Reset: 1774358400
+X-RateLimit-Reset: 1721837400
+Retry-After: 60
+```
 
-{"error": "Quota exceeded. Try again in 60 seconds."}
+### Key Trade-offs & Production Considerations
+
+- ✅ **System Protection & SLA Enforcement**: Protects database and microservice infrastructure from traffic surges.
+- ❌ **Centralized Redis Bottleneck**: Rate-limiting checks add a network hop to every incoming request. Use local in-memory token buckets with periodic Redis sync.
+### Production Token Bucket Redis Lua Script
+
+```lua
+-- Redis Token Bucket Rate Limiter Lua Script
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local current_time = tonumber(ARGV[2])
+local clear_before = current_time - 60 -- 1 minute sliding window
+
+redis.call('ZREMRANGEBYSCORE', key, 0, clear_before)
+local current_requests = redis.call('ZCARD', key)
+
+if current_requests < limit then
+    redis.call('ZADD', key, current_time, current_time)
+    redis.call('EXPIRE', key, 60)
+    return 1 -- Allowed
+else
+    return 0 -- Rate Limited!
+end
 ```
 
 ### Key takeaway
 
-Protect internal services from traffic overload by **enforcing token bucket rate limits at the API Gateway**, returning HTTP 429 status responses with `Retry-After` headers.
+Rate limiting protects backend systems from overload by **monitoring request counts per client key and dropping excess traffic with HTTP 429 responses**.

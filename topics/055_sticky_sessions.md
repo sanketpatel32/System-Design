@@ -4,39 +4,42 @@
 
 ---
 
-Sticky sessions (session affinity) = **the LB routes requests from the same client to the
-same backend server**. Required for stateful services.
+**Sticky Sessions** (also known as Session Affinity) is a load balancing routing mechanism that binds a specific client's requests to the **exact same backend server node** for the entire duration of an active user session.
 
-### Why
-Some services keep **per-session state in memory** (shopping cart, websocket connection, in-
-memory session). If the next request goes to a different server, that state is lost.
+### Sticky Session Cookie Routing Topology
 
-### How to implement stickiness
-| Method | How |
-|--------|-----|
-| **Cookie insertion** | LB sets a cookie like `SERVERID=abc` and routes by it. |
-| **Application cookie** | App sets `JSESSIONID`, LB learns the mapping. |
-| **IP hash** | LB hashes client IP → server. Coarse (NAT breaks it). |
-| **URL parameter** | `?server=abc` in the URL (rare, ugly). |
+```
++-------------------------------------------------------------------------+
+|                  STICKY SESSION COOKIE ROUTING                          |
++-------------------------------------------------------------------------+
 
-### Trade-offs
-- ✅ Enables stateful apps without a shared session store.
-- ❌ Uneven load (one popular client overloads its server).
-- ❌ Server failure = session loss (must replicate or persist sessions).
-- ❌ Defeats auto-scaling / rebalancing.
-- ❌ Breaks if clients rotate IPs (mobile).
+  [ Client ] --( Request 1: No Cookie )--> [ Layer 7 Load Balancer ]
+                                                     |
+                                                     v (Selects Server 1)
+  [ Client ] <-- ( Response 1 + Set-Cookie: SERVERID=node_1 )--+
+  
+  [ Client ] --( Request 2: Cookie: SERVERID=node_1 )--> [ Load Balancer ]
+                                                               |
+                                                               v (Routes to Server 1)
+                                                       [ Server 1 (Local RAM State) ]
+```
 
-### Better alternatives
-- **Externalize session state** to Redis/DB. Then any server can serve any request — no
-  stickiness needed.
-- **Stateless JWT auth** — token carries claims, no server session.
+### Sticky Session Mechanisms Comparison
 
-### When sticky is OK
-- **Migration period** while moving state out of memory.
-- **Long-lived connections** (WebSocket) where you need the same server.
-- **Cache locality** (request hits server with warm cache).
+| Mechanism | Implementation Details | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| **Cookie-Based (LB Insert)**| Load balancer injects a tracking cookie (e.g., `AWSALB=node1`). | Transparent to backend app code; highly reliable. | Requires Layer 7 HTTP load balancer. |
+| **Cookie-Based (App Injected)**| Backend application sets custom session cookie (`JSESSIONID`). | Direct control by application logic. | App coupled to load balancer cookie format. |
+| **IP Hash (Source IP Affinity)**| Hash client IP address ($Hash(IP) \bmod N$) to pick server node. | Works at Layer 4 (TCP) without cookie parsing. | Clients behind NAT share 1 IP, causing server hotspotting. |
+
+### Architectural Pros and Cons
+
+- **Pros**: Enables stateful applications (storing user session data in server local RAM memory) without requiring an external centralized session cache.
+- **Cons**: Impairs horizontal auto-scaling elasticity; causes uneven load distribution (hotspotting); if a server crashes, all users pinned to that node lose active session state.
+
+### Modern Alternative: Centralized Distributed Session Store
+Rather than using sticky sessions, modern cloud architectures store user session state in an in-memory centralized database (**Redis or Memcached**), allowing application servers to remain completely **stateless**.
 
 ### Key takeaway
-Sticky sessions are a **crutch** for stateful services. Prefer externalizing state (Redis,
-JWT) so any server can serve any request. If you must use stickiness, use cookie-based (not IP
-hash) and have a plan for server failure.
+
+Sticky sessions route a client's requests to the same backend server using cookies or IP hashing. Avoid sticky sessions in modern cloud apps by offloading session state to a **centralized Redis cluster** to keep application servers stateless.

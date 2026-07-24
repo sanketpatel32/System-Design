@@ -4,49 +4,48 @@
 
 ---
 
-Authorization = **"are you allowed to do this?"** — happens after authentication. Decides
-whether an authenticated user may perform the requested action.
+**API Authorization** is the process of verifying **what permissions and actions an authenticated identity is allowed to perform** on a specific resource. Authorization answers the core security question: *"Are you allowed to do this?"*
 
-### Models
-| Model | Description |
-|-------|-------------|
-| **RBAC** (Role-Based) | User has a role (admin, editor, viewer); role grants permissions. |
-| **ABAC** (Attribute-Based) | Permissions based on attributes (user dept, resource owner, time of day). |
-| **ACL** | Per-resource list of allowed users. |
-| **ReBAC** (Relationship-Based) | Google Zanzibar-style: relations between objects ("alice is owner of doc:1"). |
+### Centralized Policy Enforcement Architecture
 
-### RBAC example
-```python
-@require_role("editor")
-def update_article(id): ...
 ```
-Simple, common. Doesn't scale to fine-grained ("alice can edit only her own articles").
++-------------------------------------------------------------------------+
+|                  POLICY ENFORCEMENT POINT (PEP) FLOW                    |
++-------------------------------------------------------------------------+
 
-### ABAC example
+  [ Authenticated Client ] (JWT Claims: { role: "editor", department: "sales" })
+             |
+             | Request: DELETE /v1/documents/99
+             v
+  +-----------------------------------------------------------------------+
+  | POLICY ENFORCEMENT POINT (PEP / API Gateway / Service)                |
+  +-----------------------------------------------------------------------+
+             |
+             v (Evaluate Policy: Can editor in sales DELETE doc 99?)
+  +-----------------------------------------------------------------------+
+  | POLICY DECISION POINT (PDP / Open Policy Agent OPA / Casbin)          |
+  +-----------------------------------------------------------------------+
+             |
+             +-----------------------+-----------------------+
+             | (Allowed: True)       | (Allowed: False)      |
+             v                       v                       v
+  [ Forward to Backend Service ]  [ Return HTTP 403 Forbidden ]
 ```
-ALLOW update_article IF
-  user.role == "editor" AND
-  article.author_id == user.id AND
-  time.now() < article.deadline
-```
-More expressive; needs an engine (OPA, Cedar).
 
-### AuthZ vs AuthN
-- **AuthN** = who you are (login).
-- **AuthZ** = what you can do (permissions).
-- You can be authenticated but unauthorized (401 vs 403).
+### Authorization Models Comparison
 
-### Where to enforce
-- **At the gateway**: coarse (this user can hit `/admin` at all?).
-- **In the service**: fine-grained (can this user edit this article?).
-- **At the data layer**: row-level security in Postgres.
+| Authorization Model | Mechanism | Granularity | Complexity | Best Use Cases |
+| :--- | :--- | :--- | :--- | :--- |
+| **RBAC (Role-Based Access Control)** | Permissions tied to named roles (`Admin`, `Editor`, `Viewer`). Users assigned roles. | Coarse-Grained | Low | Standard SaaS apps, administrative portals |
+| **ABAC (Attribute-Based Access Control)**| Permissions dynamically evaluated on user, resource, and environment attributes. | Fine-Grained | High | Enterprise security, HIPAA/GDPR compliance data access |
+| **ReBAC (Relationship-Based)** | Permissions granted based on object relationships (Google Zanzibar model). | Ultra Fine-Grained | Very High | Google Drive sharing ("User X is Owner of Doc Y") |
+| **ACL (Access Control Lists)** | Explicit list of permitted users attached directly to each individual object. | Fine-Grained | Medium | File systems, AWS S3 bucket policies |
 
-### Common bugs
-- **BOLA** (Broken Object-Level Authorization) — forgot to check ownership. OWASP #1.
-- **Forced browsing** — `/users/123` works because user is logged in, but they aren't user 123.
-- **Mass assignment** — request includes `role=admin`, you blindly save it.
+### HTTP Authorization Responses
+
+- **401 Unauthorized**: Authentication missing or invalid token (*"Who are you?"*).
+- **403 Forbidden**: Identity verified, but client lacks permission for action (*"You shall not pass"*).
 
 ### Key takeaway
-Authorization is **per-request, per-resource**. After auth'ing the user, always check they can
-do this specific action on this specific resource. OWASP's #1 API risk is broken object-level
-authorization — get this right.
+
+Decouple authorization logic from application code using standardized policy engines (**Open Policy Agent - OPA**). Implement **RBAC** for simple role enforcement and **ABAC / ReBAC** for fine-grained object-level access controls. Return **403 Forbidden** on authorization failure.

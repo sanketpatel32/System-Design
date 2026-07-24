@@ -4,48 +4,57 @@
 
 ---
 
-Distributed Consensus is the process of getting multiple autonomous nodes in a distributed network to **agree on a single data value, state machine input, or sequence of events**, even in the presence of node crashes or network partitions.
+Distributed consensus is the fundamental problem of getting **multiple independent, potentially fault-prone nodes to agree on a single data value or state transition** over an unreliable network. Consensus guarantees state machine replication and data consistency across distributed clusters.
 
-### Consensus Protocol Architecture (Raft Leader Log Replication)
+### Consensus Protocol Architecture (Leader-Follower State Machine)
+
+Consensus algorithms (such as Raft or Paxos) elect a single Leader node responsible for managing a replicated log across Follower nodes.
 
 ```
-+------------------+          1. Write Request (v=42)          +------------------+
-| Client           | ----------------------------------------> | Leader Node      |
-+------------------+                                           +------------------+
-                                                                 | Append Entry
-                                                                 | (Term 1, Index 5)
-                                                                 v
-                                         +-----------------------+-----------------------+
-                                         | 2. Replicate Log (AppendEntries RPC)          |
-                                         v                                               v
-                             +-----------------------+                       +-----------------------+
-                             | Follower Node 1       |                       | Follower Node 2       |
-                             | (Appends & ACKs)      |                       | (Appends & ACKs)      |
-                             +-----------------------+                       +-----------------------+
-                                         |                                               |
-                                         +-----------------------+-----------------------+
-                                                                 | 3. Quorum Majority ACK (2 of 3)
-                                                                 v
-                                                     +-----------------------+
-                                                     | Leader Commits & ACKs |
-                                                     +-----------------------+
++----------------------------------------------------------------------------------------------------+
+|                                         Client Application                                         |
++----------------------------------------------------------------------------------------------------+
+                                                   |
+                                       Write Request (`SET x = 10`)
+                                                   v
++----------------------------------+   1. Append Log Entry   +----------------------------------+
+|  Leader Node (Raft Term 1)       | ----------------------> |  Follower Node A                 |
+|  - Appends Entry to Local Log    | <---------------------- |  - Replicates Entry to Log       |
+|  - Waits for Majority Quorum ACK |   2. ACK Replicated     +----------------------------------+
++----------------------------------+                             |
+                 |                                               v
+                 | 1. Append Log Entry                       +----------------------------------+
+                 +-----------------------------------------> |  Follower Node B                 |
+                 <------------------------------------------ |  - Replicates Entry to Log       |
+                   2. ACK Replicated                         +----------------------------------+
+                 |
+                 v 3. Majority Replicated (2 of 3) -> Commit Entry!
++----------------------------------------------------------------------------------------------------+
+|  Leader applies state transition and responds `Success` back to Client                              |
++----------------------------------------------------------------------------------------------------+
 ```
 
-### Protocol Comparison Matrix
+### Major Consensus Algorithms Comparison Matrix
 
-| Protocol | Leader Architecture | Consensus Model | Latency | Typical Target Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **Paxos (Multi-Paxos)**| Single Leader | Two-Phase Propose/Accept | 2 RTTs | Chubby, Google Spanner |
-| **Raft** | Strong Single Leader | Leader Election + Log Replication | 1-2 RTTs | etcd, Consul, CockroachDB |
-| **Zab** | Primary-Backup Leader | Epoch Proposal Commit | 1-2 RTTs | Apache ZooKeeper |
-| **PBFT / Tendermint** | Leader / Rotating | Byzantine Fault Tolerant (2f+1) | High (O(N^2)) | Blockchains, Untrusted Networks |
+| Algorithm | Fault Tolerance Model | Key Characteristic | Common Production Implementations |
+| :--- | :--- | :--- | :--- |
+| **Paxos** | Crash-Stop / Crash-Recovery | Formal mathematical consensus foundation; complex to implement | Google Chubby, Spanner |
+| **Raft** | Crash-Stop / Crash-Recovery | Decomposed into Leader Election, Log Replication, Safety | etcd, HashiCorp Consul, CockroachDB |
+| **Zab** | Crash-Stop / Crash-Recovery | Primary-backup atomic broadcast protocol designed for tree state | Apache ZooKeeper |
+| **PBFT** | Byzantine (Malicious Nodes) | Tolerates arbitrary or malicious node failures (Requires $3f+1$ nodes) | Blockchain, Hyperledger |
 
-### Key Technical Concepts
+### Core Consensus Rules (Raft Framework)
 
-- **Quorum Requirements**: To commit state safely, a proposal must be written to a majority of nodes: \(N/2 + 1\).
-- **Safety Properties**: Only one leader per term (Term Uniqueness) and committed log entries are never overwritten (Leader Completeness).
-- **Split-Brain Prevention**: Ensures disjoint node subsets cannot both form a valid voting majority.
+1. **Leader Election**: A node becomes Candidate if heartbeat times out. Obtains votes from a majority of cluster nodes to become Leader.
+2. **Log Replication**: The Leader accepts client commands, appends them to its log, and forces Followers to replicate its log entries in identical order.
+3. **Safety Guarantee**: If a server has applied a log entry at a given index to its state machine, no other server will ever apply a different log entry for that index.
+
+### Trade-offs & Performance Constraints
+
+- ✅ **Strong Consistency & High Availability**: System continues operating correctly as long as a majority of nodes ($\lfloor N/2 floor + 1$) remain operational.
+- ❌ **Write Latency Penalty**: Every write operation requires network round trips to achieve majority quorum consensus.
+- ❌ **Throughput Limitation**: Consensus throughput is bounded by single-leader network and disk log flush speeds.
 
 ### Key takeaway
 
-Distributed consensus relies on **majority voting (quorums) and replicated log state machines** to maintain a single source of truth across failing network nodes.
+Distributed consensus guarantees **replicated state machine consistency across node failures** through majority quorum voting and ordered log replication (Raft/Paxos).

@@ -4,49 +4,46 @@
 
 ---
 
-A webhook = **an HTTP POST your server sends to a client when something happens**. It's the
-"inverse" of an API — instead of the client polling, the server pushes.
+A **Webhook** (also called an HTTP push API or reverse API) is an **asynchronous event-driven communication mechanism** where a server automatically transmits an HTTP `POST` payload to a client's configured URL endpoint whenever a specific state change or event occurs.
 
-### Pattern
+### Event-Driven Webhook Delivery Topology
+
 ```
-1. Client registers a URL: POST /webhooks {url: "https://client.com/hook", events: ["order.*"]}
-2. Something happens in your system.
-3. You POST an event to the registered URL:
-     POST https://client.com/hook
-     {event: "order.created", data: {...}}
-4. Client returns 200 OK to acknowledge.
++-------------------------------------------------------------------------+
+|                  EVENT-DRIVEN WEBHOOK DELIVERY FLOW                     |
++-------------------------------------------------------------------------+
+
+  [ Provider Platform (e.g., Stripe) ]
+           |
+           | 1. Payment Succeeded Event Fired
+           v
+  +-----------------------------------------------------------------------+
+  | ASYNCHRONOUS WEBHOOK DISPATCHER ENGINE                                |
+  | Generates HMAC Signature -> Queues in Kafka/SQS -> Retries on Failure |
+  +-----------------------------------------------------------------------+
+           |
+           | 2. HTTP POST https://merchant.com/webhooks/stripe
+           |    Headers: X-Stripe-Signature: t=167...,v1=5f...
+           v
+  [ Consumer Server (Merchant) ] --( Return 200 OK )--> [ Dispatcher ]
 ```
 
-### Use cases
-- **Payment providers** (Stripe, Razorpay) notify you when a charge succeeds.
-- **GitHub** notifies on push, PR, issue.
-- **CI/CD** notifies on build complete.
-- **WhatsApp/SMS** delivery receipts.
+### Webhooks vs. HTTP Polling Comparison
 
-### Delivery guarantees
-- **At-least-once** — you'll likely deliver duplicates; clients must be idempotent.
-- **Retries with backoff** — retry on 5xx or timeout, give up after N attempts.
-- **Dead-letter** — store undeliverable events for inspection.
+| Dimension | Webhooks (Event-Driven Push) | HTTP Polling (Pull) |
+| :--- | :--- | :--- |
+| **Communication Style**| Real-time push (Provider calls Consumer). | Periodic pull (Consumer polls Provider). |
+| **Network Traffic** | Zero overhead; traffic occurs only when events fire. | High overhead; 95%+ of polls return no change. |
+| **Latency** | Instantaneous real-time notification. | Delayed by polling interval (e.g., 5-60 sec). |
+| **Infrastructure Setup**| Consumer must expose public HTTPS receiver URL. | Consumer executes outgoing standard HTTP GET requests. |
+| **Failure Recovery** | Requires retry queue with exponential backoff. | Simple client retry on next polling loop. |
 
-### Security
-- **HTTPS mandatory** for the webhook URL.
-- **Sign the payload** (HMAC) so the client can verify it really came from you:
-  ```
-  X-Signature: hex(hmac_sha256(payload, secret))
-  ```
-- **Timestamp** to prevent replay attacks.
-- **IP allowlist** your source IPs (optionally).
+### Webhook Security & Reliability Guarantees
 
-### Idempotency
-- Each event has a unique **event_id**.
-- Clients track seen IDs and skip duplicates.
-
-### Operational concerns
-- **Slow clients** can back up your queue — async, with timeouts.
-- **Circuit breaker** if a client keeps failing.
-- **Webhook logs** for debugging ("did you send it?").
+1. **HMAC Signature Verification**: Providers include cryptographic signatures (`X-Hub-Signature-256`) generated using a shared secret key, allowing receivers to verify payload integrity and origin.
+2. **At-Least-Once Delivery & Retries**: Webhook dispatchers retry failed deliveries (non-2xx responses) using exponential backoff over 24-48 hours.
+3. **Consumer Idempotency**: Because retries cause duplicate webhook deliveries, receivers must track delivered event IDs (`evt_123`) to prevent duplicate processing.
 
 ### Key takeaway
-Webhooks are how systems push events to each other without polling. Design for **at-least-once
-delivery + signatures + idempotent receivers**. Always include an event_id so clients can
-deduplicate.
+
+Webhooks provide **event-driven, real-time push notifications** over HTTP POST. Always secure webhooks using **HMAC signature verification**, handle **duplicate deliveries idempotently**, and process incoming payloads asynchronously via message queues.

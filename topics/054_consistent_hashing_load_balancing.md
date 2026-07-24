@@ -4,49 +4,39 @@
 
 ---
 
-Consistent hashing = **route requests by hashing a key (user_id, IP) onto a ring**, so the
-same key always goes to the same server — and only K/N keys move when a server joins or leaves.
+**Consistent Hashing** is a distributed hashing technique that maps keys (such as `user_id` or IP address) and server nodes onto a **virtual circular ring ($0$ to $2^{32}-1$)**. When nodes are added or removed, consistent hashing reallocates only $K/N$ keys (where $K$ is total keys and $N$ is total servers), preventing massive cache invalidation storms.
 
-### The problem it solves
-Naive hash: `server = hash(key) % N`. If N changes (server added/removed), **almost all keys
-remap** — caches wiped, sessions lost, hot shards cold.
+### Consistent Hash Ring Architecture
 
-### Consistent hashing
 ```
-Imagine a ring of hash values 0..2^32-1.
-Place each server at hash(server_id) on the ring.
-Place each key at hash(key).
-Each key is owned by the next server clockwise.
++-------------------------------------------------------------------------+
+|                      CONSISTENT HASH RING TOPOLOGY                      |
++-------------------------------------------------------------------------+
+
+                       Node A (Virtual Nodes: A1, A2)
+                           /                  \
+                          /                    \
+     Key 1 (mapped) ---> [ Hash Ring 0..2^32-1 ] <--- Key 2 (mapped)
+                          \                    /
+                           \                  /
+                       Node B (Virtual Nodes: B1, B2)
+                       
+  Adding Node C reallocates ONLY keys between Node C and its predecessor.
+  99%+ of cache keys remain mapped to existing nodes without cache misses.
 ```
-```
-        S1
-       /    \
-   key3     key1
-     |       |
-   key2 -- S2 -- S3
-```
 
-### Why it wins
-- **Add a server**: only keys between it and its predecessor move.
-- **Remove a server**: only its keys redistribute (to its successor).
-- Expected **K/N keys remap** (not K), preserving cache locality.
+### Traditional Hashing ($Key \bmod N$) vs. Consistent Hashing
 
-### Virtual nodes (vnodes)
-Each physical server is placed at **multiple** points on the ring (e.g. 150 vnodes) for even
-distribution. Otherwise clustering leaves some servers overloaded.
+| Feature | Traditional Modulo Hashing ($Hash(K) \bmod N$) | Consistent Hashing |
+| :--- | :--- | :--- |
+| **Node Scaling Behavior**| Adding/removing 1 node changes $N$, causing **100% of keys to remap**. | Adding/removing 1 node remaps only **$1/N$ of total keys**. |
+| **Cache Impact** | Total cache invalidation storm; causes database overload. | Minimal cache misses; remaining node caches stay intact. |
+| **Load Distribution** | Hot-spotting if key hashes cluster. | Uniform distribution via **Virtual Nodes (Tokens)**. |
+| **Primary Use Cases** | Simple single-node routing. | Distributed caches (Memcached, Redis Cluster), DynamoDB, Cassandra. |
 
-### Use cases
-- **Distributed caches** (Memcached, Redis Cluster).
-- **Database sharding** (Cassandra, DynamoDB).
-- **Sticky load balancing** by user/IP.
-- **CDN edge selection**.
-
-### Variants
-- **Rendezvous hashing** (HRW): similar properties, simpler to compute, O(N) lookup but better
-  balance for small N.
-- **Maglev hashing** (Google): used in their LB, ~consistent + lookup table.
+### Virtual Nodes (Tokens)
+To prevent non-uniform data distribution (hotspots), each physical server node is assigned multiple **virtual nodes (e.g., 100-250 virtual tokens)** scattered across the hash ring. This ensures uniform key distribution across physical servers.
 
 ### Key takeaway
-Use consistent hashing whenever you need **key→server stickiness** AND **membership changes**.
-It minimizes data movement, preserving cache hit rates across scaling events. Standard in
-distributed caches and sharded DBs.
+
+Consistent Hashing minimizes key remapping when servers scale out or fail, reallocating only **$1/N$ of keys**. Use consistent hashing with **Virtual Nodes** to build scalable distributed caches (Redis Cluster, Memcached) and stateful partition routers.

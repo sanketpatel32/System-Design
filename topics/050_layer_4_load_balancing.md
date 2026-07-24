@@ -4,47 +4,40 @@
 
 ---
 
-Layer 4 (L4) load balancing operates at the **transport layer** — it forwards TCP/UDP
-connections based on IP and port, without looking at the application payload.
+**Layer 4 (L4) Load Balancing** operates at the **Transport Layer** of the OSI model (TCP/UDP). L4 load balancers route network traffic based solely on packet header metadata—**Source IP, Source Port, Destination IP, Destination Port, and IP Protocol**—without decrypting or inspecting the HTTP payload contents.
 
-### How it works
+### Layer 4 Packet Forwarding Topology
+
 ```
-Client (1.2.3.4:55000) -> LB (10.0.0.1:443)
-                          LB picks backend 10.0.0.50:8443
-                          NAT/DNAT rewrites destination
-                          Client <-> backend (full duplex TCP)
++-------------------------------------------------------------------------+
+|                  LAYER 4 PACKET FORWARDING TOPOLOGY                     |
++-------------------------------------------------------------------------+
+
+  [ Client Packet ] (Src: 203.0.113.5:54321 -> Dst: 198.51.100.1:443 [TCP])
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | LAYER 4 LOAD BALANCER (AWS NLB / HAProxy TCP Mode / IPVS)             |
+  | Inspects Layer 4 TCP/IP Header ONLY (No TLS Decryption / No HTTP Parsing)
+  +-----------------------------------------------------------------------+
+          |
+          v (NAT / Direct Server Return - DSR Forwarding)
+  [ Backend App Server ] (Dst modified to 10.0.1.42:443)
 ```
 
-### Properties
-- **Fast** — no HTTP parsing, just packets.
-- **Protocol-agnostic** — works for any TCP/UDP service (MySQL, Redis, gRPC, web).
-- **Limited routing** — decisions based only on src/dst IP+port.
-- **No application-level features** — no header rewriting, no path routing.
+### Layer 4 Routing Techniques
 
-### Algorithms at L4
-- Round robin, least connections, source-IP hash.
-- **DNAT** (destination NAT) rewrites packet destination.
-- **Direct Server Return (DSR)** — response bypasses LB for higher throughput.
+| Technique | Mechanism | Performance / Overhead | Use Case |
+| :--- | :--- | :--- | :--- |
+| **NAT (Network Address Translation)**| Modifies destination IP/Port of incoming TCP packets to match selected target server. | Medium (LB processes both request and response paths). | Standard cloud L4 balancers |
+| **Direct Server Return (DSR)** | Modifies destination MAC address; backend servers respond directly to clients. | **Ultra-High Throughput** (LB handles ingress packets only). | Streaming platforms, video ingest, massive scale CDN |
+| **IP Tunneling (Encapsulation)**| Encapsulates IP packet inside outer IP header (IP-in-IP). | High throughput across different subnets. | Multi-datacenter L4 traffic routing |
 
-### Common L4 LBs
-- **HAProxy** (in L4 mode), **NGINX** (stream), **AWS NLB**, **IPVS** (Linux).
-- **AWS Network Load Balancer** — handles millions of req/s, ultra-low latency.
+### Layer 4 Pros and Cons
 
-### When to choose L4
-- **Very high throughput / low latency** needed.
-- **Non-HTTP protocols** (TCP services, databases, games).
-- **TLS passthrough** (terminate on backend, not LB).
-- **Simple topologies** without path/header routing.
-
-### L4 vs L7
-| | L4 | L7 |
-|--|----|----|
-| Layer | Transport (TCP/UDP) | Application (HTTP) |
-| Sees payload | No | Yes |
-| Routing | IP+port | URL, headers, cookies |
-| Features | Basic | Rich (auth, cache, rewrite) |
-| Speed | Faster | Slower |
+- **Pros**: Extremely fast processing (millions of QPS per node), low CPU consumption (no TLS decryption overhead), protocol agnostic (handles TCP, UDP, gRPC, MQTT, databases).
+- **Cons**: Cannot inspect HTTP URIs, headers, or cookies; cannot perform content-based routing or smart caching.
 
 ### Key takeaway
-Use L4 when you need raw throughput, non-HTTP protocols, or TLS passthrough. Choose L7 when you
-need path/header-based routing, content-based policies, or HTTP-level features.
+
+Layer 4 load balancers route traffic at the **TCP/UDP transport layer** based on IP addresses and ports. Use L4 balancers (like AWS NLB or HAProxy TCP mode) for extreme throughput (>100k QPS per node) and non-HTTP protocols.

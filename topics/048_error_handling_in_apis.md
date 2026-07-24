@@ -4,55 +4,64 @@
 
 ---
 
-Good error handling turns "the API broke" into "the client knows exactly what to do." Bad
-error handling fills your support inbox.
+**API Error Handling** is the practice of capturing runtime failures and presenting **clear, standardized, actionable error responses** to API consumers. Proper error handling avoids leaking internal stack traces while providing clients with exact failure diagnostics.
 
-### Principles
-1. **Use proper HTTP status codes** (4xx = client fix, 5xx = server fix).
-2. **Consistent error body** across all endpoints.
-3. **Machine-readable codes** — clients branch on these, not on messages.
-4. **Human-readable details** — for developers debugging.
-5. **Don't leak internals** (stack traces, SQL, hostnames).
+### Centralized Exception Handling Architecture
 
-### Standard error envelope
+```
++-------------------------------------------------------------------------+
+|                  CENTRALIZED API ERROR HANDLING PIPELINE                |
++-------------------------------------------------------------------------+
+
+  [ Client Request ]
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | CONTROLLER / APPLICATION SERVICE                                      |
+  | Raises Exception: EntityNotFoundException / ValidationException       |
+  +-----------------------------------------------------------------------+
+          |
+          v
+  +-----------------------------------------------------------------------+
+  | GLOBAL EXCEPTION HANDLER MIDDLEWARE (@ControllerAdvice)               |
+  | Maps Exception -> Logs Error -> Sanitizes Trace -> Formats RFC 7807  |
+  +-----------------------------------------------------------------------+
+          |
+          v
+  [ Return Structured JSON Payload + Standard HTTP Status Code ]
+```
+
+### Standardized Error Payload (RFC 7807 Problem Details)
+
+The IETF RFC 7807 standard defines a universal JSON schema for API errors:
+
+| Field Key | Type | Description | RFC 7807 Example |
+| :--- | :--- | :--- | :--- |
+| **`type`** | URI string | A URI reference identifying the specific error type definition. | `"https://api.example.com/errors/invalid-payment"` |
+| **`title`** | String | A short, human-readable summary of the error type. | `"Invalid Payment Method"` |
+| **`status`** | Integer | The HTTP status code generated for this occurrence. | `400` |
+| **`detail`** | String | A detailed human-readable explanation specific to this occurrence.| `"Credit card number 4111... has expired."` |
+| **`instance`** | URI string | A URI reference identifying the specific occurrence log trace. | `"/v1/payments/pay_9001/errors/tr_123"` |
+| **`invalid_params`**| Array | Field-level validation failure details. | `[{"name": "cvv", "reason": "CVV is required"}]` |
+
+### Concrete RFC 7807 JSON Response Example
+
 ```json
 {
-  "error": {
-    "code": "INVALID_PAYMENT_METHOD",
-    "message": "The provided card was declined.",
-    "details": {
-      "field": "card.number",
-      "decline_code": "insufficient_funds"
-    },
-    "request_id": "req_abc123"
-  }
+  "type": "https://api.example.com/errors/validation-error",
+  "title": "Your request parameters failed validation",
+  "status": 400,
+  "detail": "One or more fields in the request payload were invalid.",
+  "instance": "/v1/orders/err_8841",
+  "invalid_params": [
+    {
+      "name": "quantity",
+      "reason": "Must be greater than 0"
+    }
+  ]
 }
 ```
 
-### Common codes
-| HTTP | Code | Meaning |
-|------|------|---------|
-| 400  | INVALID_INPUT | Malformed payload |
-| 401  | UNAUTHENTICATED | No / bad token |
-| 403  | FORBIDDEN | Authenticated, no permission |
-| 404  | NOT_FOUND | Resource doesn't exist |
-| 409  | CONFLICT | Duplicate / version mismatch |
-| 422  | VALIDATION_FAILED | Syntactically valid, semantically bad |
-| 429  | RATE_LIMITED | Quota exceeded |
-| 500  | INTERNAL | Unexpected server bug |
-| 503  | UNAVAILABLE | Maintenance / overload |
-
-### Idempotency of errors
-If a request fails, the client retries. The error response itself should be **idempotent** — same
-request, same error, until the underlying problem is fixed.
-
-### Operational tips
-- **Log every 5xx** with a request_id.
-- **Alert** on 5xx rate > threshold.
-- **Don't expose stack traces** in production.
-- **Return Retry-After** with 429 / 503.
-
 ### Key takeaway
-Errors are part of the API contract. Use **correct status codes + machine-readable error codes +
-consistent envelope + request_id for tracing**. Clients should be able to recover automatically
-from 4xx and retry safely on 5xx.
+
+Implement global exception handling middleware to format all API failures into standardized **RFC 7807 Problem Details JSON payloads**. Never leak raw stack traces to production clients.
