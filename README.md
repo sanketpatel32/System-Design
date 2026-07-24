@@ -20,6 +20,7 @@ An **interactive study companion** to **300 system design topics** — search, r
 - **🃏 Flashcards** — spaced repetition built from every topic's "Key takeaway." Flip with <kbd>Space</kbd>, rate with <kbd>←</kbd>/<kbd>→</kbd>, and missed cards resurface sooner.
 - **📈 Dashboard** — overall completion ring, per-category progress bars, and recently viewed topics.
 - **🎲 Surprise me** — jump to a random topic when you're not sure what to study next.
+- **🔬 Incident Lab** — an interactive system-design detective game. Inherit a failing production system, uncover its hidden architecture from evidence, form a root-cause hypothesis, change the design, and run a deterministic simulation to see if your fix holds — or creates new failures. The first case, *Ghost Orders at Midnight*, teaches idempotency, retry semantics, and timeout ambiguity through play.
 - **🌙 Dark mode** — respects system preference, with a manual toggle that persists across sessions.
 - **⚡ Fully static** — `next build` exports the whole site to `out/`, hostable on GitHub Pages or any static host. No backend required.
 
@@ -43,6 +44,14 @@ Build a production static export:
 
 ```bash
 npm run build    # outputs to out/
+```
+
+Run the test suite (72 tests covering the game's domain, simulation, and integration paths):
+
+```bash
+npm test         # watch mode
+npm run test:run # one-shot
+npm run typecheck
 ```
 
 Preview the production build locally:
