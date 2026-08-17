@@ -18,9 +18,9 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
       <header className="mb-10">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-accent">
           Dashboard
-        </p>
+        </div>
         <h1 className="text-4xl font-bold tracking-tight">Your progress</h1>
         <p className="mt-3 text-lg text-ink-2">
           Everything is saved locally in your browser. Start marking topics in

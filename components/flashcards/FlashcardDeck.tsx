@@ -97,20 +97,38 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
 
   return (
     <div>
-      <div className="mb-5 flex items-center justify-between text-sm text-ink-3">
-        <span>
-          reviewed: <span className="font-semibold text-ink">{reviewed}</span>
-        </span>
-        <span>
+      {/* Session toolbar — progress through the deck on the left, mastery
+          counts on the right, with a slim bar underneath. */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-4 text-sm text-ink-3">
+          <span>
+            reviewed this session:{" "}
+            <span className="font-semibold text-ink">{reviewed}</span>
+          </span>
           {hydrated && (
-            <>
-              known:{" "}
-              <span className="font-semibold text-ok">{knownCount}</span> ·
-              unknown:{" "}
-              <span className="font-semibold text-warn">{unknownCount}</span>
-            </>
+            <span className="flex items-center gap-3">
+              <span>
+                known:{" "}
+                <span className="font-semibold text-ok">{knownCount}</span>
+              </span>
+              <span aria-hidden>·</span>
+              <span>
+                unknown:{" "}
+                <span className="font-semibold text-warn">{unknownCount}</span>
+              </span>
+            </span>
           )}
-        </span>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-paper-3">
+          <div
+            className="h-full rounded-full bg-accent transition-[width]"
+            style={{
+              width: `${Math.min(100, (reviewed / cards.length) * 100)}%`,
+              transitionDuration: "var(--dur-slow)",
+              transitionTimingFunction: "var(--ease-out)",
+            }}
+          />
+        </div>
       </div>
 
       {/* Card — outer element is a div with role=button (NOT a <button>) so the
@@ -180,14 +198,14 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
             <button
               type="button"
               onClick={skip}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-paper-2 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-ink-3 hover:text-ink"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-rule bg-paper-2 px-4 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-ink-3 hover:text-ink"
             >
               <X size={16} /> Skip
             </button>
             <button
               type="button"
               onClick={() => setFlipped(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-accent bg-accent px-4 py-2.5 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))] transition-colors hover:bg-accent-2"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-accent bg-accent px-5 py-3 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))] transition-colors hover:bg-accent-2"
             >
               <RotateCw size={16} /> Reveal
             </button>
@@ -197,14 +215,14 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
             <button
               type="button"
               onClick={() => advance(false)}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-warn/50 px-4 py-3 text-sm font-semibold text-warn transition-colors hover:bg-warn/10"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-warn/50 bg-paper px-4 py-3.5 text-sm font-semibold text-warn transition-colors hover:bg-warn/10 sm:py-3"
             >
               <ThumbsDown size={16} /> Didn&apos;t know it
             </button>
             <button
               type="button"
               onClick={() => advance(true)}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-ok/50 px-4 py-3 text-sm font-semibold text-ok transition-colors hover:bg-ok/10"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-ok/50 bg-paper px-4 py-3.5 text-sm font-semibold text-ok transition-colors hover:bg-ok/10 sm:py-3"
             >
               <ThumbsUp size={16} /> Knew it
             </button>
@@ -213,20 +231,16 @@ export function FlashcardDeck({ cards }: { cards: Card[] }) {
       </div>
 
       {/* Keyboard hints */}
-      <p className="mt-4 text-center text-xs text-ink-3">
-        Cards you miss resurface sooner ·{" "}
-        <kbd className="rounded border border-rule bg-paper-2 px-1 font-mono text-[10px]">
-          Space
-        </kbd>{" "}
-        flip,{" "}
-        <kbd className="rounded border border-rule bg-paper-2 px-1 font-mono text-[10px]">
-          ←
-        </kbd>
-        /
-        <kbd className="rounded border border-rule bg-paper-2 px-1 font-mono text-[10px]">
-          →
-        </kbd>{" "}
-        rate
+      <p className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-center text-xs text-ink-3">
+        <span>Cards you miss resurface sooner ·</span>
+        <span className="flex items-center gap-1">
+          <kbd className="kbd">Space</kbd> flip
+        </span>
+        <span aria-hidden>·</span>
+        <span className="flex items-center gap-1">
+          <kbd className="kbd">←</kbd>
+          <kbd className="kbd">→</kbd> rate
+        </span>
       </p>
     </div>
   );

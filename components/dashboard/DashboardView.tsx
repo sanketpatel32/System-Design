@@ -100,15 +100,18 @@ export function DashboardView({
                     <span className="font-semibold text-ink group-hover:text-accent">
                       {cat.name}
                     </span>
-                    <span className="text-sm text-ink-3">
+                    <span className="shrink-0 text-sm text-ink-3">
                       {done}/{cat.count}
+                      <span className="ml-1.5 font-mono text-xs">
+                        ({Math.round(pct)}%)
+                      </span>
                       {doing > 0 && (
                         <span className="text-warn"> · {doing} active</span>
                       )}
                     </span>
                   </div>
                   <div
-                    className="relative h-1.5 overflow-hidden rounded-full bg-paper-3"
+                    className="relative h-2 overflow-hidden rounded-full bg-paper-3"
                     role="progressbar"
                     aria-valuenow={Math.round(pct)}
                     aria-valuemin={0}
@@ -120,8 +123,12 @@ export function DashboardView({
                       style={{ width: `${doingPct}%` }}
                     />
                     <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width] var(--dur-slow) var(--ease-out)"
-                      style={{ width: `${pct}%` }}
+                      className="absolute inset-y-0 left-0 rounded-full bg-accent transition-[width]"
+                      style={{
+                        width: `${pct}%`,
+                        transitionDuration: "var(--dur-slow)",
+                        transitionTimingFunction: "var(--ease-out)",
+                      }}
                     />
                   </div>
                 </Link>
@@ -162,7 +169,7 @@ export function DashboardView({
       )}
 
       {/* Danger zone */}
-      <section className="rounded-xl border border-rule bg-paper-2/30 p-5">
+      <section className="rounded-xl border border-warn/30 bg-warn/5 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-ink">
@@ -211,10 +218,17 @@ function StatBox({
   tone: "ok" | "warn" | "accent";
 }) {
   const toneCls =
-    tone === "ok" ? "text-ok" : tone === "warn" ? "text-warn" : "text-accent";
+    tone === "ok"
+      ? "bg-ok/10 text-ok"
+      : tone === "warn"
+        ? "bg-warn/10 text-warn"
+        : "bg-accent/10 text-accent";
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-rule bg-paper-2/60 p-5 elev-xs">
-      <span className={toneCls} aria-hidden>
+    <div className="lift flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-5 elev-xs hover:border-accent/30">
+      <span
+        className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneCls}`}
+        aria-hidden
+      >
         {icon}
       </span>
       <span className="text-3xl font-bold tracking-tight text-ink">{value}</span>

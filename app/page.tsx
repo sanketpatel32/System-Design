@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  Layers,
+  FileCode,
+  Lightbulb,
+  ShieldAlert,
+} from "lucide-react";
 import { getAllCategories, getAllTopics, getStats } from "@/lib/content";
 import { HomeProgress } from "@/components/home/HomeProgress";
 import { HomeContinue } from "@/components/home/HomeContinue";
+import { RoadmapList } from "@/components/home/RoadmapList";
 import { SurpriseButton } from "@/components/home/SurpriseButton";
 
 export default function HomePage() {
@@ -12,21 +19,28 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 sm:px-8">
-      {/* Hero — two-column: title left, lede right (modern-minimal canonical). */}
-      <section className="grid grid-cols-1 gap-8 py-14 sm:py-20 lg:grid-cols-12 lg:gap-12">
+      {/* Hero — two-column: title left, lede right, over a faint dot-grid. */}
+      <section className="hero-texture grid grid-cols-1 gap-8 py-16 sm:py-24 lg:grid-cols-12 lg:gap-12">
         <div className="lg:col-span-7">
-          <p className="mb-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-            <span className="h-px w-6 bg-accent" aria-hidden />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
             Interactive study companion
-          </p>
+          </div>
           <h1 className="text-[clamp(2.5rem,6vw,4rem)] font-bold leading-[1.04] tracking-tight text-ink">
             System design,
             <br />
             finally organized.
           </h1>
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-2 lg:hidden">
+            {stats.total} topics — from <span className="font-medium text-ink">CAP</span> and{" "}
+            <span className="font-medium text-ink">scalability</span> to designing{" "}
+            <span className="font-medium text-ink">Twitter</span>,{" "}
+            <span className="font-medium text-ink">Uber</span>, and{" "}
+            <span className="font-medium text-ink">Kafka</span>.
+          </p>
         </div>
         <div className="flex flex-col justify-end lg:col-span-5">
-          <p className="text-lg leading-relaxed text-ink-2">
+          <p className="hidden text-lg leading-relaxed text-ink-2 lg:block">
             {stats.total} topics — from{" "}
             <span className="font-medium text-ink">CAP</span> and{" "}
             <span className="font-medium text-ink">scalability</span> to
@@ -53,29 +67,72 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stat row — elevated tiles with subtle separation (not the dated gap-px) */}
+      {/* Stat row — elevated tiles with icon anchors */}
       <section
         aria-label="Overview"
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
       >
         <HomeProgress total={stats.total} />
-        <StatTile value={stats.categories} label="categories" />
-        <StatTile value={stats.diagrams} label="architecture diagrams" />
-        <StatTile value={stats.takeaways} label="key takeaways" />
+        <StatTile
+          value={stats.categories}
+          label="categories"
+          icon={<Layers size={16} />}
+        />
+        <StatTile
+          value={stats.diagrams}
+          label="architecture diagrams"
+          icon={<FileCode size={16} />}
+        />
+        <StatTile
+          value={stats.takeaways}
+          label="key takeaways"
+          icon={<Lightbulb size={16} />}
+        />
       </section>
 
-      {/* Continue */}
-      <section className="mt-6">
+      {/* Continue + Incident Lab promo */}
+      <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <HomeContinue topics={topics} />
+        <Link
+          href="/game"
+          className="lift group relative flex flex-col justify-between gap-4 overflow-hidden rounded-xl border border-accent/30 bg-gradient-to-br from-accent/10 via-paper-2/60 to-paper-2/60 p-6 elev-sm hover:border-accent/60"
+        >
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+              <ShieldAlert size={15} aria-hidden />
+              Incident Lab · new
+            </span>
+            <ArrowRight
+              size={18}
+              className="text-ink-3 transition-all group-hover:translate-x-1 group-hover:text-accent"
+            />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold tracking-tight text-ink group-hover:text-accent">
+              Ghost Orders at Midnight
+            </h3>
+            <p className="mt-2 line-clamp-2 text-base text-ink-2">
+              Inherit a failing production system. Uncover its hidden
+              architecture from evidence, form a hypothesis, fix the design —
+              and simulate the outage to see if your fix holds.
+            </p>
+          </div>
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-[rgb(var(--accent-ink-rgb))] transition-colors group-hover:bg-accent-2">
+            Launch the incident <ArrowRight size={13} />
+          </span>
+        </Link>
       </section>
 
       {/* Roadmap */}
-      <section className="py-14" aria-labelledby="roadmap-heading">
+      <section
+        className="mt-16 border-t border-rule/60 pt-14"
+        aria-labelledby="roadmap-heading"
+      >
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               Learning order
-            </p>
+            </div>
             <h2 id="roadmap-heading" className="text-3xl font-bold tracking-tight">
               The roadmap
             </h2>
@@ -86,46 +143,32 @@ export default function HomePage() {
           </div>
           <Link
             href="/library"
-            className="hidden shrink-0 items-center gap-1 text-sm font-medium text-accent hover:gap-2 sm:inline-flex"
+            className="hidden shrink-0 items-center gap-1 text-sm font-medium text-accent transition-all hover:gap-2 sm:inline-flex"
           >
             all topics <ArrowRight size={14} />
           </Link>
         </div>
 
-        <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {categories.map((cat, i) => (
-            <li key={cat.slug}>
-              <Link
-                href={`/library?cat=${cat.slug}`}
-                className="lift group flex items-center gap-4 rounded-xl border border-rule bg-paper-2/60 p-4 elev-xs hover:border-accent/50 hover:bg-paper-3/50"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-paper-3 font-mono text-sm font-semibold text-ink-2 transition-colors group-hover:bg-accent group-hover:text-[rgb(var(--accent-ink-rgb))]">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-ink group-hover:text-accent">
-                    {cat.name}
-                  </span>
-                  <span className="text-sm text-ink-3">
-                    {cat.count} {cat.count === 1 ? "topic" : "topics"}
-                  </span>
-                </span>
-                <ArrowRight
-                  size={16}
-                  className="shrink-0 text-ink-3 transition-all group-hover:translate-x-1 group-hover:text-accent"
-                />
-              </Link>
-            </li>
-          ))}
-        </ol>
+        <RoadmapList categories={categories} />
       </section>
     </div>
   );
 }
 
-function StatTile({ value, label }: { value: number; label: string }) {
+function StatTile({
+  value,
+  label,
+  icon,
+}: {
+  value: number;
+  label: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-rule bg-paper p-5 elev-xs">
+    <div className="lift group flex flex-col gap-2 rounded-xl border border-rule bg-paper p-5 elev-xs hover:border-accent/40">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent" aria-hidden>
+        {icon}
+      </span>
       <span className="text-3xl font-bold tracking-tight text-ink">{value}</span>
       <span className="text-xs font-medium uppercase tracking-wider text-ink-3">
         {label}

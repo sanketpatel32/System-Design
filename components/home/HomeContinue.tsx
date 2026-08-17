@@ -27,7 +27,7 @@ export function HomeContinue({ topics }: { topics: Topic[] }) {
   return (
     <Link
       href={`/topics/${target.slug}`}
-      className="lift group flex flex-col gap-3 rounded-xl border border-rule bg-paper-2/60 p-6 elev-sm hover:border-accent/50 hover:bg-paper-3/50"
+      className="lift group flex flex-col justify-between gap-4 rounded-xl border border-rule bg-paper-2/60 p-6 elev-sm hover:border-accent/50 hover:bg-paper-3/50"
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
@@ -35,7 +35,7 @@ export function HomeContinue({ topics }: { topics: Topic[] }) {
         </span>
         <ArrowUpRight
           size={18}
-          className="text-ink-3 transition-colors group-hover:text-accent"
+          className="text-ink-3 transition-all group-hover:translate-x-0.5 group-hover:text-accent"
         />
       </div>
 
@@ -50,6 +50,10 @@ export function HomeContinue({ topics }: { topics: Topic[] }) {
           {target.takeaway ?? target.intro.slice(0, 160)}
         </p>
       </div>
+
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-lg border border-rule bg-paper px-4 py-2 text-xs font-bold uppercase tracking-wider text-ink-2 transition-colors group-hover:border-accent/50 group-hover:text-accent">
+        Keep reading
+      </span>
     </Link>
   );
 }

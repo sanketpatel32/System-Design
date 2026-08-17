@@ -77,23 +77,25 @@ export function Header() {
           >
             <Search size={14} className="text-ink-3" />
             <span>Search 300+ topics &amp; cases...</span>
-            <kbd className="ml-2 rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-3">
-              ⌘K
-            </kbd>
+            <kbd className="kbd ml-1">⌘K</kbd>
           </button>
 
           {/* Desktop nav */}
           <nav aria-label="Primary" className="ml-auto hidden items-center gap-1 md:flex">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-active={isActive(item.href)}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:bg-paper-3 hover:text-ink data-[active=true]:text-accent data-[active=true]:bg-accent/10"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  data-active={active}
+                  className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink-2 transition-colors hover:bg-paper-3 hover:text-ink data-[active=true]:bg-accent/10 data-[active=true]:font-semibold data-[active=true]:text-accent"
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
             <div className="mx-1 h-5 w-px bg-rule" aria-hidden />
             <ThemeToggle />
           </nav>
@@ -127,21 +129,34 @@ export function Header() {
           <nav
             id="mobile-menu"
             aria-label="Mobile"
-            className="border-t border-rule bg-paper md:hidden"
+            className="border-t border-rule bg-paper animate-fade-in md:hidden"
           >
-            <ul className="mx-auto max-w-6xl px-5 py-2 sm:px-8">
-              {NAV.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    data-active={isActive(item.href)}
-                    className="block rounded-lg px-3 py-2.5 text-base font-medium text-ink-2 transition-colors hover:bg-paper-3 hover:text-ink data-[active=true]:text-accent data-[active=true]:bg-accent/10"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+            <ul className="mx-auto max-w-6xl px-5 py-3 sm:px-8">
+              {NAV.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      data-active={active}
+                      className="flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium text-ink-2 transition-colors hover:bg-paper-3 hover:text-ink data-[active=true]:bg-accent/10 data-[active=true]:font-semibold data-[active=true]:text-accent"
+                    >
+                      {item.label}
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-1.5 rounded-full bg-accent opacity-0 transition-opacity data-[active=true]:opacity-100"
+                        data-active={active}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
+            <p className="border-t border-rule/60 px-5 py-3 text-center text-[11px] text-ink-3 sm:px-8">
+              Tip: tap the search icon or press{" "}
+              <kbd className="kbd">Ctrl K</kbd> to jump anywhere
+            </p>
           </nav>
         )}
       </header>

@@ -80,6 +80,70 @@ a:hover {
   border-radius: 999px;
 }
 
+/* Anchored headings must clear the sticky header, not hide under it. */
+:target,
+section[id],
+h2[id],
+h3[id] {
+  scroll-margin-top: 6rem;
+}
+
+/* Shared keyboard-hint chip (used by library, flashcards, header, search). */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid rgb(var(--rule-rgb));
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: rgb(var(--paper-2-rgb));
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: rgb(var(--ink-3-rgb));
+}
+
+/* Hero texture — faint dot grid + warm accent glow, layered under content. */
+.hero-texture {
+  position: relative;
+  isolation: isolate;
+}
+.hero-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(
+      rgb(var(--rule-rgb) / 0.55) 1px,
+      transparent 1px
+    );
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(
+    120% 100% at 70% 0%,
+    rgb(0 0 0 / 0.75),
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    120% 100% at 70% 0%,
+    rgb(0 0 0 / 0.75),
+    transparent 70%
+  );
+}
+.hero-texture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    42rem 20rem at 85% -10%,
+    rgb(var(--accent-rgb) / 0.09),
+    transparent 65%
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* ASCII diagram block — mono lives HERE, not in the headings.         */
 /* ------------------------------------------------------------------ */
@@ -101,14 +165,26 @@ a:hover {
 /* Elevation utilities — warm-tinted layered shadows (token-driven).   */
 /* .lift adds a hover/active micro-interaction for interactive cards.  */
 /* ------------------------------------------------------------------ */
-.elev-xs { box-shadow: var(--shadow-xs); }
-.elev-sm { box-shadow: var(--shadow-sm); }
-.elev-md { box-shadow: var(--shadow-md); }
-.elev-lg { box-shadow: var(--shadow-lg); }
+/* Declared inside @layer utilities so Tailwind variants (hover:, md:, …)
+   work on them — e.g. `elev-sm hover:elev-md`. */
+@layer utilities {
+  .elev-xs { box-shadow: var(--shadow-xs); }
+  .elev-sm { box-shadow: var(--shadow-sm); }
+  .elev-md { box-shadow: var(--shadow-md); }
+  .elev-lg { box-shadow: var(--shadow-lg); }
 
-/* Tailwind v3 has no `shadow-xs` step; alias it to the token so the
-   class isn't a silent no-op. */
-.shadow-xs { box-shadow: var(--shadow-xs); }
+  /* Tailwind v3 has no `shadow-xs` step; alias it to the token so the
+     class isn't a silent no-op. */
+  .shadow-xs { box-shadow: var(--shadow-xs); }
+
+  .animate-pulse-slow { animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .animate-edge-flow {
+    stroke-dasharray: 6 6;
+    animation: edge-flow 1.2s linear infinite;
+  }
+  .animate-fade-in { animation: fade-in 0.15s ease-out; }
+  .animate-modal-in { animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .lift {
@@ -276,14 +352,6 @@ a:hover {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.15s ease-out;
-}
-
-.animate-modal-in {
-  animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-slow,
   .animate-edge-flow,
@@ -302,15 +370,6 @@ a:hover {
 @keyframes signal-glow {
   0%, 100% { filter: drop-shadow(0 0 2px rgb(var(--accent-rgb) / 0.6)); }
   50% { filter: drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.9)); }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-edge-flow {
-  stroke-dasharray: 6 6;
-  animation: edge-flow 1.2s linear infinite;
 }
 
 .status-dot-pulse {

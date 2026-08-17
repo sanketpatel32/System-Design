@@ -113,7 +113,7 @@ export function LibraryBrowser({
               className="w-full rounded-lg border border-rule bg-paper-2 py-2.5 pl-10 pr-16 text-base text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {!query && (
-              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[10px] text-ink-3 sm:inline-flex">
+              <kbd className="kbd pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:inline-flex">
                 /
               </kbd>
             )}
@@ -190,14 +190,25 @@ export function LibraryBrowser({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-rule p-12 text-center">
-          <p className="text-base text-ink-2">No topics match those filters.</p>
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-rule px-6 py-16 text-center">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-paper-3 text-ink-3"
+            aria-hidden
+          >
+            <Search size={20} />
+          </span>
+          <p className="mt-4 text-base font-semibold text-ink">
+            No topics match those filters
+          </p>
+          <p className="mt-1 text-sm text-ink-3">
+            Try a different term, or clear everything and start fresh.
+          </p>
           <button
             type="button"
             onClick={resetFilters}
-            className="mt-3 text-sm font-medium text-accent hover:underline"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-rule bg-paper px-4 py-2 text-sm font-semibold text-ink-2 transition-colors hover:border-accent hover:text-accent"
           >
-            reset filters
+            <X size={14} /> Reset filters
           </button>
         </div>
       )}
@@ -223,7 +234,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       data-active={active}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink-2 transition-colors hover:border-accent/50 hover:text-ink data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-[rgb(var(--accent-ink-rgb))]"
+      className="inline-flex min-h-[2.25rem] shrink-0 items-center gap-1.5 rounded-full border border-rule bg-paper px-3.5 text-sm text-ink-2 transition-colors hover:border-accent/50 hover:text-ink data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:font-semibold data-[active=true]:text-[rgb(var(--accent-ink-rgb))]"
     >
       {icon}
       {label}
