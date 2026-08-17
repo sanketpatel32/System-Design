@@ -42,6 +42,20 @@
 - **Long-Lived Connections**: WebSockets, SSH sessions, gRPC streams, and database connection pools.
 - **Variable Execution Workloads**: E-commerce checkouts where some transactions execute in 10ms while others (reports, image processing) take 10 seconds.
 
+### How Connection Counts Stay Honest
+- **Increment/decrement points**: the counter rises when the LB forwards a request and falls when the response (or WebSocket close) completes — slow-consumer detection matters more than raw counts.
+- **Connection ≠ load**: a server holding 20 idle keep-alive sockets may be less loaded than one grinding through 3 heavyweight requests — least-*request* or least-*traffic* variants weigh bytes or in-flight HTTP requests instead of TCP sockets.
+- **Weighted least connections**: multiply each server's count by a capacity weight (`weight = 1/CPU or 1/throughput`) so bigger boxes absorb proportionally more — essential for heterogeneous fleets.
+- **State scope**: connection tables are per-LB-node; in horizontally scaled LB layers, use consistent hashing of clients to LB nodes (or shared state) to keep decisions coherent.
+
+### Failure & Draining Behavior
+| Scenario | Behavior |
+|---|---|
+| **Server slow (not down)** | Its count climbs, so new requests naturally route elsewhere — self-correcting without health checks. |
+| **Health check failure** | Node removed from rotation; its in-flight connections drain before culling. |
+| **Rolling deploy** | Connection-aware draining lets existing sockets finish while the node stops accepting new ones — zero dropped WebSockets. |
+| **All servers saturated** | LB falls back to queuing/503 per policy; least-connections at saturation just distributes the overload evenly. |
+
 ### Key takeaway
 
 Least Connections load balancing dynamically directs traffic to the server with the **fewest active open connections**. Use it for long-lived connection workloads (**WebSockets, database pools, long polling**) and variable execution tasks.

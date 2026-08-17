@@ -15,7 +15,7 @@ An **interactive study companion** to **300 system design topics** — search, r
 ## ✨ Features
 
 - **🗂️ Library** — all 300 topics searchable by title/category, filterable by status and the 24 categories. Hit <kbd>/</kbd> anywhere to jump straight to search.
-- **📖 Topic pages** — rendered Markdown with **ASCII architecture diagrams** (copy-to-clipboard), a sticky table of contents with scrollspy, and a per-topic reading-time estimate.
+- **📖 Topic pages** — rendered Markdown with **ASCII architecture diagrams** (copy-to-clipboard), a sticky table of contents with scrollspy, a per-topic reading-time estimate, and a **related-topics strip** that continues your category's curriculum.
 - **📊 Progress tracking** — mark topics **New / In progress / Done**, save favorites, and see your stats on the dashboard. Everything is stored locally in your browser (no account, no server).
 - **🃏 Flashcards** — spaced repetition built from every topic's "Key takeaway." Flip with <kbd>Space</kbd>, rate with <kbd>←</kbd>/<kbd>→</kbd>, and missed cards resurface sooner.
 - **📈 Dashboard** — overall completion ring, per-category progress bars, and recently viewed topics.
@@ -144,8 +144,12 @@ Found a typo or want to improve a topic? PRs are welcome.
 
 1. Fork the repo and create a branch (`git checkout -b improve/xyz`).
 2. Make your changes — topic edits live in `topics/*.md`.
-3. Run `npm run lint` and `npm run build` to make sure everything still works.
-4. Open a pull request describing what you changed.
+3. Run the content tools as needed:
+   - `node scripts/typo-sweep.mjs` — report typographic defects (double spaces, stray punctuation)
+   - `node scripts/hygiene.mjs` — normalize line endings and trim trailing whitespace
+   - `node scripts/gen-client-topics-index.mjs` — **required** after editing any topic, regenerates the client search index
+4. Run `npm run check` and `npm run build` to make sure everything still works.
+5. Open a pull request describing what you changed.
 
 ## 📄 License
 

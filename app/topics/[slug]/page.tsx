@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChevronRight, Clock, BookOpen, FileCode } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, Clock, BookOpen, FileCode, Layers } from "lucide-react";
 import {
   getAllTopics,
   getTopicBySlug,
@@ -41,6 +41,17 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
   const topic = getTopicBySlug(params.slug);
   if (!topic) notFound();
   const { prev, next } = getTopicNeighbors(topic.id);
+
+  // Related topics: the neighbors inside the same category (window around
+  // the current topic in curriculum order), falling back to the first few.
+  const categoryTopics = getAllTopics().filter(
+    (t) => t.category === topic.category
+  );
+  const catIdx = categoryTopics.findIndex((t) => t.id === topic.id);
+  const related = [
+    ...categoryTopics.slice(Math.max(0, catIdx - 3), catIdx),
+    ...categoryTopics.slice(catIdx + 1, catIdx + 4),
+  ].slice(0, 6);
 
   const minutes = readingMinutes(topic);
   const sectionsCount = topic.sections.filter(
@@ -148,6 +159,35 @@ export default function TopicPage({ params }: { params: { slug: string } }) {
             <span />
           )}
         </nav>
+
+        {/* Related topics within the same category */}
+        {related.length > 0 && (
+          <section aria-labelledby="related-heading" className="mt-10">
+            <h2
+              id="related-heading"
+              className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-ink-3"
+            >
+              <Layers size={14} className="text-accent" aria-hidden />
+              Continue in {topic.category}
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((t) => (
+                <Link
+                  key={t.slug}
+                  href={`/topics/${t.slug}`}
+                  className="lift group flex items-center gap-3 rounded-xl border border-rule bg-paper-2/50 p-3.5 elev-xs hover:border-accent/50 hover:bg-paper-3/40"
+                >
+                  <span className="font-mono text-xs text-ink-3 transition-colors group-hover:text-accent">
+                    #{String(t.id).padStart(3, "0")}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink transition-colors group-hover:text-accent">
+                    {t.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </article>
     </>
   );
