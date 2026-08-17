@@ -38,7 +38,7 @@ Estimating **Daily Active Users (DAU)** and **Monthly Active Users (MAU)** is th
 ### Step-by-Step Estimation Walkthrough
 
 1. **Start with MAU or Total User Base**: If given 300 Million MAU for a global application:
-2. **Apply DAU/MAU Engagement Factor**: 
+2. **Apply DAU/MAU Engagement Factor**:
 
 **DAU** = MAU × 0.50 = 300 M × 0.50 = 150 Million DAU
 

@@ -30,7 +30,7 @@ A **Database Transaction** is a sequence of one or more database operations (`SE
 ### Core transaction mechanisms
 
 1. **Write-Ahead Logging (WAL)**: Database changes are appended sequentially to an on-disk transaction log before modifying actual database pages in RAM or disk. If a crash occurs, the engine replays the WAL to recover state.
-2. **Undo/Redo Logs**: 
+2. **Undo/Redo Logs**:
    - **Undo Logs**: Store pre-mutation record states to revert changes if a transaction issues a `ROLLBACK`.
    - **Redo Logs**: Store post-mutation record states to re-apply committed changes that were not yet flushed to disk during a crash.
 3. **Two-Phase Locking (2PL)**: Locks records during transaction execution to prevent conflicting concurrent updates.

@@ -32,17 +32,13 @@ Quorum Condition Satisfied: R (3) + W (3) = 6 > N (5) -> Strong Consistency Guar
 | :--- | :--- | :--- | :--- | :--- |
 | **Write-Heavy Optimization** | W = 1 | R = N | Strong (1 + N > N) | Fast writes, slow reads (Read must query all nodes) |
 | **Read-Heavy Optimization** | W = N | R = 1 | Strong (N + 1 > N) | Fast reads, slow writes (Write must update all nodes) |
-| **Balanced Quorum (Standard)**| $W = \lfloor N/2 
-floor + 1|R = \lfloor N/2 
-floor + 1$ | Strong | Balanced read/write performance & fault tolerance |
+| **Balanced Quorum (Standard)**| W = ⌊N/2⌋ + 1 | R = ⌊N/2⌋ + 1 | Strong | Balanced read/write performance & fault tolerance |
 | **Eventual Consistency** | W = 1 | R = 1 | Eventual (1 + 1 ≤ N) | High performance, risk of stale reads |
 
 ### Fault Tolerance Calculations
 
-For a cluster of N nodes using majority quorum ($Q = \lfloor N/2 
-floor + 1$):
-- **Fault Tolerance**: The system can tolerate up to $F = \lfloor (N - 1) / 2 
-floor$ node failures.
+For a cluster of N nodes using majority quorum (Q = ⌊N/2⌋ + 1):
+- **Fault Tolerance**: The system can tolerate up to F = ⌊(N − 1) / 2⌋ node failures.
 - An odd number of nodes is optimal: A 5-node cluster tolerates 2 node failures (5 - 3 = 2). A 6-node cluster also tolerates only 2 failures (6 - 4 = 2), adding node cost without increasing fault tolerance.
 
 ### Key Trade-offs & Production Engineering

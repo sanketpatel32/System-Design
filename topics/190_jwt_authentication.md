@@ -4,7 +4,7 @@
 ---
 
 ### Overview
-**JSON Web Token (JWT)** Authentication is a stateless authentication pattern defined by RFC 7519. A JWT is a self-contained, digitally signed JSON object that securely transmits claims (such as user identity and permissions) between a client and a server. 
+**JSON Web Token (JWT)** Authentication is a stateless authentication pattern defined by RFC 7519. A JWT is a self-contained, digitally signed JSON object that securely transmits claims (such as user identity and permissions) between a client and a server.
 
 Because JWTs are signed using symmetric secrets (HMAC SHA-256) or asymmetric key pairs (RSA / ECDSA), microservices can verify token authenticity in-memory without querying a centralized session database.
 

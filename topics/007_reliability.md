@@ -4,7 +4,7 @@
 
 ---
 
-Reliability is the **probability that a system will perform its intended function correctly, without failure, under specified operating conditions over a given period**. 
+Reliability is the **probability that a system will perform its intended function correctly, without failure, under specified operating conditions over a given period**.
 
 While **availability** measures whether a system is up, **reliability** measures whether the system returns accurate results correctly and predictably without producing silent failures or corrupted data.
 

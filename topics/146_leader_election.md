@@ -30,8 +30,7 @@ When a Leader fails or network heartbeat times out, follower nodes initiate an e
 
 | Mechanism | Leader Determination | Partition Safety (Split-Brain) | Failure Detection Delay | Examples |
 | :--- | :--- | :--- | :--- | :--- |
-| **Consensus (Raft/Zab)** | Majority Quorum Voting ($\lfloor N/2 
-floor + 1$) | Fully Safe (Fencing tokens + Terms) | Heartbeat Timeout (100-500ms) | etcd, ZooKeeper |
+| **Consensus (Raft/Zab)** | Majority Quorum Voting (⌊N/2⌋ + 1) | Fully Safe (Fencing tokens + Terms) | Heartbeat Timeout (100-500ms) | etcd, ZooKeeper |
 | **Distributed Lock / Lease**| Key TTL in Shared Store | Requires strict fencing tokens | Lease Expiration TTL (5-15 seconds)| Redis Redlock, DynamoDB Lease |
 | **Bully Algorithm** | Node with highest Process ID wins | Susceptible to network partitions | Linear Probe Timeout | Traditional Distributed Systems |
 
