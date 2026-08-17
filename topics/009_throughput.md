@@ -45,11 +45,11 @@ Throughput measures the **volume of work a system processes within a given time 
 
 ### Little's Law & Throughput Dynamics
 
-The fundamental relationship between Throughput ($L$), Latency ($W$), and Concurrency ($N$) is defined by **Little's Law**:
+The fundamental relationship between Throughput (L), Latency (W), and Concurrency (N) is defined by **Little's Law**:
 
-$$N = L \times W \quad \implies \quad \text{Throughput } (L) = \frac{\text{Concurrency } (N)}{\text{Latency } (W)}$$
+N = L × W ⇒ Throughput (L) = (Concurrency (N)) / (Latency (W))
 
-- To double throughput ($L$), you must either **double system concurrency ($N$)** by adding workers, or **halve execution latency ($W$)** by optimizing code and queries.
+- To double throughput (L), you must either **double system concurrency (N)** by adding workers, or **halve execution latency (W)** by optimizing code and queries.
 
 ### Throughput Optimization Techniques
 

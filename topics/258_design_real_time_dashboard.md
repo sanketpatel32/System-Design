@@ -33,8 +33,8 @@ A Real-Time Dashboard platform aggregates live stream data and renders continuou
 ### Real-Time Push Technologies & Aggregation Windows
 | Technology / Pattern | Protocol / Mechanism | Latency | Bandwidth Overhead |
 |---|---|---|---|
-| **WebSockets** | Full-duplex TCP connection | $< 10	ext{ ms}$ | Low (header overhead paid once on handshake). |
-| **Server-Sent Events (SSE)** | Single-direction HTTP streaming | $< 50	ext{ ms}$ | Very low; native browser auto-reconnect. |
+| **WebSockets** | Full-duplex TCP connection | < 10 ms | Low (header overhead paid once on handshake). |
+| **Server-Sent Events (SSE)** | Single-direction HTTP streaming | < 50 ms | Very low; native browser auto-reconnect. |
 | **Tumbling Window Aggregator** | Fixed non-overlapping time windows | Batch bounded | Ideal for predictable periodic dashboard counters. |
 | **Sliding Window Aggregator** | Overlapping moving time windows | Continuous stream | Superior real-time trend visualization. |
 

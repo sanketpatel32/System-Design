@@ -30,10 +30,10 @@ An Estimated Time of Arrival (ETA) calculation system computes travel duration a
 ### Graph Partitioning & Routing Algorithms
 | Algorithm / Technique | Primary Use Case | Time Complexity | Trade-offs |
 |---|---|---|---|
-| **Dijkstra's Algorithm** | Baseline shortest path | $O(E + V \log V)$ | Slow for continental road networks; unviable for real-time APIs. |
-| **A* Search** | Heuristic-guided routing | $O(E)$ worst case | Depends on Euclidean heuristic quality; slower with live traffic weight changes. |
+| **Dijkstra's Algorithm** | Baseline shortest path | O(E + V log V) | Slow for continental road networks; unviable for real-time APIs. |
+| **A* Search** | Heuristic-guided routing | O(E) worst case | Depends on Euclidean heuristic quality; slower with live traffic weight changes. |
 | **Contraction Hierarchies (CH)** | Preprocessed fast routing | Sub-millisecond queries | Expensive graph rebuilds when live traffic changes edge weights. |
-| **ML Travel-Time Refinement** | Final ETA adjustments | $O(1)$ inference | Requires continuous retraining on historical trip execution logs. |
+| **ML Travel-Time Refinement** | Final ETA adjustments | O(1) inference | Requires continuous retraining on historical trip execution logs. |
 
 ### API Design
 | Endpoint | Method | Description | Key Parameters |

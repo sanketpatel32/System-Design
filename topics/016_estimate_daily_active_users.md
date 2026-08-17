@@ -40,11 +40,11 @@ Estimating **Daily Active Users (DAU)** and **Monthly Active Users (MAU)** is th
 1. **Start with MAU or Total User Base**: If given 300 Million MAU for a global application:
 2. **Apply DAU/MAU Engagement Factor**: 
 
-$$\text{DAU} = \text{MAU} \times 0.50 = 300\,\text{M} \times 0.50 = 150\,\text{Million DAU}$$
+**DAU** = MAU × 0.50 = 300 M × 0.50 = 150 Million DAU
 
 3. **Calculate Total Requests per Day**: If an average user performs 10 read/write operations daily:
 
-$$\text{Total Daily Requests} = 150\,\text{M DAU} \times 10\,\frac{\text{requests}}{\text{user}} = 1.5\,\text{Billion Requests/Day}$$
+**Total Daily Requests** = 150 M DAU × 10 requests / user = 1.5 Billion Requests/Day
 
 ### Key takeaway
 

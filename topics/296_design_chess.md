@@ -7,7 +7,7 @@
 Object-Oriented Low-Level Design (LLD) for a 2-Player Chess Game enforcing piece movement rules, turn management, check/checkmate detection, and move validation.
 
 ### System Requirements & Board Model
-- $8 	imes 8$ grid board representation.
+- 8 × 8 grid board representation.
 - Piece polymorphism (`Pawn`, `Rook`, `Knight`, `Bishop`, `Queen`, `King`).
 - Special moves: Castling, En Passant, Pawn Promotion.
 - Game loop with turn switching and move history undo/redo log.
@@ -37,7 +37,7 @@ Object-Oriented Low-Level Design (LLD) for a 2-Player Chess Game enforcing piece
 | Piece Class | Movement Rules | Special Conditions |
 |---|---|---|
 | `Pawn` | 1 step forward (2 steps on first move), diagonal capture | En Passant, Promotion. |
-| `Knight` | L-shaped jump ($2 	imes 1$ or $1 	imes 2$) | Can jump over other pieces. |
+| `Knight` | L-shaped jump (2 × 1 or 1 × 2) | Can jump over other pieces. |
 | `Rook` | Horizontal / Vertical straight lines | Castling. |
 | `King` | 1 step in any direction | Cannot move into check; Castling. |
 

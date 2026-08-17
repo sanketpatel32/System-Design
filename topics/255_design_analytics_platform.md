@@ -34,7 +34,7 @@ An Enterprise Analytics Platform ingests, processes, stores, and queries massive
 ### OLAP Data Engine Comparison
 | Storage Engine | Architecture | Best Use Case | Query Latency |
 |---|---|---|---|
-| **ClickHouse** | Column-oriented, vectorized execution | Ultra-fast aggregation on raw log & event data | $< 100	ext{ ms}$ |
+| **ClickHouse** | Column-oriented, vectorized execution | Ultra-fast aggregation on raw log & event data | < 100 ms |
 | **Apache Pinot** | Segment-based, real-time indexing | User-facing real-time analytical dashboards | Sub-50ms |
 | **Snowflake** | Cloud data warehouse (decoupled storage/compute) | Ad-hoc SQL queries & complex enterprise reporting | Seconds to Minutes |
 

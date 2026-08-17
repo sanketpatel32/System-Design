@@ -40,7 +40,7 @@ In real-world distributed networks, **network partitions (P) are inevitable**. T
 
 PACELC refines CAP theorem by evaluating behavior when the network is running normally (no partition):
 
-$$\text{If Partition (P)} \rightarrow \text{choose Availability (A) or Consistency (C); Else (E)} \rightarrow \text{choose Latency (L) or Consistency (C)}$$
+If Partition (P) arrow choose Availability (A) or Consistency (C); Else (E) arrow choose Latency (L) or Consistency (C)
 
 - **PC/EC (e.g., Spanner, CockroachDB)**: Chooses Consistency during partitions, and favors Consistency (at cost of higher latency) during normal operation.
 - **PA/EL (e.g., Cassandra, DynamoDB)**: Chooses Availability during partitions, and favors Latency (eventual consistency) during normal operation.

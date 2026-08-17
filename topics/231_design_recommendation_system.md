@@ -6,7 +6,7 @@
 ### Overview
 A **Recommendation System** (e.g., Netflix Movie Recommendations, Amazon Product Recommendations, TikTok Video Feed) filters millions of candidate items down to a personalized list of high-affinity items for each user in real time (< 100ms).
 
-Industrial recommendation architectures adopt a three-tier funnel design: **Candidate Generation (Retrieval)** $\rightarrow$ **Scoring & Ranking** $\rightarrow$ **Re-Ranking & Diversity Filtering**.
+Industrial recommendation architectures adopt a three-tier funnel design: **Candidate Generation (Retrieval)** arrow **Scoring & Ranking** arrow **Re-Ranking & Diversity Filtering**.
 
 ### System Architecture & Recommendation Funnel Topology
 
@@ -39,8 +39,8 @@ Industrial recommendation architectures adopt a three-tier funnel design: **Cand
 
 ### Key Technical Mechanics
 1. **Candidate Generation (Retrieval Stage):** Uses **Two-Tower Neural Networks** (User Tower + Item Tower) to map users and items into a shared 128-dimensional embedding space. Ann (Approximate Nearest Neighbor) search (FAISS / ScaNN) retrieves top 1,000 candidates in < 10ms.
-2. **Heavy Ranking Stage:** Evaluates complex features (user history, item properties, context: time, device) using deep learning models (Wide & Deep, DLRM) to predict $P(	ext{Click})$ or $P(	ext{Watch})$.
-3. **Re-Ranking & Diversity Stage:** Prevents recommending 10 items of the exact same category by enforcing intra-list diversity filters and injecting fresh items via Multi-Armed Bandits ($\epsilon$-greedy).
+2. **Heavy Ranking Stage:** Evaluates complex features (user history, item properties, context: time, device) using deep learning models (Wide & Deep, DLRM) to predict P(Click) or P(Watch).
+3. **Re-Ranking & Diversity Stage:** Prevents recommending 10 items of the exact same category by enforcing intra-list diversity filters and injecting fresh items via Multi-Armed Bandits (ε-greedy).
 
 ### API Interface Specifications
 
@@ -64,7 +64,7 @@ Industrial recommendation architectures adopt a three-tier funnel design: **Cand
 |---|---|---|---|
 | **Three-Tier Funnel Architecture** | Decouples fast candidate retrieval (10ms) from heavy ML ranking inference (50ms). | Infrastructure complexity maintaining vector databases, feature stores, and ML inference clusters. | Industry-standard recommendation engines at scale. |
 | **Two-Tower Vector Embeddings** | Extremely fast sub-10ms Approximate Nearest Neighbor (ANN) search across millions of items. | Cold-start problem for newly published items that lack interaction training data. | Large candidate catalog retrieval. |
-| **Multi-Armed Bandit Exploration ($\epsilon$-greedy)**| Discovers new user preferences and prevents recommendation echo chambers. | Small percentage of recommendations shown to users may have lower immediate click-through rates. | Personalized feed discovery and news platforms. |
+| **Multi-Armed Bandit Exploration (ε-greedy)**| Discovers new user preferences and prevents recommendation echo chambers. | Small percentage of recommendations shown to users may have lower immediate click-through rates. | Personalized feed discovery and news platforms. |
 
 ### Key takeaway
-A **Recommendation System** scales by filtering millions of catalog items through a **Three-Tier Funnel** (Two-Tower Vector Retrieval $\rightarrow$ Wide & Deep ML Ranking $\rightarrow$ Diversity Re-Ranking) under 100ms.
+A **Recommendation System** scales by filtering millions of catalog items through a **Three-Tier Funnel** (Two-Tower Vector Retrieval arrow Wide & Deep ML Ranking arrow Diversity Re-Ranking) under 100ms.

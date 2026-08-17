@@ -37,7 +37,7 @@
 
 | Strategy | Ordering Guarantee | Processing Concurrency | Failure Recovery Risk |
 | :--- | :--- | :--- | :--- |
-| **Global Single Queue** | Total global order across all entities | Extremely Low ($O(1)$ consumer node bottleneck) | Consumer failure halts entire system pipeline |
+| **Global Single Queue** | Total global order across all entities | Extremely Low (O(1) consumer node bottleneck) | Consumer failure halts entire system pipeline |
 | **Partition Key Hashing**| Strict order per entity key (e.g., `user_id`) | High (Concurrently scales across N partitions) | Hot partition if key distribution is skewed |
 | **App Sequence Buffering**| App reorders out-of-sequence events | High | Memory buffer overflow if an event is delayed |
 

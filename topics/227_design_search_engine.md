@@ -40,9 +40,9 @@ The system relies on five core subsystems: **Web Crawler**, **Document Ingestion
 
 ### Key Technical Mechanics
 1. **Inverted Index Data Structure:** Maps terms/words to a postings list of document IDs containing the term:
-   - `"system"` $\rightarrow$ `[Doc1 (tf: 5), Doc4 (tf: 2), Doc9 (tf: 12)]`
-   - `"design"` $\rightarrow$ `[Doc1 (tf: 3), Doc9 (tf: 8)]`
-   - Intersection of `"system"` AND `"design"` $\rightarrow$ `[Doc1, Doc9]`.
+   - `"system"` arrow `[Doc1 (tf: 5), Doc4 (tf: 2), Doc9 (tf: 12)]`
+   - `"design"` arrow `[Doc1 (tf: 3), Doc9 (tf: 8)]`
+   - Intersection of `"system"` AND `"design"` arrow `[Doc1, Doc9]`.
 2. **BM25 Relevance Scoring:** Evaluates Term Frequency-Inverse Document Frequency (TF-IDF) to measure how relevant a web document is to a query string.
 3. **PageRank Algorithm:** Computes document authority based on the quantity and quality of inbound links (backlinks) pointing to a web page.
 

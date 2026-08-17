@@ -33,11 +33,11 @@ An A/B Testing and Experimentation Platform enables product teams to run concurr
 
 ### Bucketing & Layering Mechanism
 Variants are calculated deterministically using salt hashing:
-$$	ext{bucket} = 	ext{MurmurHash3}(	ext{user\_id} + 	ext{experiment\_salt}) \pmod{100}$$
+**bucket** = MurmurHash3(user\ᵢd + experiment_salt) ±od 100
 
 | Experiment Design | Implementation | Use Case |
 |---|---|---|
-| **Single Layer Split** | Divide $100\%$ user base into mutually exclusive slices | Major UI overhauls or risky backend changes. |
+| **Single Layer Split** | Divide 100% user base into mutually exclusive slices | Major UI overhauls or risky backend changes. |
 | **Overlapping Layers** | Re-hash user ID with layer-specific salts | Run UI test, search rank test, and pricing test simultaneously on same user base. |
 | **Sequential Testing** | Continuous p-value monitoring (e.g. mSPRT) | Stop winning/failing tests early without inflating Type I error rates. |
 

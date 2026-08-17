@@ -42,7 +42,7 @@ A **Dead Letter Queue (DLQ)** is a specialized secondary queue used to store mes
 
 | Phase | Operational Action | Tools / Implementation |
 | :--- | :--- | :--- |
-| **Detection** | Fire high-priority alerts when DLQ metric $> 0$ | PagerDuty, Prometheus Alerts, CloudWatch Alarms |
+| **Detection** | Fire high-priority alerts when DLQ metric > 0 | PagerDuty, Prometheus Alerts, CloudWatch Alarms |
 | **Inspection** | Inspect message payload, headers, and stack trace error logs | DLQ Administrative Dashboard, CLI tools |
 | **Remediation** | Fix underlying bug, deploy code patch, or fix schema mapping | CI/CD deployment pipeline |
 | **Redrive / Replay**| Re-inject DLQ messages back into the primary queue for re-processing | Automated DLQ Redrive APIs or CLI scripts |

@@ -26,31 +26,28 @@ Client 3: [Fail] - Wait 0.4s - [Retry!] -------- Wait 4.1s -------- [Retry!]
 
 ### Exponential Backoff Formula with Full Jitter
 
-The base backoff delay doubles with each attempt $n$, capped by a maximum delay limit:
-$$	ext{Base Delay}(n) = \min(	ext{Max Delay}, 	ext{Initial Delay} 	imes 2^n)$$
+The base backoff delay doubles with each attempt n, capped by a maximum delay limit:
+Base Delay(n) = min(Max Delay, Initial Delay × 2ⁿ)
 
 Applying **Full Jitter** selects a uniform random value between 0 and the calculated base delay:
-$$	ext{Actual Delay}(n) = 	ext{random}(0, 	ext{Base Delay}(n))$$
+Actual Delay(n) = random(0, Base Delay(n))
 
 ### Jitter Algorithm Comparison Matrix
 
 | Jitter Strategy | Mathematical Formula | Traffic Distribution | System Protection Level |
 | :--- | :--- | :--- | :--- |
-| **No Jitter** | $T = 	ext{Base Delay}(n)$ | Severe Periodic Spikes | Low (High risk of thundering herd) |
-| **Full Jitter** | $T = 	ext{random}(0, 	ext{Base Delay}(n))$ | Fully Uniform Spread | Highest (Best overall desynchronization) |
-| **Equal Jitter** | $T = rac{	ext{Base}}{2} + 	ext{random}\left(0, rac{	ext{Base}}{2}
-ight)$ | Bounded Spread | High |
-| **Decorrelated Jitter** | $T = \min\left(	ext{Max}, 	ext{random}\left(	ext{Initial}, T_{	ext{prev}} 	imes 3
-ight)
-ight)$ | Dynamic Adaptive Spread | High |
+| **No Jitter** | T = Base Delay(n) | Severe Periodic Spikes | Low (High risk of thundering herd) |
+| **Full Jitter** | T = random(0, Base Delay(n)) | Fully Uniform Spread | Highest (Best overall desynchronization) |
+| **Equal Jitter** | T = (Base / 2) + random(0, Base / 2) | Bounded Spread | High |
+| **Decorrelated Jitter** | T = min(Max, random(Initial, T_prev × 3)) | Dynamic Adaptive Spread | High |
 
 ### Exponential Backoff Calculation Example
 
 Given `Initial Delay = 100ms`, `Multiplier = 2`, `Max Delay = 10,000ms`:
-- Attempt 1: Base = $100	ext{ms}$ $	o$ Full Jitter = $	ext{random}(0, 100	ext{ms})$
-- Attempt 2: Base = $200	ext{ms}$ $	o$ Full Jitter = $	ext{random}(0, 200	ext{ms})$
-- Attempt 3: Base = $400	ext{ms}$ $	o$ Full Jitter = $	ext{random}(0, 400	ext{ms})$
-- Attempt 4: Base = $800	ext{ms}$ $	o$ Full Jitter = $	ext{random}(0, 800	ext{ms})$
+- Attempt 1: Base = 100ms → Full Jitter = random(0, 100ms)
+- Attempt 2: Base = 200ms → Full Jitter = random(0, 200ms)
+- Attempt 3: Base = 400ms → Full Jitter = random(0, 400ms)
+- Attempt 4: Base = 800ms → Full Jitter = random(0, 800ms)
 ### Full Jitter Backoff Code Implementation Example
 
 ```python

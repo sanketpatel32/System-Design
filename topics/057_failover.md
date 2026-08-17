@@ -38,7 +38,7 @@
 ### Split-Brain Scenario & Consensus Mitigation
 In multi-node failover setups, if network communication between primary and secondary nodes is severed (partition), both nodes may assume the other is dead and promote themselves to Primary simultaneously. This causes **Split-Brain state corruption**.
 
-- **Mitigation**: Use quorum consensus algorithms (**Raft, Paxos**) requiring an odd number of nodes (minimum 3 nodes) to form a majority vote ($Q > N/2$) before promoting a new primary leader.
+- **Mitigation**: Use quorum consensus algorithms (**Raft, Paxos**) requiring an odd number of nodes (minimum 3 nodes) to form a majority vote (Q > N/2) before promoting a new primary leader.
 
 ### Key takeaway
 

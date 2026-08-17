@@ -9,7 +9,7 @@ A Fraud Detection System analyzes financial transactions, account signups, and u
 ### System Requirements
 - **Functional Requirements**:
   - Evaluate transaction events against static deterministic rules and dynamic ML models.
-  - Provide real-time decisions (ALLOW, CHALLENGE/MFA, BLOCK) within $< 50	ext{ ms}$.
+  - Provide real-time decisions (ALLOW, CHALLENGE/MFA, BLOCK) within < 50 ms.
   - Support fraud syndicate graph analysis to uncover linked malicious accounts.
 - **Non-Functional Requirements**:
   - Ultra-Low Latency: In-line payment decisioning must not degrade checkout user experience.
@@ -43,9 +43,9 @@ A Fraud Detection System analyzes financial transactions, account signups, and u
 ### Detection Strategy Comparison
 | Mechanism | Evaluation Speed | Strengths | Limitations |
 |---|---|---|---|
-| **Deterministic Rules** | $< 5	ext{ ms}$ | Immediate enforcement of hard velocity limits (e.g. max 3 cards/hr). | Easily evaded once fraudsters deduce rule thresholds. |
-| **Machine Learning (XGBoost)** | $15-30	ext{ ms}$ | Catches complex non-linear feature interactions and subtle anomalies. | Requires frequent retraining to combat model drift. |
-| **Graph DB (Neo4j)** | Async ($100-500	ext{ ms}$) | Uncovers shared IP, device ID, or bank account linkages across accounts. | High computational cost for deep graph traversals. |
+| **Deterministic Rules** | < 5 ms | Immediate enforcement of hard velocity limits (e.g. max 3 cards/hr). | Easily evaded once fraudsters deduce rule thresholds. |
+| **Machine Learning (XGBoost)** | 15-30 ms | Catches complex non-linear feature interactions and subtle anomalies. | Requires frequent retraining to combat model drift. |
+| **Graph DB (Neo4j)** | Async (100-500 ms) | Uncovers shared IP, device ID, or bank account linkages across accounts. | High computational cost for deep graph traversals. |
 
 ### Key takeaway
 Effective fraud detection systems blend synchronous low-latency rule evaluation and ML feature store lookups with asynchronous deep graph analysis to catch both known transaction exploits and novel syndicate rings.

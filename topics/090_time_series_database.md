@@ -39,7 +39,7 @@ A **Time-Series Database (TSDB)** is a database optimized for storing, indexing,
 | :--- | :--- | :--- |
 | **Write Workload** | High-volume continuous append-only writes | Mixed random inserts, updates, and deletes |
 | **Data Retention** | Automated expiration & continuous aggregation | Manual row deletion (`DELETE WHERE`), expensive vacuuming |
-| **Compression Ratio**| High ($pprox 80-90\%$ using Delta/Gorilla) | Low-Moderate standard page compression |
+| **Compression Ratio**| High (≈ 80-90% using Delta/Gorilla) | Low-Moderate standard page compression |
 | **Query Pattern** | Time range aggregations (`AVG`, `MAX` over interval)| Complex JOINs across normalized entities |
 
 ### Key takeaway

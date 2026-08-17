@@ -13,7 +13,7 @@ A Multi-Region Database spans multiple geographic regions to deliver local low-l
   - Automatic failover when an entire cloud region goes offline.
 - **Non-Functional Requirements**:
   - Low Read Latency: Sub-10ms reads locally in any deployed region.
-  - High Availability: Zero data loss (RPO=0) and near-zero downtime (RTO $< 5	ext{ seconds}$) during regional failure.
+  - High Availability: Zero data loss (RPO=0) and near-zero downtime (RTO < 5 seconds) during regional failure.
   - Global Partitioning: Comply with data residency laws (e.g. GDPR).
 
 ### System Architecture (Multi-Region Active-Active)

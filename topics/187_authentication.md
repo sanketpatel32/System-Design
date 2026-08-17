@@ -51,7 +51,7 @@ Modern system design uses multi-layered authentication patterns ranging from pas
 |---|---|---|---|
 | `user_id` | UUID | PostgreSQL / CockroachDB | Primary Key |
 | `email` | String (Indexed) | Relational DB | Unique index; normalized lowercase. |
-| `password_hash` | String | Relational DB | Hashed via Argon2id ($m=65536, t=3, p=4$) + unique salt. |
+| `password_hash` | String | Relational DB | Hashed via Argon2id (m=65536, t=3, p=4) + unique salt. |
 | `mfa_secret` | Encrypted String | Relational DB | Encrypted at rest via KMS envelope encryption. |
 | `failed_login_attempts` | Integer | Redis Cache | Counter for rate limiting & account lockout policy. |
 

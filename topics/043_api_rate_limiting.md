@@ -34,10 +34,10 @@
 
 | Algorithm | Mechanism | Pros | Cons |
 | :--- | :--- | :--- | :--- |
-| **Token Bucket** | Tokens refill at rate $R$/sec into bucket of capacity $N$. Request consumes 1 token. | Allows short bursts; memory efficient. | Token refill math tuning required. |
+| **Token Bucket** | Tokens refill at rate R/sec into bucket of capacity N. Request consumes 1 token. | Allows short bursts; memory efficient. | Token refill math tuning required. |
 | **Leaky Bucket** | Requests queue in bucket and leak out at fixed smooth rate. | Smooths bursty traffic into steady output rate. | Bursts are delayed; queue overflow drops requests. |
-| **Fixed Window Counter** | Counts requests in fixed time windows (e.g., 100 req/min). | Extremely memory simple. | Edge traffic burst: $2\times$ quota at window boundaries. |
-| **Sliding Window Log** | Stores timestamp of every request in sorted set (Redis ZSET). | 100% accurate sliding window protection. | High memory footprint ($O(N)$ stored timestamps). |
+| **Fixed Window Counter** | Counts requests in fixed time windows (e.g., 100 req/min). | Extremely memory simple. | Edge traffic burst: 2× quota at window boundaries. |
+| **Sliding Window Log** | Stores timestamp of every request in sorted set (Redis ZSET). | 100% accurate sliding window protection. | High memory footprint (O(N) stored timestamps). |
 | **Sliding Window Counter**| Hybrid: weighted sum of current window count + previous window count. | Smooth traffic protection; minimal memory. | Approximates edge window counts (99%+ accuracy). |
 
 ### HTTP Standard Rate Limit Headers

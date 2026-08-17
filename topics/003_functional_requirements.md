@@ -45,4 +45,4 @@ Functional Requirements (FRs) define **what a system must do**. They detail the 
 
 ### Key takeaway
 
-Functional Requirements define the **core capability boundaries** of a system. Clarifying FRs and non-goals up front preventsScope Creep and ensures the resulting system architecture accurately implements the intended product capabilities.
+Functional Requirements define the **core capability boundaries** of a system. Clarifying FRs and non-goals up front prevents scope creep and ensures the resulting system architecture accurately implements the intended product capabilities.

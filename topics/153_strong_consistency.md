@@ -44,7 +44,7 @@ Reads and writes require synchronous quorum consensus or leader validation befor
 ### Protocol Implementation Requirements
 
 1. **Leader Read Leases / Read Index**: To execute strong consistency reads without issuing full Paxos/Raft consensus logs every read, leaders hold bounded time leases or verify heartbeat connectivity before serving reads.
-2. **Quorum Intersection ($R + W > N$)**: Reading from $R$ nodes and writing to $W$ nodes guarantees at least one node in the read set contains the newest transaction.
+2. **Quorum Intersection (R + W > N)**: Reading from R nodes and writing to W nodes guarantees at least one node in the read set contains the newest transaction.
 
 ### Key Trade-offs & System Constraints
 

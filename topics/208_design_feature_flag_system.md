@@ -30,7 +30,7 @@ Core engineering requirements demand **sub-millisecond local SDK flag evaluation
 ### Key Technical Mechanics
 1. **In-Memory SDK Evaluation:** The Feature Flag SDK downloads and maintains rulesets in memory locally. Evaluating `if (sdk.isEnabled("new-checkout", userContext))` takes **< 1 microsecond** with zero network calls.
 2. **Server-Sent Events (SSE) Streaming:** The control plane pushes flag rule updates to application SDKs in real-time over persistent SSE or WebSocket connections, updating local SDK memory within milliseconds.
-3. **Consistent Hashing for Percentage Rollouts:** Computes `MurmurHash3(user_id + feature_key) % 100`. If hash result $< 20$, the user consistently receives the 20% rollout feature without storing per-user state in a database.
+3. **Consistent Hashing for Percentage Rollouts:** Computes `MurmurHash3(user_id + feature_key) % 100`. If hash result < 20, the user consistently receives the 20% rollout feature without storing per-user state in a database.
 
 ### API Interface & SDK Specifications
 

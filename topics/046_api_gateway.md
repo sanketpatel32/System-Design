@@ -39,7 +39,7 @@ An **API Gateway** is an architectural proxy component that acts as the **single
 | **TLS Termination** | Decrypts inbound HTTPS TLS traffic at Gateway edge. | Reduces CPU encryption overhead on internal backend nodes. |
 | **Authentication & Auth**| Validates JWT signatures and API Keys before forwarding requests. | Offloads repetitive security code from individual microservices. |
 | **Rate Limiting** | Enforces per-IP and per-user request quotas. | Prevents DDoS attacks and resource exhaustion. |
-| **Request Aggregation** | Combines data from multiple internal microservices into 1 client response.| Eliminates client-side $N+1$ HTTP fetch waterfalls. |
+| **Request Aggregation** | Combines data from multiple internal microservices into 1 client response.| Eliminates client-side N+1 HTTP fetch waterfalls. |
 
 ### API Gateway vs. Load Balancer vs. Reverse Proxy
 

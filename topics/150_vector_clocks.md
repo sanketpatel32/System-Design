@@ -8,7 +8,7 @@ A vector clock is an algorithm for **generating a partial ordering of events and
 
 ### Vector Clock Mechanics & Causality Flow
 
-Each node maintains an array (vector) $V$ of size $N$ (where $N$ is the number of nodes). $V_i[j]$ represents node $i$'s knowledge of the logical clock value at node $j$.
+Each node maintains an array (vector) V of size N (where N is the number of nodes). Vᵢ[j] represents node i's knowledge of the logical clock value at node j.
 
 ```
 Node A                       Node B                       Node C
@@ -28,17 +28,17 @@ V_A = [0,0,0]                V_B = [0,0,0]                V_C = [0,0,0]
 
 ### Comparing Vector Clock States
 
-Given two vector clock states $V_1$ and $V_2$:
-- **Causal Antecedent ($V_1$ happened before $V_2$)**: $V_1 \le V_2$ if every element $V_1[i] \le V_2[i]$ and at least one element $V_1[j] < V_2[j]$.
-- **Concurrent / Conflict ($V_1 \parallel V_2$)**: If neither $V_1 \le V_2$ nor $V_2 \le V_1$ is true, the operations occurred concurrently and represent a **Write Conflict** requiring application resolution.
+Given two vector clock states V₁ and V₂:
+- **Causal Antecedent (V₁ happened before V₂)**: V₁ ≤ V₂ if every element V₁[i] ≤ V₂[i] and at least one element V₁[j] < V₂[j].
+- **Concurrent / Conflict (V₁ \parallel V₂)**: If neither V₁ ≤ V₂ nor V₂ ≤ V₁ is true, the operations occurred concurrently and represent a **Write Conflict** requiring application resolution.
 
 ### Vector Clock Comparison Matrix
 
-| Scenario | Vector State 1 ($V_1$) | Vector State 2 ($V_2$) | Relationship | Action Taken |
+| Scenario | Vector State 1 (V₁) | Vector State 2 (V₂) | Relationship | Action Taken |
 | :--- | :--- | :--- | :--- | :--- |
-| **Causal Succession** | `[A:1, B:0]` | `[A:1, B:1]` | $V_1 < V_2$ ($V_2$ supersedes $V_1$) | Overwrite $V_1$ with $V_2$ automatically |
-| **Concurrent Conflict** | `[A:2, B:1]` | `[A:1, B:2]` | $V_1 \parallel V_2$ (Concurrent updates!) | Trigger Conflict Resolution (Sibling Merge) |
-| **Identical State** | `[A:2, B:2]` | `[A:2, B:2]` | $V_1 = V_2$ | No action required |
+| **Causal Succession** | `[A:1, B:0]` | `[A:1, B:1]` | V₁ < V₂ (V₂ supersedes V₁) | Overwrite V₁ with V₂ automatically |
+| **Concurrent Conflict** | `[A:2, B:1]` | `[A:1, B:2]` | V₁ \parallel V₂ (Concurrent updates!) | Trigger Conflict Resolution (Sibling Merge) |
+| **Identical State** | `[A:2, B:2]` | `[A:2, B:2]` | V₁ = V₂ | No action required |
 
 ### Key Trade-offs & Production Realities
 

@@ -38,8 +38,8 @@ Worker Thread Freed! System Remains Available!
 
 ### Timeout Budgeting Across Microservice Chains
 
-In a deep microservice call chain ($A 	o B 	o C 	o D$), the top-level API timeout must be distributed across downstream services:
-$$	ext{Timeout Budget} = 	ext{Client Timeout} - \sum 	ext{Network Latency Overhead}$$
+In a deep microservice call chain (A → B → C → D), the top-level API timeout must be distributed across downstream services:
+**Timeout Budget** = Client Timeout - Σ Network Latency Overhead
 - **Deadline Propagation**: Distributed tracing headers (e.g. gRPC deadlines or `X-Request-Deadline`) pass the remaining budget down the call stack. If Service C receives a request with 50ms remaining deadline, it cancels downstream calls if execution exceeds 50ms.
 
 ### Key Trade-offs & Production Tuning

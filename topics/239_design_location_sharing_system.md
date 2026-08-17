@@ -41,7 +41,7 @@ The system requires **time-series location storage**, real-time WebSocket locati
    - Primary Key: `(user_id, timestamp)`.
    - Allows fast time-range queries to render historical movement trajectories (e.g., *"Show route taken between 2 PM and 3 PM"*).
 2. **Cryptographic Privacy & Permission Boundaries:** Enforces explicit permission checks before streaming location data. Sharing sessions support auto-expiring TTL timers (e.g., *"Share location for 1 hour"*).
-3. **Location Telemetry Compression:** Uses Delta Encoding to compress continuous GPS breadcrumbs ($X_t - X_{t-1}$), reducing network bandwidth and time-series storage size by up to 80%.
+3. **Location Telemetry Compression:** Uses Delta Encoding to compress continuous GPS breadcrumbs (X_t - X_t-1), reducing network bandwidth and time-series storage size by up to 80%.
 
 ### API Interface Specifications
 

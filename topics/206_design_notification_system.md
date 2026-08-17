@@ -41,7 +41,7 @@ Core engineering challenges demand **high throughput**, user channel preference 
 ### Key Technical Mechanics
 1. **Priority Queue Separation:** High-priority queues (2FA OTP codes, security alerts) process immediately with strict SLA constraints, completely separated from low-priority bulk marketing queues.
 2. **Rate Limiting & Anti-Spam:** Limits notifications per user (e.g., max 3 push alerts per hour) to prevent notification fatigue and user app uninstalls.
-3. **Third-Party Provider Fallback:** Maintains multi-vendor redundancy (e.g., Primary SMS: Twilio $\rightarrow$ Fallback: MessageBird) if primary API provider fails.
+3. **Third-Party Provider Fallback:** Maintains multi-vendor redundancy (e.g., Primary SMS: Twilio arrow Fallback: MessageBird) if primary API provider fails.
 
 ### API Interface Specifications
 

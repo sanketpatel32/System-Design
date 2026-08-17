@@ -43,9 +43,9 @@ The circuit breaker transitions through three primary states: Closed (normal), O
 
 | State | Request Action | Downstream Traffic | Transition Trigger |
 | :--- | :--- | :--- | :--- |
-| **CLOSED** | Passes through normally | 100% Traffic routed | Failure rate exceeds threshold $	o$ Transitions to **OPEN** |
-| **OPEN** | Fails fast immediately (Fallback response) | 0% Traffic routed | Sleep TTL timer elapses $	o$ Transitions to **HALF-OPEN** |
-| **HALF-OPEN**| Sends limited probe trial requests | Bounded trial traffic (e.g. 5%) | Probe succeeds $	o$ **CLOSED**; Probe fails $	o$ **OPEN** |
+| **CLOSED** | Passes through normally | 100% Traffic routed | Failure rate exceeds threshold → Transitions to **OPEN** |
+| **OPEN** | Fails fast immediately (Fallback response) | 0% Traffic routed | Sleep TTL timer elapses → Transitions to **HALF-OPEN** |
+| **HALF-OPEN**| Sends limited probe trial requests | Bounded trial traffic (e.g. 5%) | Probe succeeds → **CLOSED**; Probe fails → **OPEN** |
 
 ### Key Configuration Parameters
 

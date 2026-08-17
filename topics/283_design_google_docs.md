@@ -48,9 +48,9 @@ Every edit operation is represented as a sequence of basic primitives:
 
 | Operation Primitive | Description | Action |
 |---|---|---|
-| `retain(n)` | Advances cursor position by $n$ characters | Preserves existing text untouched. |
+| `retain(n)` | Advances cursor position by n characters | Preserves existing text untouched. |
 | `insert(str)`| Inserts string `str` at current cursor index | Expands document length. |
-| `delete(n)` | Deletes $n$ characters at current cursor index | Contracts document length. |
+| `delete(n)` | Deletes n characters at current cursor index | Contracts document length. |
 
 ### Key takeaway
 Google Docs uses centralized Operational Transformation (OT) servers over WebSockets to sequence edit operations (`retain`, `insert`, `delete`), snapshotting document states into Bigtable.

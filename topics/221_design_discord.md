@@ -31,7 +31,7 @@ Key technical achievements include migrating message storage from Cassandra to *
 ```
 
 ### Key Technical Mechanics
-1. **ScyllaDB Migration for Message Storage:** Replaced Apache Cassandra with ScyllaDB (C++ rewrite of Cassandra). ScyllaDB's thread-per-core architecture and custom disk I/O scheduler eliminated JVM garbage collection pauses, reducing tail latency ($P_{99}$) from 1,000ms down to **< 5ms**.
+1. **ScyllaDB Migration for Message Storage:** Replaced Apache Cassandra with ScyllaDB (C++ rewrite of Cassandra). ScyllaDB's thread-per-core architecture and custom disk I/O scheduler eliminated JVM garbage collection pauses, reducing tail latency (P₉₉) from 1,000ms down to **< 5ms**.
 2. **Selective Forwarding Unit (SFU) Voice Engine:** Voice channels use WebRTC over UDP. Rather than mixing audio server-side (MCU), Discord SFU nodes forward Opus-encoded audio packets directly to all participants in a voice channel, enabling sub-20ms audio latency.
 3. **Elixir Gateway Connection Management:** Uses Elixir process trees on the BEAM VM to manage millions of concurrent WebSocket client connections organized by Guild.
 
@@ -57,9 +57,9 @@ Key technical achievements include migrating message storage from Cassandra to *
 
 | Strategy / Choice | Advantages | Disadvantages | Best Used When |
 |---|---|---|---|
-| **ScyllaDB (C++) over Cassandra (Java)** | Eliminates JVM GC pauses; sub-5ms $P_{99}$ latency; 10x higher throughput per node. | Requires specialized C++ performance tuning and ScyllaDB operational expertise. | Ultra-high throughput time-series and message storage engines. |
+| **ScyllaDB (C++) over Cassandra (Java)** | Eliminates JVM GC pauses; sub-5ms P₉₉ latency; 10x higher throughput per node. | Requires specialized C++ performance tuning and ScyllaDB operational expertise. | Ultra-high throughput time-series and message storage engines. |
 | **WebRTC SFU vs MCU Architecture** | Minimal server CPU load; sub-20ms audio packet routing; scales to 100+ voice users. | Higher client-side downstream network bandwidth required to receive multiple audio streams. | Real-time multi-party voice/video platforms. |
 | **Elixir / Erlang Connection Nodes** | Exceptional concurrency handling; fault-tolerant process supervision trees. | Dynamic typing and specialized functional programming language curve. | Massive real-time WebSocket connection gateways. |
 
 ### Key takeaway
-**Discord** processes trillions of messages with sub-5ms $P_{99}$ latency by storing message partitions in **ScyllaDB (C++)**, routing real-time voice packets over **WebRTC SFUs using UDP/Opus**, and managing client connections using **Elixir WebSockets**.
+**Discord** processes trillions of messages with sub-5ms P₉₉ latency by storing message partitions in **ScyllaDB (C++)**, routing real-time voice packets over **WebRTC SFUs using UDP/Opus**, and managing client connections using **Elixir WebSockets**.

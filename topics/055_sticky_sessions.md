@@ -30,7 +30,7 @@
 | :--- | :--- | :--- | :--- |
 | **Cookie-Based (LB Insert)**| Load balancer injects a tracking cookie (e.g., `AWSALB=node1`). | Transparent to backend app code; highly reliable. | Requires Layer 7 HTTP load balancer. |
 | **Cookie-Based (App Injected)**| Backend application sets custom session cookie (`JSESSIONID`). | Direct control by application logic. | App coupled to load balancer cookie format. |
-| **IP Hash (Source IP Affinity)**| Hash client IP address ($Hash(IP) \bmod N$) to pick server node. | Works at Layer 4 (TCP) without cookie parsing. | Clients behind NAT share 1 IP, causing server hotspotting. |
+| **IP Hash (Source IP Affinity)**| Hash client IP address (Hash(IP) mod N) to pick server node. | Works at Layer 4 (TCP) without cookie parsing. | Clients behind NAT share 1 IP, causing server hotspotting. |
 
 ### Architectural Pros and Cons
 

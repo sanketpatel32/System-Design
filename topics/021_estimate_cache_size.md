@@ -35,28 +35,28 @@ Estimating **Cache Size** determines the RAM memory needed to store hot data in 
 | **Hot Data Ratio** | Percentage of active data requested repeatedly. | Pareto Rule: 20% of daily active dataset |
 | **Cache Key-Value Size**| Combined byte size of cache key + serialized JSON payload. | 500 Bytes to 2 KB per item |
 | **Cache TTL (Time To Live)**| Expiration duration of cached items. | 1 day (24 hours) for daily active cache |
-| **Memory Overhead Factor**| RAM overhead for metadata, Redis dict pointers, fragmentation.| Multiply raw data size by **$1.25\times - 1.5\times$** |
+| **Memory Overhead Factor**| RAM overhead for metadata, Redis dict pointers, fragmentation.| Multiply raw data size by **1.25× - 1.5×** |
 
 ### Step-by-Step Cache Calculation Walkthrough
 
 1. **Calculate Daily Active Read Volume**:
-   - Given $100\,\text{Million daily active requests}$.
-   - Average size of cached entity (e.g., user profile payload) $= 1\,\text{KB} (1,000\,\text{Bytes})$.
+   - Given 100 Million daily active requests.
+   - Average size of cached entity (e.g., user profile payload) = 1 KB (1,000 Bytes).
 
 2. **Calculate 100% Daily Read Dataset Size**:
 
-$$\text{Total Daily Read Data} = 100\,\text{M requests} \times 1\,\text{KB} = 100\,\text{GB/day}$$
+**Total Daily Read Data** = 100 M requests × 1 KB = 100 GB/day
 
 3. **Apply 80/20 Rule (Cache 20% Hot Data)**:
 
-$$\text{Raw Cache Memory Required} = 100\,\text{GB} \times 0.20 = 20\,\text{GB of RAM}$$
+**Raw Cache Memory Required** = 100 GB × 0.20 = 20 GB of RAM
 
 4. **Account for Memory Overhead & Safety Buffer (+25%)**:
 
-$$\text{Total RAM Required} = 20\,\text{GB} \times 1.25 = 25\,\text{GB RAM}$$
+**Total RAM Required** = 20 GB × 1.25 = 25 GB RAM
 
 5. **Determine Redis Instance Fleet Size**:
-   - If using 16 GB RAM cloud Redis instances, provision **2 instances** ($2 \times 16\,\text{GB} = 32\,\text{GB}$ total capacity) to allow headroom for spikes.
+   - If using 16 GB RAM cloud Redis instances, provision **2 instances** (2 × 16 GB = 32 GB total capacity) to allow headroom for spikes.
 
 ### Key takeaway
 

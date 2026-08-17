@@ -49,7 +49,7 @@ The video player continuously measures segment download latency and RAM buffer h
 
 ### ABR Switching Algorithms
 
-- **Throughput-Based Algorithms**: Calculate moving average download speed of previous $N$ segments. If estimated throughput exceeds target bitrate by 20%, upgrade resolution.
+- **Throughput-Based Algorithms**: Calculate moving average download speed of previous N segments. If estimated throughput exceeds target bitrate by 20%, upgrade resolution.
 - **Buffer-Based Algorithms (BBA)**: Ignore network throughput estimates entirely; switch resolutions based strictly on current video buffer level in RAM (e.g. < 5s buffer = drop quality, > 20s buffer = increase quality).
 - **Hybrid Algorithms (BOLA / MPC)**: Combine throughput predictions and buffer health optimization to prevent rapid quality oscillations.
 

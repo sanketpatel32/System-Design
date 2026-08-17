@@ -32,7 +32,7 @@ Node A Physical Clock: 12:00:05.100                    Node B Physical Clock: 12
 | :--- | :--- | :--- | :--- | :--- |
 | **Standard NTP** | Network Time Protocol over UDP | 10ms to 100ms | Standard Commodity Hardware | Standard Linux Servers |
 | **PTP (IEEE 1588)** | Precision Time Protocol | Sub-microsecond (<1µs) | Specialized Network Hardware / NICs | Financial High-Frequency Trading |
-| **Google TrueTime** | Atomic Clocks + GPS Receivers | Bounded $\epsilon pprox 1	ext{ms}$ to $7	ext{ms}$ | Specialized Datacenter Hardware | Google Spanner |
+| **Google TrueTime** | Atomic Clocks + GPS Receivers | Bounded ε ≈ 1ms to 7ms | Specialized Datacenter Hardware | Google Spanner |
 | **Logical Clocks** | Lamport Timestamps / Vector Clocks | Zero dependence on physical time | None (Software Counter Array) | Cassandra, Riak, DynamoDB |
 
 ### Impact of Clock Skew on System Design
@@ -63,7 +63,7 @@ Guarantee: HLC timestamps are strictly monotonic and always close to physical ti
 ### Production Guidance for Clock Skew Mitigation
 
 - **Configure NTP Monitoring**: Set up automated alerts if server NTP clock offset exceeds 50 milliseconds (`chronyc tracking`).
-- **Use TrueTime / Spanner Bounds**: If building multi-datacenter transactional RDBMS, use hardware atomic clocks to bound uncertainty ($\epsilon$).
+- **Use TrueTime / Spanner Bounds**: If building multi-datacenter transactional RDBMS, use hardware atomic clocks to bound uncertainty (ε).
 
 ### Key takeaway
 

@@ -42,21 +42,21 @@ Estimating the **Number of Application Servers** determines compute capacity (CP
 ### Step-by-Step Server Fleet Sizing Walkthrough
 
 1. **Determine Peak QPS Requirement**:
-   - Given $\text{Peak QPS} = 60,000\,\text{QPS}$.
+   - Given Peak QPS = 60,000 QPS.
 
 2. **Estimate Single Application Server Capacity**:
    - Assume a standard 8-core, 16 GB RAM server handling a typical REST API service can comfortably serve **1,000 QPS** at p99 latency < 50ms.
 
 3. **Calculate Baseline Server Count**:
 
-$$\text{Baseline Server Count} = \frac{\text{Peak QPS}}{\text{Capacity per Server}} = \frac{60,000\,\text{QPS}}{1,000\,\text{QPS/server}} = 60\,\text{Servers}$$
+**Baseline Server Count** = (Peak QPS) / (Capacity per Server) = 60,000 QPS / 1,000 QPS/server = 60 servers
 
 4. **Apply Safety Buffer (+30% Headroom for CPU Spikes / AZ Outage)**:
 
-$$\text{Total Server Fleet} = 60 \times 1.30 = 78\,\text{Servers}$$
+**Total Server Fleet** = 60 × 1.30 = 78 Servers
 
 5. **Multi-AZ Distribution**:
-   - Divide 78 servers across 3 Availability Zones (AZs) $= 26\text{ servers per AZ}$.
+   - Divide 78 servers across 3 Availability Zones (AZs) = 26 servers per AZ.
 
 ### Key takeaway
 

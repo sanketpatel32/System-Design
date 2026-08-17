@@ -32,8 +32,8 @@
 
 | Variant Algorithm | Distribution Mechanism | Best Suited Scenario | Trade-off |
 | :--- | :--- | :--- | :--- |
-| **Simple Round Robin** | Equal sequential rotation ($1 \rightarrow 2 \rightarrow 3 \rightarrow 1$). | Homogeneous server fleets handling identical short requests. | Assumes equal server capacity and request duration. |
-| **Weighted Round Robin** | Server assigned weight $W$; higher weight node gets proportionally more requests. | Heterogeneous server fleets (e.g., 16-core vs 4-core nodes). | Requires manual configuration of weights. |
+| **Simple Round Robin** | Equal sequential rotation (1 arrow 2 arrow 3 arrow 1). | Homogeneous server fleets handling identical short requests. | Assumes equal server capacity and request duration. |
+| **Weighted Round Robin** | Server assigned weight W; higher weight node gets proportionally more requests. | Heterogeneous server fleets (e.g., 16-core vs 4-core nodes). | Requires manual configuration of weights. |
 | **Dynamic Weighted RR** | Load balancer dynamically adjusts weights based on CPU/RAM metrics. | Variable cloud instance performance fleets. | Higher LB CPU monitoring overhead. |
 
 ### Limitations of Simple Round Robin

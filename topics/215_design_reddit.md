@@ -31,15 +31,15 @@ Key technical challenges involve calculating real-time post ranking using the **
 ```
 
 ### Key Technical Mechanics
-1. **Reddit Hot Ranking Algorithm:** Computes post score $S$ based on upvotes $U$, downvotes $D$, and submission epoch time:
+1. **Reddit Hot Ranking Algorithm:** Computes post score S based on upvotes U, downvotes D, and submission epoch time:
 
-$$w = U - D$$
+w = U - D
 
-$$x = egin{cases} 1 & 	ext{if } w > 0 \ -1 & 	ext{if } w < 0 \ 0 & 	ext{if } w = 0 \end{cases}$$
+x = 1 if w > 0, −1 if w < 0, 0 if w = 0
 
-$$S(w, t) = \log_{10}(\max(|w|, 1)) + rac{x \cdot (t - t_0)}{45000}$$
+S(w, t) = log₁₀(max(|w|, 1)) + (x · (t - t₀)) / 45000
 
-*Key Insight:* The logarithmic scale $\log_{10}(|w|)$ means the first 10 votes have the same ranking impact as the next 100 votes, and $45000$ seconds (12.5 hours) naturally degrades older posts to keep the homepage fresh.
+*Key Insight:* The logarithmic scale log₁₀(|w|) means the first 10 votes have the same ranking impact as the next 100 votes, and 45000 seconds (12.5 hours) naturally degrades older posts to keep the homepage fresh.
 
 2. **Nested Comment Tree Storage (Path Enumeration / Closure Table):** Stores tree hierarchy using materialized path strings (e.g., `path: "root/c1/c4/c9"`) to allow querying entire nested discussion threads in a single database read.
 

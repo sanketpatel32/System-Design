@@ -35,7 +35,7 @@ A Ticket Booking System manages seat maps, event schedules, pricing tiers, and h
 ### Concurrency Strategies for Seat Reservations
 | Strategy | Mechanism | Latency | Scalability |
 |---|---|---|---|
-| **Pessimistic DB Locks** | `SELECT FOR UPDATE` on seat rows | High ($50-100	ext{ ms}$) | Poor under high traffic spikes. |
+| **Pessimistic DB Locks** | `SELECT FOR UPDATE` on seat rows | High (50-100 ms) | Poor under high traffic spikes. |
 | **Redis TTL Distributed Lock** | `SET seat_id user_id NX PX 600000` | Sub-millisecond | Excellent; handles millions of concurrent lock attempts smoothly. |
 | **Redis Bitmaps** | Bit per seat ID in Redis key | Ultra-low | High memory efficiency for large stadiums/venues. |
 

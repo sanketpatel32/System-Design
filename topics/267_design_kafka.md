@@ -38,7 +38,7 @@ Apache Kafka is a distributed event streaming platform capable of handling high-
 ### Key Performance Innovations
 | Mechanism | How It Works | Performance Impact |
 |---|---|---|
-| **Sequential Disk I/O** | Appends messages exclusively to the end of partition files | Disk I/O speed rivals memory speed ($\sim 100	ext{ MB/s}$ sequential throughput). |
+| **Sequential Disk I/O** | Appends messages exclusively to the end of partition files | Disk I/O speed rivals memory speed (~ 100 MB/s sequential throughput). |
 | **Zero-Copy (`sendfile`)** | Transfers disk page cache data directly to NIC buffer bypassing JVM | Reduces CPU copy operations from 4 to 2, drastically lowering latency. |
 | **Page Cache Utilization** | Relies on OS page cache rather than JVM heap memory | Eliminates JVM Garbage Collection overhead for massive buffers. |
 

@@ -11,10 +11,10 @@ Geohash encodes geographic coordinates by interleaving binary bits of latitude a
 
 | Geohash Length | Grid Cell Dimensions | Typical Application |
 |---|---|---|
-| **3** | $\sim 156 \text{ km} \times 156 \text{ km}$ | State / Region level indexing |
-| **5** | $\sim 4.9 \text{ km} \times 4.9 \text{ km}$ | City district / Neighborhood search |
-| **6** | $\sim 1.2 \text{ km} \times 0.6 \text{ km}$ | Nearby ride-hailing driver matching |
-| **7** | $\sim 152 \text{ m} \times 152 \text{ m}$ | Hyper-local venue search & POI matching |
+| **3** | ~ 156 km × 156 km | State / Region level indexing |
+| **5** | ~ 4.9 km × 4.9 km | City district / Neighborhood search |
+| **6** | ~ 1.2 km × 0.6 km | Nearby ride-hailing driver matching |
+| **7** | ~ 152 m × 152 m | Hyper-local venue search & POI matching |
 
 ### System Architecture
 ```

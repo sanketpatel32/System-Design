@@ -35,10 +35,10 @@ Unlike web search, product search balances text relevancy (BM25) with **commerci
 
 ### Key Technical Mechanics
 1. **Inverted Index with Faceted Aggregations:** Uses Elasticsearch/OpenSearch to construct bitset filters for attributes (`brand:Sony`, `category:Electronics`, `price:[100 TO 300]`). Returns matching product IDs along with dynamic facet counts (`Sony (42)`, `Bose (18)`).
-2. **Query Expansion & Synonym Mapping:** Translates user query terms using e-commerce dictionaries (e.g., *"cheap phone"* $\rightarrow$ *"budget smartphone"*, *"sneakers"* $\rightarrow$ *"athletic shoes"*).
+2. **Query Expansion & Synonym Mapping:** Translates user query terms using e-commerce dictionaries (e.g., *"cheap phone"* arrow *"budget smartphone"*, *"sneakers"* arrow *"athletic shoes"*).
 3. **Commercial Ranking Scoring Function:**
 
-$$\text{Product Score} = S_{\text{text\_match}} \cdot w_1 + \log(1 + \text{Sales\_Velocity}) \cdot w_2 + \text{Rating} \cdot w_3 - \text{Out\_Of\_Stock\_Penalty}$$
+**Product Score** = S_text\ₘatch · w₁ + log(1 + Sales_Velocity) · w₂ + Rating · w₃ - Out_Of_Stock_Penalty
 
 ### API Interface Specifications
 

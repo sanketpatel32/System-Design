@@ -20,7 +20,7 @@ A **Cache** is a high-speed temporary storage layer used to store frequently acc
 
 1. **Cache Hit**: Requested data is present in the cache, returning immediately with low latency.
 2. **Cache Miss**: Requested data is absent from the cache. The application fetches data from underlying persistent storage, writes it to the cache, and returns it to the client.
-3. **Hit Ratio**: Percentage of total requests served successfully from cache ($	ext{Hit Ratio} = rac{	ext{Hits}}{	ext{Hits} + 	ext{Misses}}$). High hit ratios (>90%) indicate an effective caching strategy.
+3. **Hit Ratio**: Percentage of total requests served successfully from cache (Hit Ratio = Hits / (Hits + Misses)). High hit ratios (>90%) indicate an effective caching strategy.
 4. **Time-To-Live (TTL)**: Expiration timer assigned to cached items, automatically invalidating stale entries.
 
 ### Caching Layers Comparison Matrix

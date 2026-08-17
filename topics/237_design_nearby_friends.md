@@ -38,8 +38,8 @@ Core design constraints mandate **battery-conscious mobile location reporting**,
 ```
 
 ### Key Technical Mechanics
-1. **Geohash Spatial Indexing:** Converts 2D latitude/longitude coordinates into a 1D alphanumeric string (e.g., `9q9hv`). Nearby geographical points share long matching Geohash prefixes. A 5-character Geohash represents a bounding box of roughly $\approx 4.9 \text{ km} \times 4.9 \text{ km}$.
-2. **Redis Geo Data Structures:** Stores user locations using `GEOADD` and executes spatial radius lookups (`GEORADIUSBYMEMBER user_id 5 km`) in $O(N + \log M)$ time.
+1. **Geohash Spatial Indexing:** Converts 2D latitude/longitude coordinates into a 1D alphanumeric string (e.g., `9q9hv`). Nearby geographical points share long matching Geohash prefixes. A 5-character Geohash represents a bounding box of roughly ≈ 4.9 km × 4.9 km.
+2. **Redis Geo Data Structures:** Stores user locations using `GEOADD` and executes spatial radius lookups (`GEORADIUSBYMEMBER user_id 5 km`) in O(N + log M) time.
 3. **Adaptive Battery-Conscious Mobile Location Reporting:** Mobile SDK adjusts GPS reporting interval based on user state:
    - **Stationary (Device charging/idle):** Ping every 5 to 10 minutes.
    - **Moving (Walking/Driving):** Ping every 30 seconds.

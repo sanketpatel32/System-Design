@@ -1,0 +1,26 @@
+{
+  "converted": [],
+  "skipped": [
+    {
+      "file": "024_estimate_cost_at_a_high_level.md",
+      "span": "~$0.15 per hour ($"
+    },
+    {
+      "file": "024_estimate_cost_at_a_high_level.md",
+      "span": "~$0.35 per hour ($"
+    },
+    {
+      "file": "024_estimate_cost_at_a_high_level.md",
+      "span": "~$0.20 per hour ($"
+    },
+    {
+      "file": "024_estimate_cost_at_a_high_level.md",
+      "span": "~$0.023 per GB/month ($"
+    },
+    {
+      "file": "024_estimate_cost_at_a_high_level.md",
+      "span": "~$0.08 per GB ($"
+    }
+  ],
+  "leftovers": []
+}

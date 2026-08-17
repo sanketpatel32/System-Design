@@ -8,7 +8,7 @@ A quorum is the **minimum number of nodes in a distributed cluster that must par
 
 ### Quorum Read/Write Math Architecture
 
-In a cluster of $N$ nodes, configuring Read Quorum ($R$) and Write Quorum ($W$) such that $R + W > N$ guarantees that the read set and write set overlap on at least one node containing the latest version of data.
+In a cluster of N nodes, configuring Read Quorum (R) and Write Quorum (W) such that R + W > N guarantees that the read set and write set overlap on at least one node containing the latest version of data.
 
 ```
 Total Nodes N = 5 (Nodes 1, 2, 3, 4, 5)
@@ -28,28 +28,28 @@ Quorum Condition Satisfied: R (3) + W (3) = 6 > N (5) -> Strong Consistency Guar
 
 ### Quorum Configuration Matrix
 
-| Quorum Trade-off Profile | Write Quorum ($W$) | Read Quorum ($R$) | Consistency Guarantee | System Characteristics |
+| Quorum Trade-off Profile | Write Quorum (W) | Read Quorum (R) | Consistency Guarantee | System Characteristics |
 | :--- | :--- | :--- | :--- | :--- |
-| **Write-Heavy Optimization** | $W = 1$ | $R = N$ | Strong ($1 + N > N$) | Fast writes, slow reads (Read must query all nodes) |
-| **Read-Heavy Optimization** | $W = N$ | $R = 1$ | Strong ($N + 1 > N$) | Fast reads, slow writes (Write must update all nodes) |
+| **Write-Heavy Optimization** | W = 1 | R = N | Strong (1 + N > N) | Fast writes, slow reads (Read must query all nodes) |
+| **Read-Heavy Optimization** | W = N | R = 1 | Strong (N + 1 > N) | Fast reads, slow writes (Write must update all nodes) |
 | **Balanced Quorum (Standard)**| $W = \lfloor N/2 
-floor + 1$ | $R = \lfloor N/2 
+floor + 1|R = \lfloor N/2 
 floor + 1$ | Strong | Balanced read/write performance & fault tolerance |
-| **Eventual Consistency** | $W = 1$ | $R = 1$ | Eventual ($1 + 1 \le N$) | High performance, risk of stale reads |
+| **Eventual Consistency** | W = 1 | R = 1 | Eventual (1 + 1 ≤ N) | High performance, risk of stale reads |
 
 ### Fault Tolerance Calculations
 
-For a cluster of $N$ nodes using majority quorum ($Q = \lfloor N/2 
+For a cluster of N nodes using majority quorum ($Q = \lfloor N/2 
 floor + 1$):
 - **Fault Tolerance**: The system can tolerate up to $F = \lfloor (N - 1) / 2 
 floor$ node failures.
-- An odd number of nodes is optimal: A 5-node cluster tolerates 2 node failures ($5 - 3 = 2$). A 6-node cluster also tolerates only 2 failures ($6 - 4 = 2$), adding node cost without increasing fault tolerance.
+- An odd number of nodes is optimal: A 5-node cluster tolerates 2 node failures (5 - 3 = 2). A 6-node cluster also tolerates only 2 failures (6 - 4 = 2), adding node cost without increasing fault tolerance.
 
 ### Key Trade-offs & Production Engineering
 
-- ✅ **Tunable Consistency**: Allows system designers to tune $R$ and $W$ dynamically based on read-to-write ratio requirements.
+- ✅ **Tunable Consistency**: Allows system designers to tune R and W dynamically based on read-to-write ratio requirements.
 - ✅ **Fault Tolerant Operation**: High availability is maintained even when minority nodes crash or experience network partitions.
-- ❌ **Network Overhead**: Issuing concurrent read/write requests to $R$ or $W$ nodes increases internal network traffic.
+- ❌ **Network Overhead**: Issuing concurrent read/write requests to R or W nodes increases internal network traffic.
 ### Quorum Calculation & Read Repair Flow
 
 ```python
@@ -76,4 +76,4 @@ print(evaluate_quorum(5, 3, 3))
 
 ### Key takeaway
 
-Quorum rules ($R + W > N$) guarantee **strong data consistency across distributed reads and writes** by ensuring that read and write node sets overlap on at least one up-to-date node.
+Quorum rules (R + W > N) guarantee **strong data consistency across distributed reads and writes** by ensuring that read and write node sets overlap on at least one up-to-date node.

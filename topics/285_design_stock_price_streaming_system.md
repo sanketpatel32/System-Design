@@ -37,7 +37,7 @@ A Stock Price Streaming System ingests high-frequency market tick data from fina
 | Technique | Implementation | Impact |
 |---|---|---|
 | **LMAX Disruptor Ring Buffer** | Lock-free in-memory ring buffer | Millions of events/sec per thread with sub-microsecond latency. |
-| **Delta Encoding** | Transmits price deltas (`+0.05`) instead of full price payloads | Reduces network payload size by $> 70\%$. |
+| **Delta Encoding** | Transmits price deltas (`+0.05`) instead of full price payloads | Reduces network payload size by > 70%. |
 | **Binary Protocols** | Protocol Buffers / FlatBuffers instead of JSON | Eliminates JSON serialization overhead. |
 
 ### Key takeaway

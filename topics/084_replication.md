@@ -28,7 +28,7 @@
 
 1. **Single-Leader (Primary-Replica)**: All writes route to a designated primary node. The primary streams state changes via Write-Ahead Logs (WAL) to secondary nodes that process read queries.
 2. **Multi-Leader (Multi-Primary)**: Multiple nodes accept writes concurrently. Leaders synchronize updates asynchronously. Common in multi-region deployments.
-3. **Leaderless (Dynamo-style)**: Any node can accept read and write requests. Clients write to multiple nodes concurrently using quorum protocols ($W + R > N$).
+3. **Leaderless (Dynamo-style)**: Any node can accept read and write requests. Clients write to multiple nodes concurrently using quorum protocols (W + R > N).
 
 ### Replication Mode Comparison
 

@@ -38,8 +38,8 @@ A Continuous Integration and Continuous Deployment (CI/CD) system automates soft
 | Deployment Strategy | Execution Mechanism | Downtime | Rollback Speed |
 |---|---|---|---|
 | **Rolling Update** | Replaces old instances with new ones incrementally | Zero downtime | Slower (requires step-by-step reverse deployment). |
-| **Blue-Green** | Maintains 2 identical environments; router switches $100\%$ traffic instantly | Zero downtime | Instant (switch router back to Blue). |
-| **Canary** | Routes $1-5\%$ traffic to new version; evaluates error rate before full rollout | Zero downtime | Instant (shift traffic percentage back to $0\%$). |
+| **Blue-Green** | Maintains 2 identical environments; router switches 100% traffic instantly | Zero downtime | Instant (switch router back to Blue). |
+| **Canary** | Routes 1-5% traffic to new version; evaluates error rate before full rollout | Zero downtime | Instant (shift traffic percentage back to 0%). |
 
 ### Key takeaway
 CI/CD systems decouple control plane pipeline orchestration from isolated ephemeral worker pools (K8s pods), leveraging artifact registries and Canary/Blue-Green deployment controllers to deliver zero-downtime code rollouts.

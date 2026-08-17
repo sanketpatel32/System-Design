@@ -41,10 +41,10 @@ The system solves two major computational problems: **Dynamic Surge Pricing** (b
 ```
 
 ### Key Technical Mechanics
-1. **Optimal Batch Bipartite Matching:** Instead of greedily matching the first available driver to a rider, the system queues requests in 10-second batch windows. It constructs a bipartite graph ($Riders \leftrightarrow Drivers$) and executes the **Kuhn-Munkres (Hungarian) Algorithm** to minimize the *total aggregate pickup ETA* across all riders in the cell.
+1. **Optimal Batch Bipartite Matching:** Instead of greedily matching the first available driver to a rider, the system queues requests in 10-second batch windows. It constructs a bipartite graph (Riders r→ Drivers) and executes the **Kuhn-Munkres (Hungarian) Algorithm** to minimize the *total aggregate pickup ETA* across all riders in the cell.
 2. **Dynamic Surge Pricing Engine:** Calculates the supply/demand ratio within each Uber H3 Hexagon cell every 10 seconds:
 
-$$\text{Surge Multiplier} = f\left(\frac{\text{Active Rider Requests}}{\text{Available Idle Drivers}}\right)$$
+**Surge Multiplier** = f((Active Rider Requests) / (Available Idle Drivers))
 
    - If demand exceeds supply in a cell, surge pricing increases fares to encourage more drivers to navigate to the high-demand hexagon.
 3. **Driver Offer Timeout Handling:** Gives the matched driver 20 seconds to accept the offer. If declined or timed out, the dispatch engine instantly re-matches the rider with the next optimal candidate.

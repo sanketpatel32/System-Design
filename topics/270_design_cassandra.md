@@ -36,8 +36,8 @@ Apache Cassandra is an open-source, distributed Wide-Column NoSQL database desig
 ### Write Path vs Read Path Execution
 | Operation | Sequence of Internal Execution | Performance Characteristics |
 |---|---|---|
-| **Write Path** | Write to **CommitLog** (sequential disk) $ightarrow$ Write to **Memtable** (in-memory) $ightarrow$ Flush to **SSTable** (immutable disk file). | Ultra-fast ($< 2	ext{ ms}$); avoids random disk writes. |
-| **Read Path** | Check **Memtable** $ightarrow$ Check **Bloom Filter** $ightarrow$ Check **Key Cache** $ightarrow$ Scan **Partition Summary/Index** $ightarrow$ Read **SSTable**. | Slower than write path; requires Bloom filter checks across multiple SSTables. |
+| **Write Path** | Write to **CommitLog** (sequential disk) → Write to **Memtable** (in-memory) → Flush to **SSTable** (immutable disk file). | Ultra-fast (< 2 ms); avoids random disk writes. |
+| **Read Path** | Check **Memtable** → Check **Bloom Filter** → Check **Key Cache** → Scan **Partition Summary/Index** → Read **SSTable**. | Slower than write path; requires Bloom filter checks across multiple SSTables. |
 
 ### SSTable Compaction Strategies
 - **Size-Tiered Compaction Strategy (STCS)**: Merges SSTables of similar sizes. Optimal for heavy write workloads.

@@ -38,7 +38,7 @@ Key technical challenges involve **Hybrid Fanout Feed Generation** (handling cel
 ```
 
 ### Key Technical Mechanics & Hybrid Fanout
-1. **Fanout-on-Write (Push Model):** When a user with a modest follower count posts, a background worker pushes the post ID into every follower's Redis timeline list. Fast read performance ($O(1)$ lookup), but slow write fanout if followers total millions.
+1. **Fanout-on-Write (Push Model):** When a user with a modest follower count posts, a background worker pushes the post ID into every follower's Redis timeline list. Fast read performance (O(1) lookup), but slow write fanout if followers total millions.
 2. **Fanout-on-Read (Pull Model):** Posts from high-profile "celebrity" accounts (e.g., > 100,000 followers) are NOT pushed to follower timelines. Instead, when a user opens their feed, the system pulls the celebrity's recent posts and merges them with the cached user timeline in memory.
 
 ### API Interface Specifications

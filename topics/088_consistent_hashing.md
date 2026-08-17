@@ -4,7 +4,7 @@
 
 ---
 
-**Consistent Hashing** is a distributed hash algorithm that minimizes key remapping when nodes are added to or removed from a cluster. Unlike traditional modulo hashing (`hash(key) % N`), where changing $N$ remaps nearly all keys, consistent hashing remaps only $K/N$ keys on average, where $K$ is the total number of keys and $N$ is the number of nodes.
+**Consistent Hashing** is a distributed hash algorithm that minimizes key remapping when nodes are added to or removed from a cluster. Unlike traditional modulo hashing (`hash(key) % N`), where changing N remaps nearly all keys, consistent hashing remaps only K/N keys on average, where K is the total number of keys and N is the number of nodes.
 
 ### Hash ring architecture
 
@@ -24,7 +24,7 @@
 
 ### How consistent hashing works
 
-1. **The Hash Ring**: The hash function maps both physical servers and data keys to a fixed 360-degree circular integer space (e.g., $0$ to $2^{32} - 1$).
+1. **The Hash Ring**: The hash function maps both physical servers and data keys to a fixed 360-degree circular integer space (e.g., 0 to 2³² - 1).
 2. **Key Assignment**: A key is hashed to a point on the ring, then assigned to the first server encountered moving clockwise around the ring.
 3. **Node Addition/Removal**: Adding a new server claims keys only from its immediate clockwise neighbor, leaving all other node assignments untouched.
 
@@ -38,9 +38,9 @@ To prevent hot spots and uneven data distribution caused by non-uniform server p
 
 | Strategy | Node Change Impact | Key Remap Percentage | Hotspot Vulnerability |
 | :--- | :--- | :--- | :--- |
-| **Modulo Hashing (`hash % N`)**| Catastrophic (Remaps almost all keys) | $pprox 100\%$ | High |
-| **Basic Consistent Hashing** | Low (Remaps only adjacent neighbor keys) | $1/N$ | Moderate (Uneven ring spacing) |
-| **Consistent Hashing + VNodes** | Low & Uniformly Distributed | $1/N$ | Minimal (Even balance across ring) |
+| **Modulo Hashing (`hash % N`)**| Catastrophic (Remaps almost all keys) | ≈ 100% | High |
+| **Basic Consistent Hashing** | Low (Remaps only adjacent neighbor keys) | 1/N | Moderate (Uneven ring spacing) |
+| **Consistent Hashing + VNodes** | Low & Uniformly Distributed | 1/N | Minimal (Even balance across ring) |
 
 ### Key takeaway
 

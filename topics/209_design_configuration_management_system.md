@@ -28,9 +28,9 @@ It replaces static configuration files and process restarts by pushing configura
 ```
 
 ### Key Technical Mechanics
-1. **Raft Consensus Storage Engine:** Uses etcd or Consul backed by the Raft consensus algorithm to guarantee strong consistency ($CP$ in CAP theorem) across distributed configuration nodes.
+1. **Raft Consensus Storage Engine:** Uses etcd or Consul backed by the Raft consensus algorithm to guarantee strong consistency (CP in CAP theorem) across distributed configuration nodes.
 2. **Watch Primitive (Long Polling / gRPC Streams):** Microservices open a persistent `Watch` connection to the config store. When a key mutates, the store pushes the diff directly to watching nodes.
-3. **Hierarchical Environment Overrides:** Resolves configuration values hierarchically: `Global Defaults` $\rightarrow$ `Region Overrides` $\rightarrow$ `Environment (Prod)` $\rightarrow$ `Service-Specific Config`.
+3. **Hierarchical Environment Overrides:** Resolves configuration values hierarchically: `Global Defaults` arrow `Region Overrides` arrow `Environment (Prod)` arrow `Service-Specific Config`.
 
 ### Configuration Management API Specifications
 

@@ -22,7 +22,7 @@ When consumer processing capacity drops below producer output rate, intermediate
 
 ### Backpressure Handling Strategies
 
-1. **Reactive Pull-Based Streaming (Credit/Demand Based)**: Consumers explicitly request $N$ items from producers (`request(n)` in Reactive Streams / RxJava / Project Reactor). Producers only send requested capacity.
+1. **Reactive Pull-Based Streaming (Credit/Demand Based)**: Consumers explicitly request N items from producers (`request(n)` in Reactive Streams / RxJava / Project Reactor). Producers only send requested capacity.
 2. **Blocking / Throttling**: The producer's send thread is blocked on a bounded queue (e.g., Java `ArrayBlockingQueue`) or TCP socket window until space opens up.
 3. **Shedding / Dropping (Load Shedding)**: Excess messages are immediately dropped or sent to a Dead-Letter Queue (DLQ) when the queue fills.
 4. **Buffering / Offloading**: Messages are temporary offloaded to persistent disk stores (e.g., Kafka log segments) to absorb producer spikes.
@@ -33,7 +33,7 @@ When consumer processing capacity drops below producer output rate, intermediate
 | :--- | :--- | :--- | :--- |
 | **TCP Sliding Window** | Receiver advertises `Window Size = 0` in TCP Header | Sender stops transmitting packets | Transport Layer (Layer 4) |
 | **HTTP/2 Flow Control** | Sender receives `WINDOW_UPDATE` frames | Sender restricts HTTP/2 stream multiplexing | Application Protocols / gRPC |
-| **Reactive Streams** | Consumer calls `Subscription.request(n)` | Producer limits emission to requested $n$ items | In-Memory Async Streams (RxJava) |
+| **Reactive Streams** | Consumer calls `Subscription.request(n)` | Producer limits emission to requested n items | In-Memory Async Streams (RxJava) |
 | **Message Queue Consumer** | Consumer pulls messages on demand (`poll()`) | Unconsumed messages remain in broker queue | Kafka, RabbitMQ, Pulsar |
 
 ### System Implementation & Metrics Monitoring

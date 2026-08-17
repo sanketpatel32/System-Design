@@ -41,19 +41,19 @@ Estimating **Database Size and Sharding Requirements** determines whether a syst
 ### Step-by-Step Sharding & DB Sizing Walkthrough
 
 1. **Calculate Write Throughput**:
-   - Given $\text{Peak Write QPS} = 25,000\,\text{Write QPS}$.
-   - Single MySQL primary max write throughput $= 5,000\,\text{TPS}$.
+   - Given Peak Write QPS = 25,000 Write QPS.
+   - Single MySQL primary max write throughput = 5,000 TPS.
 
-$$\text{Minimum Write Shards Required} = \frac{25,000\,\text{Write QPS}}{5,000\,\text{TPS/node}} = 5\,\text{Write Shards}$$
+**Minimum Write Shards Required** = (25,000 Write QPS) / 5,000 TPS/node = 5 Write Shards
 
 2. **Calculate 5-Year Database Storage Horizon**:
-   - Daily write data $= 100\,\text{GB/day}$.
-   - 5-year total storage $= 100\,\text{GB} \times 365 \times 5 = 182.5\,\text{TB}$.
+   - Daily write data = 100 GB/day.
+   - 5-year total storage = 100 GB × 365 × 5 = 182.5 TB.
 
 3. **Determine Shard Node Count Based on Storage Limit**:
-   - If maximum recommended storage per database shard node $= 2\,\text{TB}$:
+   - If maximum recommended storage per database shard node = 2 TB:
 
-$$\text{Minimum Storage Shards Required} = \frac{182.5\,\text{TB}}{2\,\text{TB/shard}} \approx 92\,\text{Shards}$$
+**Minimum Storage Shards Required** = 182.5 TB / 2 TB/shard ≈ 92 Shards
 
 4. **Select Final Shards Count**:
    - Take the maximum of Write Shards (5) vs Storage Shards (92).

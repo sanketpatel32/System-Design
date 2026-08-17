@@ -46,7 +46,7 @@ Traffic is dynamically distributed across all active regional sites, requiring c
 - ❌ **Complex Multi-Master Data Layer**: Multi-master replication conflicts present severe operational complexity.
 ### Active-Active Multi-Master Conflict Resolution Rules
 
-1. **User Pinning (Sticky Sessions)**: Route user $U$ to Region A for all reads/writes. Transmit cross-region updates asynchronously for disaster recovery.
+1. **User Pinning (Sticky Sessions)**: Route user U to Region A for all reads/writes. Transmit cross-region updates asynchronously for disaster recovery.
 2. **CRDT Data Structures**: Use Conflict-Free Replicated Data Types for counters and sets.
 3. **Partition Key Isolation**: Assign region-specific key ranges (e.g. Region A generates even UUIDs, Region B generates odd UUIDs) to prevent primary key collisions.
 ### DynamoDB Global Tables Active-Active Configuration Pattern

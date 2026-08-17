@@ -52,5 +52,27 @@ else
 end
 ```
 
+### Auction Close & Sniper Defense
+- **Soft-close extension**: any bid in the final 60 seconds extends the auction by 30 seconds — this is how eBay neutralizes last-second sniping bots and maximizes final prices.
+- **Close authority**: only the bid engine that owns the item's auction state may declare the winner; a delayed in-flight bid that arrives after close is rejected with a clear "auction ended" event (the audit log records the attempt).
+- **Settlement flow**: winner notification → payment hold → escrow → seller payout, each step a durable state machine so a crash mid-settlement resumes rather than double-charges.
+
+### Proxy (Auto) Bidding Mechanics
+The system bids the *minimum increment* on the proxy user's behalf, not their maximum:
+
+1. Reserve price ₹100, current bid ₹120. A user sets a proxy max of ₹200.
+2. The engine places ₹125 (current + increment) on their behalf and holds the ₹200 limit privately.
+3. A rival's ₹150 arrives → engine instantly counters ₹155 from the proxy — still below the hidden ceiling.
+4. Rivals keep raising until someone exceeds ₹200; the proxy stops and the auction continues manually.
+
+Invariant: the visible bid is always `min(winner's hidden max, runner-up + increment)` — the reason proxy auctions feel like a live auctioneer.
+
+### Failure Modes
+| Failure | Consequence | Mitigation |
+| :--- | :--- | :--- |
+| Redis failover mid-auction | State loss / double winners | Persist bid log synchronously (the audit log *is* the recovery source); rebuild auction state by replay. |
+| WebSocket disconnect | Bidder blind to new max | Reconnect with Last-Event-ID resume + full state resync on join. |
+| Flash bid storm at close | Queue backlog delays close | Shed *reads* first; bid writes are strictly serialized per item — latency budget protects them. |
+
 ### Key takeaway
 Online auction systems enforce atomic bid ordering via Redis Lua scripts, broadcasting updated highest bids to connected participants over WebSockets while logging immutable bid history in relational storage.

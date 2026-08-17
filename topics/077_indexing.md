@@ -28,8 +28,8 @@
 
 ### Primary index data structures
 
-1. **B-Tree / B+Tree**: Balanced search trees with $O(\log N)$ lookup, insert, and delete complexity. Ideal for range queries (`BETWEEN`, `>`, `<`), equality lookups, and sorted returns (`ORDER BY`). Used as the default index structure in PostgreSQL, MySQL (InnoDB), and Oracle.
-2. **Hash Index**: $O(1)$ point-lookup hash tables. Highly efficient for equality checks (`=`), but cannot support range queries or sorting.
+1. **B-Tree / B+Tree**: Balanced search trees with O(log N) lookup, insert, and delete complexity. Ideal for range queries (`BETWEEN`, `>`, `<`), equality lookups, and sorted returns (`ORDER BY`). Used as the default index structure in PostgreSQL, MySQL (InnoDB), and Oracle.
+2. **Hash Index**: O(1) point-lookup hash tables. Highly efficient for equality checks (`=`), but cannot support range queries or sorting.
 3. **LSM-Tree (Log-Structured Merge)**: Append-only structure optimized for fast write operations, commonly used in NoSQL databases (Cassandra, RocksDB).
 4. **GIN / GiST (Generalized Inverted Index)**: Used for composite, text search, JSON document, and spatial data indexing.
 
@@ -48,4 +48,4 @@ While indexes accelerate read queries, every `INSERT`, `UPDATE`, or `DELETE` ope
 
 ### Key takeaway
 
-Indexes replace full table scans with $O(\log N)$ tree traversals. Focus indexes on high-cardinality columns used in `WHERE`, `JOIN`, and `ORDER BY` clauses, avoiding over-indexing to protect write throughput.
+Indexes replace full table scans with O(log N) tree traversals. Focus indexes on high-cardinality columns used in `WHERE`, `JOIN`, and `ORDER BY` clauses, avoiding over-indexing to protect write throughput.

@@ -36,16 +36,16 @@
 | :--- | :--- | :--- |
 | **Endpoint Topology** | Single HTTP POST endpoint (`/graphql`) | Multiple resource endpoints (`/users`, `/orders`) |
 | **Data Fetching** | Client specifies exact JSON response shape | Fixed payload schema determined by server |
-| **Over/Under-Fetching**| Fully eliminated | Common (Over-fetching extra fields, under-fetching requires $N+1$ requests) |
+| **Over/Under-Fetching**| Fully eliminated | Common (Over-fetching extra fields, under-fetching requires N+1 requests) |
 | **Type System** | Strongly typed GraphQL Schema (SDL) | Optional OpenAPI specification |
 | **Caching Layer** | Complex (Requires client Normalized Cache / Relay)| Simple HTTP response caching via CDNs & standard HTTP headers |
 | **Performance Overhead**| Higher server CPU overhead (AST parsing & Resolver execution) | Low (Direct routing and serialization) |
 
 ### Solved & Unsolved Challenges in GraphQL
 
-- **$N+1$ Query Problem**: Occurs when a parent resolver executes 1 DB query and child resolvers execute $N$ separate sub-queries. *Solution*: DataLoader batching and caching utility.
+- **N+1 Query Problem**: Occurs when a parent resolver executes 1 DB query and child resolvers execute N separate sub-queries. *Solution*: DataLoader batching and caching utility.
 - **Query Complexity Abuse**: Malicious clients can submit infinitely nested queries (e.g., `user { friends { friends { friends } } }`). *Solution*: Enforce query depth limits and query cost analysis.
 
 ### Key takeaway
 
-GraphQL solves **over-fetching and under-fetching** by letting clients query exact JSON structures from a single endpoint. Use **DataLoader** to prevent $N+1$ database query bottlenecks and set **query depth limits** for security.
+GraphQL solves **over-fetching and under-fetching** by letting clients query exact JSON structures from a single endpoint. Use **DataLoader** to prevent N+1 database query bottlenecks and set **query depth limits** for security.

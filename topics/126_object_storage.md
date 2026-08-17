@@ -45,7 +45,7 @@ Object storage discards hierarchical directory structures. All objects reside in
 
 1. **Object Immutability**: Objects cannot be mutated in place; updating an object requires replacing the entire object payload.
 2. **User-Defined Metadata**: Stores key-value pairs (e.g., `author`, `creation-date`, `tags`) directly alongside the object payload.
-3. **Erasure Coding**: Splitting object data into $K$ data chunks and $M$ parity chunks (e.g., 8+4 scheme), allowing full data recovery even if 4 storage drives fail simultaneously.
+3. **Erasure Coding**: Splitting object data into K data chunks and M parity chunks (e.g., 8+4 scheme), allowing full data recovery even if 4 storage drives fail simultaneously.
 4. **Infinite Horizontal Scale**: Storage nodes can be added continuously without re-architecting directory trees.
 
 ### Data Model & Object Layout Schema

@@ -20,7 +20,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "functional_requirements",
     "title": "Functional Requirements",
     "category": "System Design Basics",
-    "takeaway": "Functional Requirements define the **core capability boundaries** of a system. Clarifying FRs and non-goals up front preventsScope Creep and"
+    "takeaway": "Functional Requirements define the **core capability boundaries** of a system. Clarifying FRs and non-goals up front prevents scope creep an"
   },
   {
     "id": 4,
@@ -118,7 +118,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "estimate_requests_per_second",
     "title": "Estimate Requests Per Second",
     "category": "Back-of-the-Envelope Estimation",
-    "takeaway": "To calculate Average RPS, convert daily volume by dividing total daily requests by **$100,000$ (86,400 exact)**. Always split total RPS into"
+    "takeaway": "To calculate Average RPS, convert daily volume by dividing total daily requests by **100,000 (86,400 exact)**. Always split total RPS into *"
   },
   {
     "id": 18,
@@ -279,7 +279,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "pagination",
     "title": "Pagination",
     "category": "API Design",
-    "takeaway": "Use **Cursor-Based Pagination** for high-scale, real-time datasets and infinite scrolling feeds to ensure $O(1)$ database index performance "
+    "takeaway": "Use **Cursor-Based Pagination** for high-scale, real-time datasets and infinite scrolling feeds to ensure O(1) database index performance an"
   },
   {
     "id": 41,
@@ -377,7 +377,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "consistent_hashing_load_balancing",
     "title": "Consistent Hashing Load Balancing",
     "category": "Load Balancing",
-    "takeaway": "Consistent Hashing minimizes key remapping when servers scale out or fail, reallocating only **$1/N$ of keys**. Use consistent hashing with "
+    "takeaway": "Consistent Hashing minimizes key remapping when servers scale out or fail, reallocating only **1/N of keys**. Use consistent hashing with **"
   },
   {
     "id": 55,
@@ -538,7 +538,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "indexing",
     "title": "Indexing",
     "category": "Databases",
-    "takeaway": "Indexes replace full table scans with $O(\\log N)$ tree traversals. Focus indexes on high-cardinality columns used in `WHERE`, `JOIN`, and `O"
+    "takeaway": "Indexes replace full table scans with O(log N) tree traversals. Focus indexes on high-cardinality columns used in `WHERE`, `JOIN`, and `ORDE"
   },
   {
     "id": 78,
@@ -734,7 +734,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "lru_cache",
     "title": "LRU Cache",
     "category": "Caching",
-    "takeaway": "An LRU Cache combines a Hash Map and a Doubly Linked List to provide $O(1)$ reads, writes, and evictions. Use LRU to maintain high hit ratio"
+    "takeaway": "An LRU Cache combines a Hash Map and a Doubly Linked List to provide O(1) reads, writes, and evictions. Use LRU to maintain high hit ratios "
   },
   {
     "id": 106,
@@ -1035,7 +1035,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "quorum",
     "title": "Quorum",
     "category": "Distributed Systems",
-    "takeaway": "Quorum rules ($R + W > N$) guarantee **strong data consistency across distributed reads and writes** by ensuring that read and write node se"
+    "takeaway": "Quorum rules (R + W > N) guarantee **strong data consistency across distributed reads and writes** by ensuring that read and write node sets"
   },
   {
     "id": 149,
@@ -1546,7 +1546,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "design_discord",
     "title": "Design Discord",
     "category": "Intermediate System Design Problems",
-    "takeaway": "**Discord** processes trillions of messages with sub-5ms $P_{99}$ latency by storing message partitions in **ScyllaDB (C++)**, routing real-"
+    "takeaway": "**Discord** processes trillions of messages with sub-5ms P₉₉ latency by storing message partitions in **ScyllaDB (C++)**, routing real-time "
   },
   {
     "id": 222,
@@ -1616,7 +1616,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "design_recommendation_system",
     "title": "Design Recommendation System",
     "category": "Search and Recommendation Systems",
-    "takeaway": "A **Recommendation System** scales by filtering millions of catalog items through a **Three-Tier Funnel** (Two-Tower Vector Retrieval $\\righ"
+    "takeaway": "A **Recommendation System** scales by filtering millions of catalog items through a **Three-Tier Funnel** (Two-Tower Vector Retrieval arrow "
   },
   {
     "id": 232,
@@ -1875,7 +1875,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "design_distributed_key_value_store",
     "title": "Design Distributed Key Value Store",
     "category": "Distributed Systems Infrastructure",
-    "takeaway": "A Dynamo-style distributed key-value store combines consistent hashing rings, configurable sloppy quorums ($R+W > N$), vector clocks, and Me"
+    "takeaway": "A Dynamo-style distributed key-value store combines consistent hashing rings, configurable sloppy quorums (R+W > N), vector clocks, and Merk"
   },
   {
     "id": 269,
@@ -1917,7 +1917,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "design_cloud_storage",
     "title": "Design Cloud Storage",
     "category": "Advanced System Design Problems",
-    "takeaway": "Cloud object storage systems decouple metadata lookup from chunk storage nodes, relying on Reed-Solomon Erasure Coding ($8+4$) to achieve 11"
+    "takeaway": "Cloud object storage systems decouple metadata lookup from chunk storage nodes, relying on Reed-Solomon Erasure Coding (8+4) to achieve 11 9"
   },
   {
     "id": 275,
@@ -2092,7 +2092,7 @@ export const CLIENT_TOPICS: ClientTopic[] = [
     "slug": "design_lru_cache",
     "title": "Design LRU Cache",
     "category": "Low Level Design",
-    "takeaway": "An LRU Cache combines a Hash Map for $O(1)$ key lookups with a Doubly Linked List for $O(1)$ node movement, maintaining Most Recently Used i"
+    "takeaway": "An LRU Cache combines a Hash Map for O(1) key lookups with a Doubly Linked List for O(1) node movement, maintaining Most Recently Used items"
   },
   {
     "id": 300,

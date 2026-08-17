@@ -36,7 +36,7 @@ Inverted Index Structure:
 | :--- | :--- | :--- |
 | **Primary Search Index**| Inverted Index | B+Tree Index |
 | **Query Matching** | Relevance scoring, fuzzy search, synonyms | Exact match (`=`) or wildcards (`LIKE '%term%'`) |
-| **Write Consistency** | Eventual consistency (Refresh interval $pprox 1$s) | Immediate consistency |
+| **Write Consistency** | Eventual consistency (Refresh interval ≈ 1s) | Immediate consistency |
 | **Best Used For** | Product catalog search, log monitoring, autocomplete | Transactional writes, ACID operations |
 
 ### Key takeaway

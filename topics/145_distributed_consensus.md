@@ -41,7 +41,7 @@ Consensus algorithms (such as Raft or Paxos) elect a single Leader node responsi
 | **Paxos** | Crash-Stop / Crash-Recovery | Formal mathematical consensus foundation; complex to implement | Google Chubby, Spanner |
 | **Raft** | Crash-Stop / Crash-Recovery | Decomposed into Leader Election, Log Replication, Safety | etcd, HashiCorp Consul, CockroachDB |
 | **Zab** | Crash-Stop / Crash-Recovery | Primary-backup atomic broadcast protocol designed for tree state | Apache ZooKeeper |
-| **PBFT** | Byzantine (Malicious Nodes) | Tolerates arbitrary or malicious node failures (Requires $3f+1$ nodes) | Blockchain, Hyperledger |
+| **PBFT** | Byzantine (Malicious Nodes) | Tolerates arbitrary or malicious node failures (Requires 3f+1 nodes) | Blockchain, Hyperledger |
 
 ### Core Consensus Rules (Raft Framework)
 
@@ -51,7 +51,7 @@ Consensus algorithms (such as Raft or Paxos) elect a single Leader node responsi
 
 ### Trade-offs & Performance Constraints
 
-- ✅ **Strong Consistency & High Availability**: System continues operating correctly as long as a majority of nodes ($\lfloor N/2 floor + 1$) remain operational.
+- ✅ **Strong Consistency & High Availability**: System continues operating correctly as long as a majority of nodes (⌊N/2⌋ + 1) remain operational.
 - ❌ **Write Latency Penalty**: Every write operation requires network round trips to achieve majority quorum consensus.
 - ❌ **Throughput Limitation**: Consensus throughput is bounded by single-leader network and disk log flush speeds.
 

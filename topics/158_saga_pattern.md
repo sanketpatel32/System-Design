@@ -40,7 +40,7 @@ Orchestrated Saga Architecture:
 
 ### Forward Recovery vs Compensating Transactions
 
-- **Compensating Transaction ($C_i$)**: Undoes the semantic effect of local transaction $T_i$ (e.g. `RefundPayment` compensates `ChargePayment`). Compensating operations must be **idempotent and retryable**.
+- **Compensating Transaction (Cᵢ)**: Undoes the semantic effect of local transaction Tᵢ (e.g. `RefundPayment` compensates `ChargePayment`). Compensating operations must be **idempotent and retryable**.
 - **Forward Recovery**: If a transient failure occurs (e.g. service timeout), the saga retries the failed step until success rather than triggering compensation.
 
 ### Key Trade-offs & Isolation Challenges

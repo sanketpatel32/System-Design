@@ -35,7 +35,7 @@ Rate limiters protect backend systems from DDoS attacks, brute-force login attem
 
 | Algorithm | Operating Mechanism | Pros | Cons |
 |---|---|---|---|
-| **Token Bucket** | Bucket refilled with $R$ tokens/sec; request consumes 1 token. | Allows traffic bursts up to bucket capacity $B$; memory efficient. | Race conditions in distributed environments without Redis Lua scripts. |
+| **Token Bucket** | Bucket refilled with R tokens/sec; request consumes 1 token. | Allows traffic bursts up to bucket capacity B; memory efficient. | Race conditions in distributed environments without Redis Lua scripts. |
 | **Leaky Bucket** | Requests enter FIFO queue, processed at fixed constant rate. | Smooths out bursts; guarantees steady processing output rate. | Bursty traffic is queued or dropped if bucket overflows. |
 | **Fixed Window Counter**| Divides time into fixed windows (e.g., 1 min); counts requests. | Simple to implement and low memory footprint. | Traffic spike at window boundaries can allow 2x limit. |
 | **Sliding Window Counter**| Hybrid: combines current window count with weighted previous window. | Prevents edge traffic spikes; highly accurate; memory light. | Assumes uniform request distribution across previous window. |

@@ -46,7 +46,7 @@
 | **Max Retry Attempts** | 3 – 5 attempts | Prevents infinite retry loops on non-transient bugs |
 | **Initial Backoff Interval**| 500 ms – 1 second | Gives transient network blips time to clear |
 | **Backoff Multiplier** | 2.0 (Exponential) | Scales delay to relieve pressure on failing services |
-| **Jitter Factor** | $\pm 20\%$ random variance | Prevents synchronized thundering herd retries |
+| **Jitter Factor** | ± 20% random variance | Prevents synchronized thundering herd retries |
 
 ### Key takeaway
 

@@ -35,7 +35,7 @@ An **Application Cache** resides alongside or directly within the application ex
 
 | Characteristic | Local Process Cache | Distributed Shared Cache |
 | :--- | :--- | :--- |
-| **Latency** | Extremely Fast ($< 1 \mu s$, memory address lookup) | Fast (1 – 3 ms network round-trip) |
+| **Latency** | Extremely Fast (< 1 µ s, memory address lookup) | Fast (1 – 3 ms network round-trip) |
 | **Consistency** | Low (Each app node maintains its own local cache state)| High (Single shared cache source for all app nodes) |
 | **Capacity** | Constrained by JVM / Application Heap limits | Scalable across multi-node cache clusters |
 | **Instance Failure** | Cache lost when node terminates | Cache persists independently of app nodes |

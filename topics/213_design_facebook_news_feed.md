@@ -36,11 +36,11 @@ Unlike simple chronological feeds, News Feed relies on **Machine Learning Rankin
 ### Key Technical Mechanics & Ranking Scoring Function
 The News Feed Ranking Engine scores candidate posts using a multi-factor prediction model:
 
-$$\text{Score}(u, p) = w_{\text{affinity}} \cdot A(u, a) + w_{\text{weight}} \cdot W(p) + w_{\text{decay}} \cdot e^{-\lambda \cdot \Delta t}$$
+Score(u, p) = wₐffinity · A(u, a) + w_weight · W(p) + w_decay · e⁻λ · Δ t
 
-- **Affinity Score $A(u, a)$:** Strength of relationship between user $u$ and post author $a$ (frequency of messages, tag interactions, profile visits).
-- **Weight Score $W(p)$:** Post engagement type (video uploads and multi-photo posts weighted higher than plain text).
-- **Time Decay $e^{-\lambda \cdot \Delta t}$:** Exponential decay factor favoring recent posts over older content.
+- **Affinity Score A(u, a):** Strength of relationship between user u and post author a (frequency of messages, tag interactions, profile visits).
+- **Weight Score W(p):** Post engagement type (video uploads and multi-photo posts weighted higher than plain text).
+- **Time Decay e⁻λ · Δ t:** Exponential decay factor favoring recent posts over older content.
 
 ### API Interface Specifications
 

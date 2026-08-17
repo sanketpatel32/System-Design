@@ -39,10 +39,10 @@ The platform combines real-time user state tracking, **Multi-Armed Bandit Explor
 
 ### Key Technical Mechanics
 1. **Real-Time Session Context Feature Store:** Tracks micro-interactions (e.g., user watched 90% of a cooking video, skipped a sports video after 1 second). Updates the user's active session vector in Redis within **500 milliseconds**.
-2. **Multi-Armed Bandit Exploration ($\epsilon$-greedy):** Allocates 90% of feed slots to high-confidence interest items (Exploitation) and 10% to random new categories (Exploration) to discover new user interests and prevent feed fatigue.
+2. **Multi-Armed Bandit Exploration (ε-greedy):** Allocates 90% of feed slots to high-confidence interest items (Exploitation) and 10% to random new categories (Exploration) to discover new user interests and prevent feed fatigue.
 3. **Multi-Task Neural Network Scoring:** Predicts distinct interaction probabilities simultaneously:
 
-$$\text{Feed Score} = w_1 \cdot P(\text{Watch}) + w_2 \cdot P(\text{Like}) + w_3 \cdot P(\text{Share}) - w_4 \cdot P(\text{Skip})$$
+**Feed Score** = w₁ · P(Watch) + w₂ · P(Like) + w₃ · P(Share) - w₄ · P(Skip)
 
 ### API Interface Specifications
 

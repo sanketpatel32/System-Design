@@ -41,7 +41,7 @@ Because financial billing depends directly on click logs, the system demands **s
 ### Key Technical Mechanics
 1. **Exactly-Once Processing Guarantee:** Combines **Kafka Idempotent Producers**, **Apache Flink Two-Phase Commit Checkpoints**, and **Redis Idempotency Nonces** (`SETNX click_nonce:{id}`) to guarantee that network retries never double-bill advertisers for a single click.
 2. **Fraud & Bot Click Detection:** Filters invalid clicks (double clicks, crawler bots, IP click farms) using real-time IP rate limiting, browser fingerprint verification, and machine learning anomaly scoring before billing occurs.
-3. **Real-Time Advertiser Budget Depletion:** Aggregates click costs ($CPC$) in Flink streaming windows, updating advertiser balance caches in Redis to automatically pause ad campaigns when daily budgets are exhausted.
+3. **Real-Time Advertiser Budget Depletion:** Aggregates click costs (CPC) in Flink streaming windows, updating advertiser balance caches in Redis to automatically pause ad campaigns when daily budgets are exhausted.
 
 ### API Interface Specifications
 

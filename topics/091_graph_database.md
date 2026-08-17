@@ -28,7 +28,7 @@ A **Graph Database** is a non-relational database that uses graph structures wit
 
 | Feature | Graph Database (Neo4j, Neptune) | Relational Database (SQL) |
 | :--- | :--- | :--- |
-| **Multi-Hop Traversal**| Fast ($O(1)$ edge pointer traversal per hop) | Slow ($O(N^K)$ performance drop with multi-table JOINs) |
+| **Multi-Hop Traversal**| Fast (O(1) edge pointer traversal per hop) | Slow (O(N^K) performance drop with multi-table JOINs) |
 | **Schema Model** | Dynamic schema; add new edge types freely | Rigid schema; requires DDL migrations to alter relationships |
 | **Query Language** | Cypher, Gremlin, SPARQL | Standard ANSI SQL |
 | **Primary Use Cases**| Social networks, fraud detection, recommendations | Financial ledger, ERP, transactional records |

@@ -41,8 +41,8 @@
 
 | Dimension | Fanout-on-Write (Push) | Fanout-on-Read (Pull) | Hybrid Model |
 | :--- | :--- | :--- | :--- |
-| **Write Cost** | High ($O(N)$ writes per post) | Extremely Low ($O(1)$ write per post) | Balanced ($O(N)$ for normal users) |
-| **Read Latency** | Extremely Fast ($O(1)$ lookup) | Slow ($O(K)$ queries for $K$ followees) | Fast for all users |
+| **Write Cost** | High (O(N) writes per post) | Extremely Low (O(1) write per post) | Balanced (O(N) for normal users) |
+| **Read Latency** | Extremely Fast (O(1) lookup) | Slow (O(K) queries for K followees) | Fast for all users |
 | **Storage Usage** | High (Duplication across feeds) | Minimal (Single source of truth) | Moderate |
 | **Celebrity Problem** | Catastrophic without caps | Handled naturally | Solves celebrity write spikes |
 

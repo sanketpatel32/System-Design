@@ -31,10 +31,10 @@ The system orchestrates real-time order lifecycle state machines, dynamic prep-t
 
 ### Key Technical Mechanics
 1. **Three-Sided State Machine:** Manages state transitions across all three actors:
-   - `ORDER_PLACED` $\rightarrow$ `RESTAURANT_ACCEPTED` $\rightarrow$ `KITCHEN_PREPARING` $\rightarrow$ `DRIVER_ASSIGNED` $\rightarrow$ `DRIVER_PICKED_UP` $\rightarrow$ `DELIVERED`.
+   - `ORDER_PLACED` arrow `RESTAURANT_ACCEPTED` arrow `KITCHEN_PREPARING` arrow `DRIVER_ASSIGNED` arrow `DRIVER_PICKED_UP` arrow `DELIVERED`.
 2. **Estimated Time of Arrival (ETA) Engine:** Predicts total delivery time:
 
-$$\text{Total ETA} = T_{\text{kitchen\_prep}} + T_{\text{driver\_to\_restaurant}} + T_{\text{transit\_to\_customer}}$$
+**Total ETA** = Tₖitchen_prep + T_driver_to\ᵣestaurant + T_transit_to_customer
 
    - Uses machine learning models trained on historic restaurant prep speeds, time of day, and live traffic conditions.
 3. **Driver-to-Order Assignment:** Matches unassigned orders with nearby drivers using spatio-temporal algorithms (evaluating driver distance to restaurant, driver heading, and kitchen prep completion timestamp).

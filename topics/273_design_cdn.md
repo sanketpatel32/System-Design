@@ -12,9 +12,9 @@ A Content Delivery Network (CDN) is a globally distributed network of edge proxy
   - Dynamic content acceleration via persistent TCP connection pooling to origin servers.
   - Support instant cache invalidation (Purge) and origin shielding.
 - **Non-Functional Requirements**:
-  - Ultra-Low Latency: Serve $> 90\%$ of requests directly from local edge memory/SSD ($< 20	ext{ ms}$).
+  - Ultra-Low Latency: Serve > 90% of requests directly from local edge memory/SSD (< 20 ms).
   - High Scalability: Absorbs multi-terabit DDoS traffic spikes.
-  - Global Availability: $99.999\%$ uptime via BGP Anycast routing.
+  - Global Availability: 99.999% uptime via BGP Anycast routing.
 
 ### System Architecture
 ```
@@ -37,7 +37,7 @@ A Content Delivery Network (CDN) is a globally distributed network of edge proxy
 
 | Invalidation Type | Action | SLA |
 |---|---|---|
-| **Hard Purge** | Instantly deletes object from edge memory and disk | Global sync in $< 5	ext{ seconds}$. |
+| **Hard Purge** | Instantly deletes object from edge memory and disk | Global sync in < 5 seconds. |
 | **Soft Purge (Stale-While-Revalidate)** | Serves stale cached content while asynchronously fetching fresh object from origin | Zero latency spike for end-users during updates. |
 
 ### Key takeaway

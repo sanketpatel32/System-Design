@@ -37,7 +37,7 @@ The system requires two major architectures: **Vector Tile Rendering Engine** (s
 
 ### Key Technical Mechanics
 1. **Vector Map Tiles (Sippy / Protobuf):** Map data is divided into square grid tiles at multiple zoom levels (0 to 22). Instead of heavy image PNGs, client devices receive lightweight **Vector Protocol Buffer Tiles** containing raw geometric lines and polygons, rendered client-side on GPU.
-2. **Road Network Graph & Contraction Hierarchies (CH):** Models road networks as a directed weighted graph ($V$: Intersections, $E$: Road segments, Weights: Travel time). Contraction Hierarchies pre-computes shortcut edges between major highway nodes, speeding up route calculation by 1,000x compared to standard Dijkstra.
+2. **Road Network Graph & Contraction Hierarchies (CH):** Models road networks as a directed weighted graph (V: Intersections, E: Road segments, Weights: Travel time). Contraction Hierarchies pre-computes shortcut edges between major highway nodes, speeding up route calculation by 1,000x compared to standard Dijkstra.
 3. **Real-Time Segment Traffic Speed Ingestion:** Aggregates anonymous GPS location updates from active mobile devices to compute real-time average vehicle speeds per road segment, dynamically updating graph edge weights.
 
 ### API Interface Specifications

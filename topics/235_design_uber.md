@@ -38,9 +38,9 @@ Core engineering demands sub-second geospatial query latency, reliable WebSocket
 ```
 
 ### Key Technical Mechanics & Geospatial Indexing
-1. **Uber H3 Hexagonal Spatial Index:** Partitions the Earth's surface into hexagonal grid cells across 16 resolution levels. Unlike square grids, all neighboring hexagon cell centroids are equidistant, simplifying spatial search algorithms ($k$-ring searches).
+1. **Uber H3 Hexagonal Spatial Index:** Partitions the Earth's surface into hexagonal grid cells across 16 resolution levels. Unlike square grids, all neighboring hexagon cell centroids are equidistant, simplifying spatial search algorithms (k-ring searches).
 2. **Real-Time Driver Location Storage:** Active driver locations are updated in Redis memory (`H3 Cell ID -> Set of Driver IDs`) every 4 seconds. Locations are expired after 30 seconds to automatically prune offline drivers.
-3. **Trip State Machine:** Manages ride lifecycle states (`REQUESTED` $\rightarrow$ `MATCHING` $\rightarrow$ `ACCEPTED` $\rightarrow$ `ARRIVED` $\rightarrow$ `IN_TRANSIT` $\rightarrow$ `COMPLETED`).
+3. **Trip State Machine:** Manages ride lifecycle states (`REQUESTED` arrow `MATCHING` arrow `ACCEPTED` arrow `ARRIVED` arrow `IN_TRANSIT` arrow `COMPLETED`).
 
 ### API Interface Specifications
 
@@ -65,7 +65,7 @@ Core engineering demands sub-second geospatial query latency, reliable WebSocket
 | Strategy / Choice | Advantages | Disadvantages | Best Used When |
 |---|---|---|---|
 | **Uber H3 Hexagonal Index vs Geohash**| Equal centroid distances to all 6 adjacent neighbors; eliminates Geohash edge distortion. | Slightly higher CPU computation to convert GPS (Lat/Long) to H3 index. | Global ride-hailing and location dispatch engines. |
-| **In-Memory Redis Location Storage** | Sub-millisecond $O(1)$ geospatial update and read performance. | High memory footprint; requires Redis Cluster replication for fault tolerance. | High-frequency live GPS tracking systems. |
+| **In-Memory Redis Location Storage** | Sub-millisecond O(1) geospatial update and read performance. | High memory footprint; requires Redis Cluster replication for fault tolerance. | High-frequency live GPS tracking systems. |
 | **WebSocket Connection Gateways** | Low network header overhead for continuous 4-second location ping updates. | Requires maintaining millions of open persistent socket connections. | Mobile driver and rider apps. |
 
 ### Key takeaway

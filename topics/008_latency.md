@@ -51,7 +51,7 @@ Average (mean) latency is misleading because outlier requests hide severe perfor
 
 1. **Edge Caching & CDNs**: Serve static assets and API responses geographically close to users.
 2. **In-Memory Caching (Redis/Memcached)**: Offload disk I/O reads by serving hot data directly from RAM.
-3. **Database Indexing & Query Tuning**: Replace full table scans ($O(N)$) with B-Tree or LSM-Tree index lookups ($O(\log N)$).
+3. **Database Indexing & Query Tuning**: Replace full table scans (O(N)) with B-Tree or LSM-Tree index lookups (O(log N)).
 4. **Asynchronous Execution & Message Queues**: Offload long-running operations (image processing, emails) to background workers.
 5. **Connection Pooling & HTTP/2 Multiplexing**: Reuse TCP/TLS connections to eliminate connection setup overhead.
 

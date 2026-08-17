@@ -36,8 +36,8 @@ A Shopping Cart service manages transient product selections made by users prior
 ### Storage Strategy Comparison
 | Storage Option | Read/Write Latency | Persistence Guarantee | Concurrency / Merge Handling |
 |---|---|---|---|
-| **Redis Hash Key** | $< 2\text{ ms}$ | Volatile / RDB snapshotting | Atomic hash updates; ideal for active session carts. |
-| **NoSQL (DynamoDB / Cassandra)** | $5-10\text{ ms}$ | High durability across AZs | Document-level updates; good for long-term saved carts. |
+| **Redis Hash Key** | < 2 ms | Volatile / RDB snapshotting | Atomic hash updates; ideal for active session carts. |
+| **NoSQL (DynamoDB / Cassandra)** | 5-10 ms | High durability across AZs | Document-level updates; good for long-term saved carts. |
 | **Browser LocalStorage** | Immediate | Local to device | Offline capability; requires server synchronization on checkout. |
 
 ### API Design

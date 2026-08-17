@@ -33,12 +33,12 @@ Google Bigtable is a sparse, distributed, persistent multidimensional sorted map
 ```
 
 ### Data Model & System Components
-$$	ext{Data Model: } (	ext{RowKey}, 	ext{ColumnFamily:Qualifier}, 	ext{Timestamp}) \longrightarrow 	ext{Cell Value}$$
+Data Model: (RowKey, ColumnFamily:Qualifier, Timestamp) \longr→ Cell Value
 
 | Component | Technical Role | Fault Tolerance Mechanism |
 |---|---|---|
 | **Bigtable Master** | Assigns tablets to Tablet Servers, detects node joins/leaves | Stateless metadata coordinator; failover handled by Chubby election. |
-| **Tablet Server** | Manages read/write traffic for a set of tablets ($100-200	ext{ MB}$ partitions) | If server dies, Master reassigns tablet range to another server. |
+| **Tablet Server** | Manages read/write traffic for a set of tablets (100-200 MB partitions) | If server dies, Master reassigns tablet range to another server. |
 | **Chubby Lock** | Leader election, tablet location discovery, schema management | Paxos-based distributed lock service. |
 | **Colossus / GFS** | Stores immutable SSTable files and commit logs | Multi-replica distributed object storage. |
 

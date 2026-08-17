@@ -47,7 +47,7 @@ Availability is the **percentage of time a system remains operational and access
 
 Availability is calculated using **Mean Time Between Failures (MTBF)** and **Mean Time To Repair (MTTR)**:
 
-$$\text{Availability} = \frac{\text{MTBF}}{\text{MTBF} + \text{MTTR}}$$
+**Availability** = MTBF / (MTBF + MTTR)
 
 To maximize availability:
 1. Increase **MTBF**: Build fault-tolerant components, perform rigorous code reviews, and conduct automated testing.

@@ -28,36 +28,36 @@
 
 | Industry Domain | Typical Peak Multiplier | Cause of Traffic Spike | Standard Peak Handling Strategy |
 | :--- | :--- | :--- | :--- |
-| **Social Media / Messaging** | $2\times - 3\times$ | Evening active usage, breaking news | Elastic Auto-scaling, Edge CDNs |
-| **Food Delivery / Mobility** | $3\times - 5\times$ | Lunch & dinner hours, sudden rain | Pre-warmed server fleets, surge pricing |
-| **E-Commerce Flash Sales** | $5\times - 10\times$ | Product drop countdown timers | Queueing systems (Kafka), Rate Limiting |
-| **Ticketing / Live Events** | $10\times - 50\times$ | Concert ticket sales release | Virtual Waiting Rooms, Static Caching |
+| **Social Media / Messaging** | 2× - 3× | Evening active usage, breaking news | Elastic Auto-scaling, Edge CDNs |
+| **Food Delivery / Mobility** | 3× - 5× | Lunch & dinner hours, sudden rain | Pre-warmed server fleets, surge pricing |
+| **E-Commerce Flash Sales** | 5× - 10× | Product drop countdown timers | Queueing systems (Kafka), Rate Limiting |
+| **Ticketing / Live Events** | 10× - 50× | Concert ticket sales release | Virtual Waiting Rooms, Static Caching |
 
 ### Peak QPS Calculation Formulas
 
 1. **Calculate Average QPS**:
 
-$$\text{Average QPS} = \frac{\text{Daily Total Requests}}{86,400}$$
+**Average QPS** = (Daily Total Requests) / 86,400
 
 2. **Apply Traffic Peak Multiplier**:
 
-$$\text{Peak QPS} = \text{Average QPS} \times \text{Peak Multiplier}$$
+**Peak QPS** = Average QPS × Peak Multiplier
 
 ### Concrete Numerical Walkthrough
 
-- **Given**: $100\,\text{Million DAU}$, average $20$ requests/user/day.
-- **Total Daily Requests**: $100\,\text{M} \times 20 = 2\,\text{Billion requests/day}$.
-- **Average QPS**: $\frac{2,000,000,000}{100,000} = 20,000\,\text{QPS}$.
-- **Peak Multiplier**: Assume $3\times$ traffic multiplier for peak evening hours.
+- **Given**: 100 Million DAU, average 20 requests/user/day.
+- **Total Daily Requests**: 100 M × 20 = 2 Billion requests/day.
+- **Average QPS**: 2,000,000,000 / 100,000 = 20,000 QPS.
+- **Peak Multiplier**: Assume 3× traffic multiplier for peak evening hours.
 
-$$\text{Peak QPS} = 20,000\,\text{QPS} \times 3 = 60,000\,\text{Peak QPS}$$
+**Peak QPS** = 20,000 QPS × 3 = 60,000 Peak QPS
 
-- If Read:Write ratio is $4:1$ (80% reads, 20% writes):
+- If Read:Write ratio is 4:1 (80% reads, 20% writes):
 
-$$\text{Peak Read QPS} = 60,000 \times 0.80 = 48,000\,\text{QPS}$$
+**Peak Read QPS** = 60,000 × 0.80 = 48,000 QPS
 
-$$\text{Peak Write QPS} = 60,000 \times 0.20 = 12,000\,\text{QPS}$$
+**Peak Write QPS** = 60,000 × 0.20 = 12,000 QPS
 
 ### Key takeaway
 
-Never size system capacity for Average QPS. Provision application compute, load balancers, and database write throughput to support **Peak QPS** (typically **$2\times$ to $5\times$ Average QPS** depending on traffic patterns).
+Never size system capacity for Average QPS. Provision application compute, load balancers, and database write throughput to support **Peak QPS** (typically **2× to 5× Average QPS** depending on traffic patterns).

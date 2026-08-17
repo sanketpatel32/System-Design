@@ -35,7 +35,7 @@ Fault Tolerance is the property that enables a system to **continue operating pr
 
 | Pattern | Mechanism | Example Real-World Implementation |
 | :--- | :--- | :--- |
-| **Redundancy** | Deploying duplicate nodes ($N+1$ or $2N$ redundancy) to take over instantly upon failure. | Multi-AZ deployment of web application servers behind an ELB. |
+| **Redundancy** | Deploying duplicate nodes (N+1 or 2N redundancy) to take over instantly upon failure. | Multi-AZ deployment of web application servers behind an ELB. |
 | **Consensus Protocols** | Coordinating agreement across distributed nodes to handle leader failure. | Raft consensus algorithm in etcd, Consul, or ZooKeeper. |
 | **Bulkheading** | Isolating resource pools (threads, memory, pools) so failure in one domain doesn't cascade. | Microservice thread pool isolation (Netflix Hystrix). |
 | **Graceful Degradation**| Falling back to reduced service quality when non-critical components fail. | Disabling personalized recommendation carousel when ML cluster fails. |

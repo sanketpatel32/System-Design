@@ -30,8 +30,7 @@ When a client requests a static asset, DNS routes the request to the nearest CDN
 - **Edge Server**: The frontend caching node that terminates TCP/TLS connections and directly serves client requests.
 - **Origin Server**: The authoritative central server (e.g., S3 bucket or app server) holding master copies of assets.
 - **Cache Hit Ratio (CHR)**: The percentage of total requests served directly by the edge cache without hitting origin. Formula:
-$$	ext{CHR} = \left(rac{	ext{Cache Hits}}{	ext{Cache Hits} + 	ext{Cache Misses}}
-ight) 	imes 100$$
+**CHR** = (Cache Hits / (Cache Hits + Cache Misses)) × 100
 
 ### CDN Request Handling Comparison Matrix
 

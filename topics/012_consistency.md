@@ -33,7 +33,7 @@ Consistency defines **the degree to which all nodes in a distributed system see 
 ### How Consistency is Implemented
 
 1. **Synchronous Replication**: Writes are committed to primary and all secondary nodes before returning success to the client. Guarantees strong consistency but increases write latency.
-2. **Consensus Protocols**: Distributed consensus algorithms (Raft, Paxos, ZAB) elect leaders and enforce majority quorum ($Q_{write} + Q_{read} > N$) for reads and writes.
+2. **Consensus Protocols**: Distributed consensus algorithms (Raft, Paxos, ZAB) elect leaders and enforce majority quorum (Q_write + Qᵣead > N) for reads and writes.
 3. **Asynchronous Background Replication**: Writes commit locally on primary node and propagate asynchronously to replicas. Low write latency, but risks stale reads.
 
 ### Key takeaway

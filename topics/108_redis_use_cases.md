@@ -26,7 +26,7 @@
 | :--- | :--- | :--- | :--- |
 | **In-Memory Caching** | Strings, Hashes | `GET`, `SET`, `HGETALL`, `EXPIRE` | Sub-millisecond latency with TTL support |
 | **Rate Limiting** | Fixed Window: Strings / Sliding: Sorted Sets | `INCR`, `ZADD`, `ZREMRANGEBYSCORE` | Atomic increments and score-range execution |
-| **Leaderboards & Ranking**| Sorted Sets (ZSET) | `ZADD`, `ZINCRBY`, `ZREVRANGE` | $O(\log N)$ score updates and rank retrieval |
+| **Leaderboards & Ranking**| Sorted Sets (ZSET) | `ZADD`, `ZINCRBY`, `ZREVRANGE` | O(log N) score updates and rank retrieval |
 | **Session Management** | Hashes, Strings | `HSET`, `HGET`, `EXPIRE` | Fast centralized session lookups across app nodes |
 | **Pub/Sub & Queues** | Pub/Sub Channels, Lists, Streams | `PUBLISH`, `SUBSCRIBE`, `LPUSH`, `RPOP`, `XADD` | High-throughput asynchronous messaging |
 | **Geospatial Searches**| Geo / Sorted Sets | `GEOADD`, `GEOSEARCH` | Radius and distance proximity queries |

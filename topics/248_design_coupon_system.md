@@ -12,7 +12,7 @@ A Coupon and Promotional System manages discount rules, campaign budgets, user r
   - Enforce complex targeting rules (minimum order value, category constraints, first-time user, max redemptions per user/global).
   - Validate and lock coupons atomically during checkout to prevent budget overruns.
 - **Non-Functional Requirements**:
-  - Low Latency: Validate coupons in $< 15\text{ ms}$ during cart rendering.
+  - Low Latency: Validate coupons in < 15 ms during cart rendering.
   - High Concurrency: Prevent over-redemption when thousands of users apply a limited coupon code simultaneously.
   - Fraud Prevention: Detect code abuse, dictionary attacks, and multi-account exploiting.
 

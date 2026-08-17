@@ -25,7 +25,7 @@ Selecting the right database management system requires evaluating system data a
 | :--- | :--- | :--- | :--- | :--- |
 | **Relational (RDBMS)** | PostgreSQL, MySQL | Strong ACID, complex SQL `JOIN`s, schema safety | Hard to scale writes horizontally | Finance, ERP, Order Processing, Users DB |
 | **Document Store** | MongoDB, Couchbase | Flexible schema, JSON document mapping | Lacks cross-document ACID transactions | Content management, Catalogs, Profiles |
-| **Key-Value** | Redis, DynamoDB | Sub-millisecond latency, extreme $O(1)$ ops | Limited querying capabilities (Primary key only) | Caching, User sessions, Leaderboards |
+| **Key-Value** | Redis, DynamoDB | Sub-millisecond latency, extreme O(1) ops | Limited querying capabilities (Primary key only) | Caching, User sessions, Leaderboards |
 | **Wide-Column** | Apache Cassandra, ScyllaDB | Linearly scalable writes, zero single points of failure | Complex query modeling; no JOINs | IoT telemetry, Event logs, Messaging |
 | **Search Engine** | Elasticsearch, OpenSearch | Inverted index, full-text search, fuzzy matching | High memory overhead; eventual consistency | Product catalog search, Log analytics |
 | **Time-Series** | TimescaleDB, InfluxDB | Optimized timestamp indexing, high compression | Unsuited for general transactional updates | Monitoring metrics, Financial tickers |

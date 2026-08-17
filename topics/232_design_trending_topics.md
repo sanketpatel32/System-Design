@@ -37,7 +37,7 @@ System architecture requires **stream processing engines** (Apache Flink / Spark
 2. **Sliding Time Window Aggregation:** Compares term frequency in a short current window (e.g., last 5 minutes) against a historical baseline window (e.g., last 24 hours).
 3. **Trending Velocity Spike Scoring Function:**
 
-$$\text{Trend Score} = \frac{C_{\text{current}} - C_{\text{expected}}}{\sqrt{C_{\text{expected}} + 1}}$$
+**Trend Score** = (C_current - Cₑxpected) / (√(Cₑxpected + 1))
 
 *Key Insight:* Measures statistical acceleration/spike rather than absolute volume, preventing perpetually popular terms (e.g., `#love`, `#news`) from dominating the trending list over breaking events (e.g., `#Earthquake`).
 

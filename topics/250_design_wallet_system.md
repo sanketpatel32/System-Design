@@ -45,9 +45,9 @@ Example: User A transfers $50 to User B
 ### Concurrency Control Strategies
 | Strategy | Latency | Throughput | Implementation |
 |---|---|---|---|
-| **Pessimistic Row Locking** | High ($20-50\text{ ms}$) | Low ($\sim 500\text{ TPS/shard}$) | `SELECT ... FOR UPDATE` on sender and receiver wallet rows in lock order by `wallet_id`. |
-| **In-Memory Actor Model** | Ultra-low ($< 2\text{ ms}$) | Extreme ($> 50,000\text{ TPS}$) | Single-threaded actor (e.g. Akka/Java Virtual Threads) processes all operations for a specific wallet partition sequentially. |
-| **Optimistic Versioning** | Low ($5-10\text{ ms}$) | Medium | `UPDATE wallets SET balance = balance - 50, version = version + 1 WHERE wallet_id = ? AND version = ? AND balance >= 50`. |
+| **Pessimistic Row Locking** | High (20-50 ms) | Low (~ 500 TPS/shard) | `SELECT ... FOR UPDATE` on sender and receiver wallet rows in lock order by `wallet_id`. |
+| **In-Memory Actor Model** | Ultra-low (< 2 ms) | Extreme (> 50,000 TPS) | Single-threaded actor (e.g. Akka/Java Virtual Threads) processes all operations for a specific wallet partition sequentially. |
+| **Optimistic Versioning** | Low (5-10 ms) | Medium | `UPDATE wallets SET balance = balance - 50, version = version + 1 WHERE wallet_id = ? AND version = ? AND balance >= 50`. |
 
 ### Key takeaway
 A digital wallet system must enforce double-entry accounting where money is never directly mutated but moved between ledger entries. Using strict row locking order or actor-based single-thread partition processing prevents deadlocks and balance corruption under concurrent transfers.

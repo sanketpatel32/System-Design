@@ -28,7 +28,7 @@
 
 | Feature | Short Polling | Long Polling | WebSockets |
 | :--- | :--- | :--- | :--- |
-| **Request Mechanism** | Client sends periodic requests every $N$ seconds. | Client sends request; server holds connection open until event. | Single upgrade handshake to persistent TCP socket. |
+| **Request Mechanism** | Client sends periodic requests every N seconds. | Client sends request; server holds connection open until event. | Single upgrade handshake to persistent TCP socket. |
 | **Server Load** | Extremely high (Processes empty requests constantly). | Medium (Holds open HTTP connections; requires thread/epoll handling). | Low per-message overhead (Single open connection per client). |
 | **Real-Time Latency**| High (Delay bounded by polling interval). | Low (Immediate response when data arrives). | Ultra-Low (Instant full-duplex frames). |
 | **Firewall / Proxy Compatibility**| 100% Compatible (Standard short HTTP). | Highly Compatible (Standard HTTP POST/GET). | May be blocked by strict enterprise proxies (if not on Port 443 WSS). |

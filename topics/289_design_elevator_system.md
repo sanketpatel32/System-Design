@@ -7,7 +7,7 @@
 Object-Oriented Low-Level Design (LLD) for a Multi-Elevator Control System managing elevator dispatching, floor requests, internal buttons, and door safety logic across a high-rise building.
 
 ### System Requirements & State Model
-- Coordinate multiple elevator cars across $N$ floors.
+- Coordinate multiple elevator cars across N floors.
 - Process internal floor selection buttons and external hall call buttons (Up/Down).
 - Efficient elevator dispatching algorithm (SCAN / LOOK / Destination Dispatch).
 

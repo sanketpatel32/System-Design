@@ -12,7 +12,7 @@ A Data Lake is a centralized storage repository that holds vast amounts of raw, 
   - Multi-tier data zone organization (Raw / Bronze, Cleansed / Silver, Curated / Gold).
   - Open table formats for ACID transactions, time travel, and schema evolution.
 - **Non-Functional Requirements**:
-  - High Durability & Availability: $99.999999999\%$ (11 9s) object durability via cloud stores (S3 / ADLS).
+  - High Durability & Availability: 99.999999999% (11 9s) object durability via cloud stores (S3 / ADLS).
   - Extreme Scalability: Scale storage to exabytes independently of query compute resources.
   - Low Storage Cost: Utilize object storage tiering (Standard, Infrequent Access, Glacier).
 

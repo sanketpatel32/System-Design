@@ -32,7 +32,7 @@ Core design objectives demand **sub-50ms redirection latency**, high read availa
 ```
 
 ### Key Technical Mechanics & Short Key Generation
-1. **Base62 Encoding:** Encodes unique integer IDs into character strings using `[0-9][a-z][A-Z]` (62 possible characters). A 7-character string yields $62^7 \approx 3.52 \times 10^{11}$ (352 Billion) unique short links.
+1. **Base62 Encoding:** Encodes unique integer IDs into character strings using `[0-9][a-z][A-Z]` (62 possible characters). A 7-character string yields 62⁷ ≈ 3.52 × 10¹¹ (352 Billion) unique short links.
 2. **Distributed ID Generator:** Uses Twitter Snowflake or pre-generated KGS (Key Generation Service) ranges to generate unique integer IDs without DB locks.
 3. **HTTP 301 vs 302 Redirection:**
    - **301 Permanent Redirect:** Browser caches the redirect locally; reduces backend server load, but loses click analytics tracking.

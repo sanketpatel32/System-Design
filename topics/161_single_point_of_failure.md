@@ -42,7 +42,7 @@ High-Availability Redundant Architecture (Zero SPOF):
 
 ### Core Engineering Principles to Eliminate SPOFs
 
-1. **Redundancy (N+1 and 2N)**: Ensure at least one redundant component ($N+1$) is online to assume traffic if an active node fails.
+1. **Redundancy (N+1 and 2N)**: Ensure at least one redundant component (N+1) is online to assume traffic if an active node fails.
 2. **Decoupled Architecture**: Use message queues to isolate producer services from consumer outages.
 3. **Automated Health Checks & Self-Healing**: Continuous heartbeat probes detect failures and trigger automated DNS failover or container restarts without human intervention.
 

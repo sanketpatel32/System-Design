@@ -31,9 +31,9 @@ Estimating **Bandwidth Requirements** quantifies the network throughput entering
 
 Network bandwidth is expressed in **bits per second (bps, Mbps, Gbps)**, while data storage is measured in **Bytes (B, MB, GB)**.
 
-$$1\,\text{Byte (B)} = 8\,\text{bits (b)}$$
+1 Byte (B) = 8 bits (b)
 
-| Storage Unit | Network Bandwidth Equivalent ($8\times$) | Example Scenario |
+| Storage Unit | Network Bandwidth Equivalent (8×) | Example Scenario |
 | :--- | :--- | :--- |
 | **1 MB/s (Megabyte/sec)** | **8 Mbps (Megabits/sec)** | Low-bitrate 1080p video stream |
 | **125 MB/s** | **1 Gbps (Gigabit/sec)** | Standard 1 Gbps NIC line saturation |
@@ -44,27 +44,27 @@ $$1\,\text{Byte (B)} = 8\,\text{bits (b)}$$
 
 1. **Given System Requirements**:
    - **Video Streaming Service** (e.g., YouTube subset):
-   - Daily active streams $= 10\,\text{Million daily video plays}$.
-   - Average video size $= 50\,\text{MB}$.
-   - Read:Write ratio is highly egress-heavy ($100:1$).
+   - Daily active streams = 10 Million daily video plays.
+   - Average video size = 50 MB.
+   - Read:Write ratio is highly egress-heavy (100:1).
 
 2. **Calculate Daily Egress Volume**:
 
-$$\text{Daily Egress Data} = 10\,\text{M videos} \times 50\,\text{MB} = 500,000,000\,\text{MB} = 500\,\text{TB/day}$$
+**Daily Egress Data** = 10 M videos × 50 MB = 500,000,000 MB = 500 TB/day
 
 3. **Calculate Average Egress Bandwidth**:
-   - Divide by $86,400$ seconds (approx $100,000$):
+   - Divide by 86,400 seconds (approx 100,000):
 
-$$\text{Average Egress Data Rate} = \frac{500\,\text{TB}}{100,000\,\text{sec}} = 0.005\,\text{TB/sec} = 5\,\text{GB/sec}$$
+**Average Egress Data Rate** = 500 TB / 100,000 sec = 0.005 TB/sec = 5 GB/sec
 
 4. **Convert Bytes to Bits for Network Sizing**:
 
-$$\text{Average Egress Bandwidth} = 5\,\text{GB/sec} \times 8\,\frac{\text{bits}}{\text{Byte}} = 40\,\text{Gbps (Gigabits per second)}$$
+**Average Egress Bandwidth** = 5 GB/sec × 8 bits / Byte = 40 Gbps (Gigabits per second)
 
 5. **Calculate Peak Egress Bandwidth**:
-   - Apply peak traffic multiplier ($2\times$):
+   - Apply peak traffic multiplier (2×):
 
-$$\text{Peak Egress Bandwidth} = 40\,\text{Gbps} \times 2 = 80\,\text{Gbps}$$
+**Peak Egress Bandwidth** = 40 Gbps × 2 = 80 Gbps
 
 ### Key takeaway
 

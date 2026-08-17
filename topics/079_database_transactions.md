@@ -39,7 +39,7 @@ A **Database Transaction** is a sequence of one or more database operations (`SE
 
 | Command | Purpose | Action |
 | :--- | :--- | :--- |
-| **`BEGIN` / `START TRANSACTION`** | Initiates transaction context | Allocates transaction ID ($TxID$) and Undo log buffer |
+| **`BEGIN` / `START TRANSACTION`** | Initiates transaction context | Allocates transaction ID (TxID) and Undo log buffer |
 | **`SAVEPOINT <name>`** | Sets a intermediate restore point | Allows partial rollback to savepoint without aborting entire transaction |
 | **`COMMIT`** | Finalizes the transaction | Flushes Redo log to disk; makes changes visible to other transactions |
 | **`ROLLBACK`** | Aborts the transaction | Reverts all uncommitted changes using Undo logs |

@@ -33,7 +33,7 @@ A Distributed Rate Limiter throttles client API request volumes across multiple 
 ### Rate Limiting Algorithms
 | Algorithm | Mechanism | Pros | Cons |
 |---|---|---|---|
-| **Token Bucket** | Tokens added to bucket at rate $R$; request takes 1 token | Allows bursts up to bucket capacity $B$ | Requires tracking timestamp + token count. |
+| **Token Bucket** | Tokens added to bucket at rate R; request takes 1 token | Allows bursts up to bucket capacity B | Requires tracking timestamp + token count. |
 | **Leaky Bucket** | Queue processes requests at constant leak rate | Smooths traffic spikes | Bursty requests are delayed in queue. |
 | **Sliding Window Counter** | Weighted combination of previous and current window counts | Memory efficient; prevents edge burst double-counting | Approximation of exact sliding log. |
 

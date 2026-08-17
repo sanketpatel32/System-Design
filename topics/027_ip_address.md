@@ -30,7 +30,7 @@ An **IP (Internet Protocol) Address** is a unique numerical identifier assigned 
 | :--- | :--- | :--- |
 | **Address Length** | 32 bits (4 Bytes) | 128 bits (16 Bytes) |
 | **Address Notation** | Dotted Decimal (e.g., `192.168.1.1`) | Hexadecimal Colon-Separated (`2001:db8::1`) |
-| **Address Capacity** | $\approx 4.3 \times 10^9$ (~4.3 Billion) | $\approx 3.4 \times 10^{38}$ (Virtually Unlimited) |
+| **Address Capacity** | ≈ 4.3 × 10⁹ (~4.3 Billion) | ≈ 3.4 × 10³⁸ (Virtually Unlimited) |
 | **Header Size** | Variable (20 to 60 Bytes) | Fixed (40 Bytes) for fast router processing |
 | **NAT Requirement** | Mandatory due to address exhaustion | Unnecessary (Every device gets public IPv6) |
 | **Auto-Configuration**| DHCP required | SLAAC (Stateless Address Autoconfiguration) |

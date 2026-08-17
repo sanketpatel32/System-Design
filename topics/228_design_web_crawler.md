@@ -42,7 +42,7 @@ Core system constraints require **scalability** (handling billions of URLs), **p
 1. **URL Frontier Architecture:**
    - **Priority Queue:** Categorizes URLs based on PageRank or domain authority to fetch important pages first.
    - **Politeness Queue:** Groups URLs by target host domain (`example.com`). Ensures a worker thread waits a configured delay (e.g., 1000ms) between consecutive requests to the same domain, strictly obeying `robots.txt`.
-2. **Bloom Filter URL Deduplication:** Uses in-memory probabilistic Bloom Filters to check if a newly discovered URL has been seen before in $O(1)$ time without database lookups.
+2. **Bloom Filter URL Deduplication:** Uses in-memory probabilistic Bloom Filters to check if a newly discovered URL has been seen before in O(1) time without database lookups.
 3. **DNS Caching Resolver:** Pre-caches DNS hostname-to-IP resolutions locally to eliminate DNS network lookup bottlenecks during high-throughput crawling.
 
 ### Crawler Specification & Rules API
@@ -67,9 +67,9 @@ Core system constraints require **scalability** (handling billions of URLs), **p
 
 | Strategy / Choice | Advantages | Disadvantages | Best Used When |
 |---|---|---|---|
-| **In-Memory Bloom Filter Deduplication** | Extremely low memory footprint; sub-microsecond $O(1)$ duplicate check. | Probability of false positives (may skip a valid un-crawled URL). | Large-scale web crawlers evaluating billions of URLs. |
+| **In-Memory Bloom Filter Deduplication** | Extremely low memory footprint; sub-microsecond O(1) duplicate check. | Probability of false positives (may skip a valid un-crawled URL). | Large-scale web crawlers evaluating billions of URLs. |
 | **Host-Based Politeness Queues** | Prevents accidental Denial of Service (DoS) attacks on third-party websites. | Reduces crawl throughput speed for single small web domains. | Mandatory requirement for all polite web crawlers. |
 | **Distributed RocksDB URL Frontier** | High-throughput local SSD storage; handles billions of queued URLs without RAM limits. | Requires state synchronization across distributed crawler worker nodes. | Scalable web crawler nodes. |
 
 ### Key takeaway
-A **Web Crawler** manages URL discovery and page downloads by balancing **Priority and Host Politeness Queues** in the URL Frontier, enforcing `robots.txt` rules, and using **Bloom Filters for $O(1)$ URL deduplication**.
+A **Web Crawler** manages URL discovery and page downloads by balancing **Priority and Host Politeness Queues** in the URL Frontier, enforcing `robots.txt` rules, and using **Bloom Filters for O(1) URL deduplication**.

@@ -36,8 +36,8 @@
 
 | Characteristic | Evaluation | Impact |
 | :--- | :--- | :--- |
-| **Read Performance** | Extremely Fast ($O(1)$ complexity) | Timeline rendering requires zero joins or scatter-gather calls |
-| **Write Latency** | High Amplification ($O(N)$ writes) | A post by a user with 10M followers triggers 10M database updates |
+| **Read Performance** | Extremely Fast (O(1) complexity) | Timeline rendering requires zero joins or scatter-gather calls |
+| **Write Latency** | High Amplification (O(N) writes) | A post by a user with 10M followers triggers 10M database updates |
 | **Storage Overhead** | Heavy Data Duplication | Post references are stored repeatedly across millions of timeline caches |
 | **Consistency** | Eventual Consistency | Followers see posts as workers drain the fanout queue |
 

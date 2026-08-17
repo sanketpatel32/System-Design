@@ -33,7 +33,7 @@ Modern API Gateways (e.g., Kong, Envoy, KrakenD, AWS API Gateway) operate at hig
 
 | Feature Capability | Technical Mechanism | Architectural Purpose |
 |---|---|---|
-| **Request Routing / Proxying**| Path-based routing (`/users/*` $\rightarrow$ User Service) using dynamic service discovery.| Decouples internal microservice topology from client-facing URLs. |
+| **Request Routing / Proxying**| Path-based routing (`/users/*` arrow User Service) using dynamic service discovery.| Decouples internal microservice topology from client-facing URLs. |
 | **TLS Termination** | Offloads TLS decryption at the edge; routes plaintext or mTLS internally. | Reduces CPU overhead on internal application microservices. |
 | **Auth Offloading** | Verifies JWT signatures or OAuth tokens at gateway before forwarding requests. | Prevents unauthorized requests from consuming downstream service resources. |
 | **Protocol Translation** | Converts client HTTP/JSON requests into internal high-performance gRPC/Protobuf. | Enables modern mobile clients to communicate with legacy internal RPC services. |

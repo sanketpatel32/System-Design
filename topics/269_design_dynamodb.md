@@ -13,7 +13,7 @@ Amazon DynamoDB is a fully managed NoSQL database service delivering predictable
   - Transactional operations (ACID across multi-item requests).
 - **Non-Functional Requirements**:
   - High Scalability: Auto-scale storage and throughput indefinitely.
-  - Predictable Latency: $< 10	ext{ ms}$ for read and write operations at any scale.
+  - Predictable Latency: < 10 ms for read and write operations at any scale.
   - High Availability: 99.99% SLA backed by multi-AZ replication.
 
 ### System Architecture
@@ -32,8 +32,8 @@ Amazon DynamoDB is a fully managed NoSQL database service delivering predictable
 ### Capacity Modes & Index Trade-offs
 | Provisioning Mode | Unit Definition | Ideal Workload |
 |---|---|---|
-| **Read Capacity Unit (RCU)** | 1 RCU = $1	imes 4	ext{ KB}$ strongly consistent read/sec | Predictable application traffic. |
-| **Write Capacity Unit (WCU)** | 1 WCU = $1	imes 1	ext{ KB}$ write/sec | Stable, known throughput demands. |
+| **Read Capacity Unit (RCU)** | 1 RCU = 1× 4 KB strongly consistent read/sec | Predictable application traffic. |
+| **Write Capacity Unit (WCU)** | 1 WCU = 1× 1 KB write/sec | Stable, known throughput demands. |
 | **On-Demand Mode** | Pay per request instantly | Unpredictable or bursty application workloads. |
 
 | Index Type | Partition Key | Sort Key | Async / Sync |

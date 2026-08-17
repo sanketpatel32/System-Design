@@ -28,7 +28,7 @@ A **Write-Back Cache** (also called Write-Behind Cache) is a caching pattern whe
 
 | Dimension | Evaluation | Technical Consequence |
 | :--- | :--- | :--- |
-| **Write Latency** | Ultra-Low | Operates at in-memory speed ($< 1$ ms) |
+| **Write Latency** | Ultra-Low | Operates at in-memory speed (< 1 ms) |
 | **Database Load** | Significantly Reduced | Coalesces multiple updates into single batch writes |
 | **Data Loss Risk** | High without Replication | Node failure before flushing risks losing dirty items |
 | **Implementation Complexity**| High | Requires robust queueing, retry logic, and failover handlers |

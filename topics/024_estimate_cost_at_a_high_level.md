@@ -35,23 +35,23 @@ Estimating **High-Level Cloud Cost** translates technical infrastructure capacit
 ### Step-by-Step Monthly Budget Walkthrough
 
 1. **Application Server Fleet**:
-   - 80 EC2 instances $\times \$100/\text{month} = \mathbf{\$8,000/\text{month}}$.
+   - 80 EC2 instances × \$100/month = **\$8,000/month**.
 
 2. **In-Memory Caching Fleet**:
-   - 4 Redis Cache instances $\times \$140/\text{month} = \mathbf{\$560/\text{month}}$.
+   - 4 Redis Cache instances × \$140/month = **\$560/month**.
 
 3. **Database Layer (Sharded Clusters)**:
-   - 10 RDS PostgreSQL Multi-AZ Nodes $\times \$250/\text{month} = \mathbf{\$2,500/\text{month}}$.
+   - 10 RDS PostgreSQL Multi-AZ Nodes × \$250/month = **\$2,500/month**.
 
 4. **Object Storage (S3)**:
-   - 100 TB S3 Storage $\times \$23/\text{TB} = \mathbf{\$2,300/\text{month}}$.
+   - 100 TB S3 Storage × \$23/TB = **\$2,300/month**.
 
 5. **Network Egress Data Transfer**:
-   - 200 TB monthly egress data $\times \$80/\text{TB} = \mathbf{\$16,000/\text{month}}$.
+   - 200 TB monthly egress data × \$80/TB = **\$16,000/month**.
 
 6. **Total Estimated Monthly Cloud Infrastructure Bill**:
 
-$$\text{Total Monthly Cost} = \$8,000 + \$560 + \$2,500 + \$2,300 + \$16,000 = \mathbf{\$29,360/\text{month}}$$
+**Total Monthly Cost** = \$8,000 + \$560 + \$2,500 + \$2,300 + \$16,000 = **\$29,360/month**
 
 ### Cost Optimization Strategies
 

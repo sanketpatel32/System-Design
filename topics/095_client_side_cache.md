@@ -40,10 +40,10 @@
 
 | Storage Mechanism | Capacity | Persistence | Best Used For |
 | :--- | :--- | :--- | :--- |
-| **HTTP Browser Cache**| $pprox 50-500$ MB | Managed by browser HTTP policies | Static web assets (JS, CSS, Images, Fonts) |
-| **IndexedDB** | High ($>50\%$ free disk) | Permanent until cleared by app | Offline PWA data, complex object stores |
-| **LocalStorage** | $pprox 5$ MB | Permanent until cleared by code | Non-sensitive UI state flags (Theme, Language) |
-| **SessionStorage** | $pprox 5$ MB | Tab session lifetime | Single-tab transient form inputs |
+| **HTTP Browser Cache**| ≈ 50-500 MB | Managed by browser HTTP policies | Static web assets (JS, CSS, Images, Fonts) |
+| **IndexedDB** | High (>50% free disk) | Permanent until cleared by app | Offline PWA data, complex object stores |
+| **LocalStorage** | ≈ 5 MB | Permanent until cleared by code | Non-sensitive UI state flags (Theme, Language) |
+| **SessionStorage** | ≈ 5 MB | Tab session lifetime | Single-tab transient form inputs |
 
 ### Key takeaway
 

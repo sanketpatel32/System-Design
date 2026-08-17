@@ -47,7 +47,7 @@ Concurrent updates occurring independently on Node A and Node B produce conflict
 
 CRDTs are specialized data structures that guarantee automatic deterministic convergence without conflict resolution code:
 - **Operation-Based CRDTs**: Replicate operations (e.g. `add(5)`) over reliable channels.
-- **State-Based CRDTs**: Merge full state matrices using commutative, associative, and idempotent merge operations ($	ext{Merge}(A, B) = 	ext{Merge}(B, A)$).
+- **State-Based CRDTs**: Merge full state matrices using commutative, associative, and idempotent merge operations (Merge(A, B) = Merge(B, A)).
 
 ### Key Trade-offs & Production Design Guidance
 

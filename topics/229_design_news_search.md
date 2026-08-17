@@ -38,12 +38,12 @@ Core technical demands focus on **sub-second indexing freshness**, deduplication
 
 ### Key Technical Mechanics
 1. **Near-Real-Time Indexing (1s Memory Refresh):** News ingestion workers stream parsed articles directly to OpenSearch memory buffers with a 1-second refresh interval, making breaking news searchable worldwide within 1 second of publication.
-2. **Syndicated Article Deduplication (SimHash):** Computes a 64-bit SimHash fingerprint for each article body. Articles with a Hamming distance $\le 3$ are identified as duplicate syndicated wire service copies (e.g., AP/Reuters reprints) and grouped under the original publisher.
+2. **Syndicated Article Deduplication (SimHash):** Computes a 64-bit SimHash fingerprint for each article body. Articles with a Hamming distance ≤ 3 are identified as duplicate syndicated wire service copies (e.g., AP/Reuters reprints) and grouped under the original publisher.
 3. **News Ranking Function with Steep Time Decay:**
 
-$$\text{Score} = S_{\text{relevance}} \cdot S_{\text{authority}} \cdot e^{-\lambda \cdot \Delta t}$$
+**Score** = Sᵣelevance · Sₐuthority · e⁻λ · Δ t
 
-*Key Insight:* The exponential decay factor $e^{-\lambda \cdot \Delta t}$ uses a aggressive half-life (e.g., 4 hours), heavily penalizing older news articles to favor live breaking developments.
+*Key Insight:* The exponential decay factor e⁻λ · Δ t uses a aggressive half-life (e.g., 4 hours), heavily penalizing older news articles to favor live breaking developments.
 
 ### API Interface Specifications
 
@@ -67,7 +67,7 @@ $$\text{Score} = S_{\text{relevance}} \cdot S_{\text{authority}} \cdot e^{-\lamb
 | Strategy / Choice | Advantages | Disadvantages | Best Used When |
 |---|---|---|---|
 | **SimHash Duplicate Detection** | Fast 64-bit Hamming distance checks; identifies near-duplicate syndicated news copy. | Can accidentally group distinct follow-up stories if article text overlaps significantly. | Real-time news aggregation and indexing platforms. |
-| **Steep Exponential Decay ($\lambda = 4	ext{h}$)**| Ensures breaking news immediately tops search results over older established articles. | In-depth investigative journalism articles drop off search listings quickly unless boosted. | News search and breaking news aggregation engines. |
+| **Steep Exponential Decay (λ = 4h)**| Ensures breaking news immediately tops search results over older established articles. | In-depth investigative journalism articles drop off search listings quickly unless boosted. | News search and breaking news aggregation engines. |
 | **1-Second OpenSearch Memory Refresh**| Guarantees sub-second index visibility for breaking news alerts. | Increases disk I/O and CPU overhead on OpenSearch index nodes. | Real-time news search platforms. |
 
 ### Key takeaway

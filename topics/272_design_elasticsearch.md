@@ -40,7 +40,7 @@ Term Dictionary ---> Term Index (FST) ---> Posting List (Doc IDs + Positions)
 | Query Phase | Execution Steps | Computational Focus |
 |---|---|---|
 | **1. Query Phase** | Coordinating node broadcasts request to all shards; each shard returns matching doc IDs + BM25 scores. | Scatter execution; sorting small ID arrays. |
-| **2. Fetch Phase** | Coordinating node merges scores, requests full document payloads for top $N$ IDs from owner shards. | Gather execution; payload transmission. |
+| **2. Fetch Phase** | Coordinating node merges scores, requests full document payloads for top N IDs from owner shards. | Gather execution; payload transmission. |
 
 ### Key takeaway
 Elasticsearch achieves fast full-text search by indexing JSON fields into Lucene inverted indices (FSTs) and utilizing scatter-gather query execution across primary and replica shards.

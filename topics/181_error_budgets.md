@@ -11,11 +11,11 @@ By defining reliability as a budgeted resource rather than an absolute requireme
 ### Mathematical Definition & Budget Calculation
 The error budget is directly derived from the **Service Level Objective (SLO)**:
 
-$$\text{Error Budget} = 100\% - \text{SLO}$$
+**Error Budget** = 100% - SLO
 
-For example, for a microservice with a **99.9%** availability SLO over a 30-day rolling window ($43,200$ minutes):
-- **Allowed Failure Rate:** $100\% - 99.9\% = 0.1\%$
-- **Allowed Downtime Window:** $43,200 \text{ min} \times 0.001 = 43.2 \text{ minutes}$ (or $2,592$ allowed failed requests per $2,592,000$ total requests at 100 RPS).
+For example, for a microservice with a **99.9%** availability SLO over a 30-day rolling window (43,200 minutes):
+- **Allowed Failure Rate:** 100% - 99.9% = 0.1%
+- **Allowed Downtime Window:** 43,200 min × 0.001 = 43.2 minutes (or 2,592 allowed failed requests per 2,592,000 total requests at 100 RPS).
 
 ### Error Budget Architecture & Burn Tracking Topology
 
@@ -41,9 +41,9 @@ For example, for a microservice with a **99.9%** availability SLO over a 30-day 
 ```
 
 ### Core Mechanics & Burn Rate Alerting
-Burn rate measures how quickly a service consumes its error budget. A burn rate of $1.0$ means the error budget will be completely exhausted exactly at the end of the SLO window (e.g., 30 days).
+Burn rate measures how quickly a service consumes its error budget. A burn rate of 1.0 means the error budget will be completely exhausted exactly at the end of the SLO window (e.g., 30 days).
 
-$$\text{Burn Rate} = \frac{\text{Observed Error Rate}}{100\% - \text{SLO}}$$
+**Burn Rate** = (Observed Error Rate) / (100% - SLO)
 
 | Burn Rate | Budget Consumed | Time to Exhaustion (30-day window) | Alert Severity | Action Required |
 |---|---|---|---|---|

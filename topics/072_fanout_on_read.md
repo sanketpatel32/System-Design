@@ -4,7 +4,7 @@
 
 ---
 
-**Fanout on Read** (also known as the **Pull Model**) is an architecture where writing new content is lightweight ($O(1)$ operation) — content is stored once in the author's post table. When a recipient opens their feed, the system dynamically queries, aggregates, and sorts posts from all accounts the recipient follows at read time.
+**Fanout on Read** (also known as the **Pull Model**) is an architecture where writing new content is lightweight (O(1) operation) — content is stored once in the author's post table. When a recipient opens their feed, the system dynamically queries, aggregates, and sorts posts from all accounts the recipient follows at read time.
 
 ### Architecture flow
 
@@ -32,16 +32,16 @@
 
 1. **Lightweight Write**: When an author posts, the payload is inserted once into the author's primary post table. No downstream timeline writes occur.
 2. **Read-Time Scatter-Gather**: When a follower requests their feed:
-   - System retrieves the list of people they follow ($K$ followees).
+   - System retrieves the list of people they follow (K followees).
    - System issues concurrent query requests to fetch recent posts for each followee.
-   - System merges and sorts the $K$ streams in memory to return the top $N$ recent posts.
+   - System merges and sorts the K streams in memory to return the top N recent posts.
 
 ### Operational trade-offs
 
 | Characteristic | Evaluation | Impact |
 | :--- | :--- | :--- |
-| **Write Performance** | Extremely Fast ($O(1)$ complexity) | Instant post confirmation regardless of author follower count |
-| **Read Latency** | High Latency ($O(K \log K)$ merge) | Opening feeds requires multithreaded network queries across databases |
+| **Write Performance** | Extremely Fast (O(1) complexity) | Instant post confirmation regardless of author follower count |
+| **Read Latency** | High Latency (O(K log K) merge) | Opening feeds requires multithreaded network queries across databases |
 | **Resource Allocation**| Heavy Read CPU & Network IO | Aggregating feeds consumes CPU resources during active read traffic |
 | **Storage Efficiency** | Maximum Efficiency | Data is stored once without redundancy |
 
