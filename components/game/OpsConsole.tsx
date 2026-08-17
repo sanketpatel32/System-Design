@@ -41,22 +41,22 @@ export function OpsConsole({ caseDef, session, dispatch }: Props) {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-1">
+      <div className="mb-3.5 flex flex-wrap gap-1.5 border-b border-rule/80 pb-2.5">
         <TabButton active={tab === "symptoms"} onClick={() => setTab("symptoms")}>
-          <AlertOctagon size={12} /> Symptoms
+          <AlertOctagon size={13} /> Symptoms
         </TabButton>
         <TabButton active={tab === "metrics"} onClick={() => setTab("metrics")}>
-          <BarChart3 size={12} /> Metrics
+          <BarChart3 size={13} /> Metrics
         </TabButton>
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
-          <ScrollText size={12} /> Logs
+          <ScrollText size={13} /> Logs
         </TabButton>
         <TabButton active={tab === "hypothesis"} onClick={() => setTab("hypothesis")}>
-          <FlaskConical size={12} /> Hypothesis
+          <FlaskConical size={13} /> Hypothesis
         </TabButton>
         {hasRun && (
           <TabButton active={tab === "report"} onClick={() => setTab("report")}>
-            <ClipboardList size={12} /> Report
+            <ClipboardList size={13} /> Report
           </TabButton>
         )}
       </div>
@@ -88,7 +88,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-2 data-[on=true]:bg-accent/10 data-[on=true]:text-accent"
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all duration-150 data-[on=true]:bg-accent data-[on=true]:text-[rgb(var(--accent-ink-rgb))] text-ink-2 hover:bg-paper-3/60 shadow-xs"
       data-on={active}
     >
       {children}
@@ -103,12 +103,12 @@ function SymptomsTab({ caseDef }: { caseDef: GameCaseDefinition }) {
       {symptoms.map((s) => (
         <li
           key={s.id}
-          className="rounded-lg border border-rule bg-paper px-3 py-2"
+          className="rounded-xl border border-rule bg-paper px-3.5 py-2.5 shadow-xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-ink-2">{s.label}</span>
+            <span className="text-xs font-semibold text-ink-2">{s.label}</span>
             <span
-              className="font-mono text-xs font-semibold"
+              className="font-mono text-xs font-bold"
               data-tone={s.tone}
             >
               {s.value}
@@ -131,14 +131,14 @@ function MetricsTab({ caseDef }: { caseDef: GameCaseDefinition }) {
         </p>
       )}
       {metricEvidence.map((ev) => (
-        <div key={ev.id} className="rounded-lg border border-rule bg-paper p-2">
-          <p className="mb-1.5 text-xs font-semibold text-ink-2">{ev.title}</p>
+        <div key={ev.id} className="rounded-xl border border-rule bg-paper p-3 shadow-xs">
+          <p className="mb-2 text-xs font-bold text-ink">{ev.title}</p>
           {ev.content.category === "metric" && (
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {ev.content.series.map((s, i) => (
                 <li key={i} className="flex justify-between text-xs">
-                  <span className="text-ink-3">{s.label}</span>
-                  <span className="font-mono font-semibold text-ink">{s.value}</span>
+                  <span className="text-ink-3 font-medium">{s.label}</span>
+                  <span className="font-mono font-bold text-ink">{s.value}</span>
                 </li>
               ))}
             </ul>
@@ -159,7 +159,7 @@ function LogsTab({ session }: { session: GameSession }) {
           No logs collected yet. Inspect trace or log evidence to populate this view.
         </p>
       )}
-      <p className="rounded-lg border border-dashed border-rule bg-paper/40 p-2 text-[11px] text-ink-3">
+      <p className="rounded-xl border border-dashed border-rule/80 bg-paper-2/40 p-3 text-[11px] font-medium text-ink-3">
         Detailed request logs appear here once you unlock distributed-trace and
         payment-log evidence.
       </p>

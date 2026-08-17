@@ -46,3 +46,6 @@ $RECYCLE.BIN/
 .cache/
 .eslintcache
 .stylelintcache
+
+# agent session screenshots
+.zcode-shots/

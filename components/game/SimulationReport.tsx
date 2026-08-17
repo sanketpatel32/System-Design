@@ -37,6 +37,8 @@ interface Props {
   dispatch: Dispatch;
 }
 
+import { audioFx } from "@/lib/game/audio";
+
 export function SimulationReport({ caseDef, session, dispatch }: Props) {
   const latest = selectLatestRun(session);
   const canRun = selectCanRunSimulation(session, caseDef);
@@ -63,6 +65,13 @@ export function SimulationReport({ caseDef, session, dispatch }: Props) {
       run,
     });
     setSimulating(false);
+
+    const passed = run.objectiveResults.every((o) => o.status !== "failed");
+    if (passed) {
+      audioFx.playPass();
+    } else {
+      audioFx.playFail();
+    }
   };
 
   const handleAccept = () => {
@@ -130,81 +139,81 @@ export function SimulationReport({ caseDef, session, dispatch }: Props) {
 
       {/* Verdict banner */}
       <div
-        className={`rounded-lg border p-3 ${
+        className={`rounded-xl border p-4 shadow-sm ${
           allPassed
-            ? "border-ok/40 bg-ok/10"
+            ? "border-ok/50 bg-ok/15 text-ok"
             : somePartial
-            ? "border-warn/40 bg-warn/10"
-            : "border-rule bg-paper-3/40"
+            ? "border-warn/50 bg-warn/15 text-warn"
+            : "border-rule/80 bg-paper-3/50 text-ink"
         }`}
       >
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
+        <p className="flex items-center gap-2 text-sm font-bold">
           {allPassed ? (
-            <Check size={15} className="text-ok" />
+            <Check size={18} className="text-ok" />
           ) : (
-            <AlertTriangle size={15} className={somePartial ? "text-warn" : "text-ink-3"} />
+            <AlertTriangle size={18} className={somePartial ? "text-warn" : "text-ink-3"} />
           )}
           <span className={allPassed ? "text-ok" : somePartial ? "text-warn" : "text-ink"}>
             {allPassed
-              ? "All objectives passed"
+              ? "All System Objectives Passed!"
               : somePartial
-              ? "Partial success — residual risk remains"
-              : "Objectives not met"}
+              ? "Partial Success — Residual Incident Risk"
+              : "Objectives Not Met"}
           </span>
         </p>
       </div>
 
       {/* Objective results */}
-      <ul className="space-y-1.5">
+      <ul className="space-y-2">
         {latest.objectiveResults.map((o) => (
           <ObjectiveRow key={o.objectiveId} result={o} caseDef={caseDef} />
         ))}
       </ul>
 
       {/* Summary metrics */}
-      <div className="rounded-lg border border-rule bg-paper p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Summary
+      <div className="rounded-xl border border-rule bg-paper p-3.5 shadow-xs">
+        <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-ink-3">
+          Telemetry Summary
         </p>
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-          <SummaryItem label="Total requests" value={String(latest.summary.totalRequests)} />
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <SummaryItem label="Total Requests" value={String(latest.summary.totalRequests)} />
           <SummaryItem label="Successful" value={String(latest.summary.successfulRequests)} />
           <SummaryItem
-            label="p95 latency"
+            label="p95 Latency"
             value={`${latest.summary.p95LatencyMs.toFixed(0)}ms`}
           />
           <SummaryItem
-            label="Success rate"
+            label="Success Rate"
             value={`${(latest.summary.successfulCheckoutRate * 100).toFixed(1)}%`}
           />
           <SummaryItem
-            label="Dup orders"
+            label="Dup Orders"
             value={`${(latest.summary.duplicateOrderRate * 100).toFixed(2)}%`}
           />
           <SummaryItem
-            label="Dup charges"
+            label="Dup Charges"
             value={`${(latest.summary.duplicateChargeRate * 100).toFixed(2)}%`}
           />
         </dl>
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2.5 pt-1">
         {allPassed && (
           <button
             type="button"
             onClick={handleAccept}
-            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-ok px-3 py-2 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))]"
+            className="lift inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-ok px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[rgb(var(--accent-ink-rgb))] shadow-sm"
           >
-            <Check size={14} /> Accept solution
+            <Check size={15} /> Accept solution
           </button>
         )}
         <button
           type="button"
           onClick={handleRevise}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-rule bg-paper px-3 py-2 text-sm font-medium text-ink-2 hover:border-accent"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rule bg-paper px-4 py-2.5 text-xs font-bold text-ink-2 hover:border-accent hover:text-accent shadow-xs"
         >
-          <RotateCcw size={14} /> Revise
+          <RotateCcw size={15} /> Revise design
         </button>
       </div>
     </div>

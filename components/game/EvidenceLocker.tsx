@@ -37,6 +37,8 @@ const CATEGORY_ICON: Record<string, React.ReactNode> = {
   diagram: <FileText size={13} aria-hidden />,
 };
 
+import { audioFx } from "@/lib/game/audio";
+
 export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const cards = selectEvidenceCards(session, caseDef);
@@ -48,6 +50,7 @@ export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
     // If already inspected, just open it (free revisit — spec §22.3).
     if (session.inspectedEvidenceIds.includes(item.id)) {
       setSelectedId(item.id);
+      audioFx.playUnlock();
       return;
     }
     const result = dispatch({
@@ -57,6 +60,7 @@ export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
     });
     if (result.ok) {
       setSelectedId(item.id);
+      audioFx.playUnlock();
     }
   };
 
@@ -74,7 +78,7 @@ export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
           onClose={() => setSelectedId(null)}
         />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {cards.map((card) => {
             const item = caseDef.evidence.find((e) => e.id === card.id)!;
             const disabled =
@@ -88,33 +92,33 @@ export function EvidenceLocker({ caseDef, session, dispatch }: Props) {
                   onClick={() => handleInspect(item)}
                   disabled={disabled}
                   aria-label={`${item.title}${card.cost ? `, costs ${card.cost} points` : ""}`}
-                  className="group w-full rounded-lg border border-rule bg-paper px-3 py-2.5 text-left transition-colors hover:border-accent/50 hover:bg-paper-3/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-rule disabled:hover:bg-paper"
+                  className="lift group w-full rounded-xl border border-rule/80 bg-paper p-3 text-left transition-all duration-150 hover:border-accent/60 hover:bg-paper-3/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-rule disabled:hover:bg-paper shadow-xs"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="shrink-0 text-ink-3" aria-hidden>
-                      {CATEGORY_ICON[item.category] ?? <FileText size={13} />}
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-paper-3 text-accent group-hover:bg-accent/15 group-hover:text-accent" aria-hidden>
+                      {CATEGORY_ICON[item.category] ?? <FileText size={14} />}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold tracking-tight text-ink group-hover:text-accent">
                       {item.title}
                     </span>
                     {card.isNew && !card.isInspected && (
-                      <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent">
+                      <span className="shrink-0 rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent border border-accent/30 animate-pulse-slow">
                         new
                       </span>
                     )}
                     {card.isInspected ? (
-                      <CheckCircle2 size={14} className="shrink-0 text-ok" aria-label="Inspected" />
+                      <CheckCircle2 size={15} className="shrink-0 text-ok" aria-label="Inspected" />
                     ) : card.isUnlocked || card.cost === 0 ? (
-                      <Eye size={14} className="shrink-0 text-accent" aria-label="Free to view" />
+                      <Eye size={15} className="shrink-0 text-accent" aria-label="Free to view" />
                     ) : (
-                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-paper-3 px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">
-                        <Lock size={9} aria-hidden /> {card.cost}
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 text-[10px] font-bold text-ink-2">
+                        <Lock size={10} aria-hidden /> {card.cost} pt
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-xs text-ink-3">{item.preview}</p>
+                  <p className="mt-1.5 truncate text-xs text-ink-3 font-medium">{item.preview}</p>
                   {card.isRedHerring && card.isInspected && (
-                    <p className="mt-1 text-[11px] italic text-ink-3">red herring</p>
+                    <p className="mt-1 text-[11px] italic font-semibold text-warn">red herring</p>
                   )}
                 </button>
               </li>

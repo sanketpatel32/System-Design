@@ -1,0 +1,3 @@
+@echo off
+echo Starting System Design Atlas local dev server...
+npm run dev

@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * UnknownNode — a redacted silhouette for nodes the player hasn't revealed
- * (spec §4.5: "represented as intentional silhouettes with labels such as
- * 'Unknown external dependency' rather than missing UI").
+ * UnknownNode — a redacted silhouette for nodes the player hasn't revealed (spec §4.5).
+ * Rendered with subtle pulse hatch pattern and mystery icon badge.
  */
 
 import type { ArchitectureNode } from "@/lib/game/domain/types";
@@ -12,38 +11,53 @@ interface Props {
   node: ArchitectureNode;
   x: number;
   y: number;
+  width: number;
+  height: number;
 }
 
-export function UnknownNode({ node, x, y }: Props) {
+export function UnknownNode({ node, x, y, width, height }: Props) {
+  void node;
   return (
-    <g transform={`translate(${x}, ${y})`} aria-hidden>
+    <g transform={`translate(${x}, ${y})`} aria-hidden className="opacity-80 transition-opacity hover:opacity-100">
       <rect
-        width={120}
-        height={44}
-        rx={8}
-        fill="rgb(var(--paper-3-rgb) / 0.6)"
+        width={width}
+        height={height}
+        rx={10}
+        fill="rgb(var(--paper-3-rgb) / 0.4)"
         stroke="rgb(var(--rule-rgb))"
-        strokeWidth={1.5}
-        strokeDasharray="2 3"
+        strokeWidth={1.4}
+        strokeDasharray="4 4"
+      />
+      <circle
+        cx={width / 2}
+        cy={height / 2 - 6}
+        r={11}
+        fill="rgb(var(--paper-3-rgb))"
+        stroke="rgb(var(--rule-rgb))"
+        strokeWidth={1}
       />
       <text
-        x={60}
-        y={20}
+        x={width / 2}
+        y={height / 2 - 2}
         textAnchor="middle"
-        fontSize={10}
+        fontSize={13}
+        fontWeight={800}
         fill="rgb(var(--ink-3-rgb))"
       >
         ?
       </text>
       <text
-        x={60}
-        y={34}
+        x={width / 2}
+        y={height / 2 + 15}
         textAnchor="middle"
-        fontSize={9}
+        fontSize={7.5}
+        fontWeight={600}
+        letterSpacing="0.05em"
         fill="rgb(var(--ink-3-rgb))"
       >
-        unknown
+        UNKNOWN
       </text>
     </g>
   );
 }
+

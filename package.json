@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "build:index": "node -e \"const fs=require('fs'),path=require('path');const dir=path.join(process.cwd(),'topics');const files=fs.readdirSync(dir).filter(f=>/^(\\d{3})_(.+)\\.md$/.test(f)).sort();const topics=files.map(f=>{const m=f.match(/^(\\d{3})_(.+)\\.md$/),id=parseInt(m[1],10),slug=m[2],raw=fs.readFileSync(path.join(dir,f),'utf8').replace(/\\r\\n/g,'\\n'),title=(raw.match(/^# (.+)$/m)?.[1]??slug).trim(),catMatch=raw.match(/^>\\s*\\*\\*Category:\\*\\*\\s*(.+?)\\s*$/m),category=catMatch?catMatch[1].trim():'Uncategorised',takeawayMatch=raw.match(/###\\s+Key\\s+takeaway[s]?\\n([\\s\\S]*?)(?:\\n###|$)/i),takeaway=takeawayMatch?takeawayMatch[1].trim().slice(0,140):null;return{id,slug,title,category,takeaway};});fs.writeFileSync(path.join(process.cwd(),'lib','client-topics-index.ts'),'export interface ClientTopic { id: number; slug: string; title: string; category: string; takeaway: string | null; }\\n\\nexport const CLIENT_TOPICS: ClientTopic[] = '+JSON.stringify(topics,null,2)+';\\n');\"",
+    "prebuild": "npm run build:index",
     "build": "next build",
     "start": "next start",
+    "preview": "npm run build && next start",
+    "check": "npm run typecheck && npm run test:run",
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",

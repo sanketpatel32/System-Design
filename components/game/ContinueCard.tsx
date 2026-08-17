@@ -37,21 +37,27 @@ export function ContinueCard() {
   return (
     <Link
       href={`/game/${caseDef.slug}`}
-      className="lift mt-8 flex items-center gap-4 rounded-2xl border border-accent/30 bg-accent/5 p-4 elev-xs hover:bg-accent/10"
+      className="lift mt-6 flex items-center gap-4 rounded-2xl border border-accent/40 bg-accent/10 p-4 elev-sm hover:bg-accent/15 shadow-sm"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-[rgb(var(--accent-ink-rgb))]">
-        <Play size={16} aria-hidden />
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[rgb(var(--accent-ink-rgb))] shadow-xs">
+        <Play size={18} aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-          Continue
-        </p>
-        <p className="truncate font-semibold text-ink">{caseDef.title}</p>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-paper-3">
-          <div
-            className="h-full rounded-full bg-accent"
-            style={{ width: `${completionPct}%` }}
-          />
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-accent animate-pulse-slow" />
+          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+            Resume Active Incident Session
+          </p>
+        </div>
+        <p className="truncate text-base font-bold text-ink mt-0.5">{caseDef.title}</p>
+        <div className="mt-2 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-3">
+            <div
+              className="h-full rounded-full bg-accent transition-all duration-300"
+              style={{ width: `${completionPct}%` }}
+            />
+          </div>
+          <span className="font-mono text-xs font-bold text-accent">{completionPct}% revealed</span>
         </div>
       </div>
     </Link>

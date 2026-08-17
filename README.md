@@ -28,37 +28,42 @@ An **interactive study companion** to **300 system design topics** — search, r
 
 | Shortcut       | Action                          |
 | -------------- | ------------------------------- |
-| <kbd>/</kbd>   | Focus search (in the Library)   |
-| <kbd>Space</kbd> | Flip the current flashcard    |
-| <kbd>←</kbd>   | Rate a flashcard as "missed"    |
-| <kbd>→</kbd>   | Rate a flashcard as "known"     |
+| <kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd> | Global search across all 300+ topics & incident cases |
+| <kbd>/</kbd>   | Focus search input |
+| <kbd>Space</kbd> | Flip flashcard |
+| <kbd>←</kbd> / <kbd>→</kbd> | Rate flashcard as missed / known |
+| <kbd>E</kbd> / <kbd>A</kbd> / <kbd>O</kbd> | Switch panels in Incident Lab (Evidence / Architecture Map / Ops Console) |
 
 ## 🚀 Quick start
 
+### One-Click Windows Launcher Scripts
+- Double-click **`dev.cmd`** to launch the local development server (`http://localhost:3000`).
+- Double-click **`build.cmd`** to run all typechecks, test suite, and build the static production output.
+
+### Command Line
 ```bash
-npm install
-npm run dev      # http://localhost:3000
+npm run dev        # Launch local dev server at http://localhost:3000
+npm run check      # Run TypeScript typechecks + full unit test suite
+npm run build      # Build static production bundle
+npm run preview    # Build and start local preview server
 ```
 
-Build a production static export:
+## 🌐 Hosting & Deployment Options
 
-```bash
-npm run build    # outputs to out/
-```
+### 1. Vercel (Recommended — Free & 1-Click)
+Vercel is built by the creators of Next.js and provides zero-config automatic deployments:
+1. Push your repository to GitHub / GitLab.
+2. Import the project on [Vercel](https://vercel.com).
+3. Vercel automatically detects Next.js, runs `npm run build`, and deploys your site to a global CDN.
 
-Run the test suite (72 tests covering the game's domain, simulation, and integration paths):
+### 2. GitHub Pages (Free Static Hosting)
+1. Run `npm run build` to generate the production static bundle.
+2. Deploy the `out/` directory to your repository's `gh-pages` branch.
+3. Enable GitHub Pages in Repository Settings pointing to `gh-pages`.
 
-```bash
-npm test         # watch mode
-npm run test:run # one-shot
-npm run typecheck
-```
-
-Preview the production build locally:
-
-```bash
-npx serve out    # serves the static export on a local port
-```
+### 3. Netlify / Cloudflare Pages / Render
+- **Build Command**: `npm run build`
+- **Publish Directory**: `out` (or `.next` if using Node server mode)
 
 ## 🧱 Tech stack
 

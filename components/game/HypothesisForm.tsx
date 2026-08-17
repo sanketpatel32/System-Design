@@ -80,13 +80,13 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
   return (
     <div className="space-y-4">
       <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Primary failure mechanism
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-3">
+          Primary Failure Mechanism
         </p>
-        <ul className="space-y-1.5">
+        <ul className="space-y-2">
           {primaryOptions.map((h) => (
             <li key={h.id}>
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rule bg-paper px-2.5 py-2 text-xs hover:border-accent/40">
+              <label className="lift flex cursor-pointer items-start gap-2.5 rounded-xl border border-rule/80 bg-paper p-3 text-xs transition-colors hover:border-accent/50 shadow-xs">
                 <input
                   type="radio"
                   name="primary"
@@ -95,7 +95,7 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
                   onChange={() => setPrimaryId(h.id)}
                   className="mt-0.5 accent-[rgb(var(--accent-rgb))]"
                 />
-                <span className="text-ink-2">{h.label}</span>
+                <span className="font-semibold text-ink leading-relaxed">{h.label}</span>
               </label>
             </li>
           ))}
@@ -103,20 +103,20 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
       </section>
 
       <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Contributing factors
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-3">
+          Contributing Factors
         </p>
-        <ul className="space-y-1.5">
+        <ul className="space-y-2">
           {contribOptions.map((h) => (
             <li key={h.id}>
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-rule bg-paper px-2.5 py-2 text-xs hover:border-accent/40">
+              <label className="lift flex cursor-pointer items-start gap-2.5 rounded-xl border border-rule/80 bg-paper p-3 text-xs transition-colors hover:border-accent/50 shadow-xs">
                 <input
                   type="checkbox"
                   checked={contribIds.includes(h.id)}
                   onChange={() => toggleContrib(h.id)}
                   className="mt-0.5 accent-[rgb(var(--accent-rgb))]"
                 />
-                <span className="text-ink-2">{h.label}</span>
+                <span className="font-semibold text-ink leading-relaxed">{h.label}</span>
               </label>
             </li>
           ))}
@@ -125,13 +125,13 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
 
       {inspected.length > 0 && (
         <section>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-3">
-            Cite supporting evidence
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-ink-3">
+            Cite Supporting Evidence
           </p>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5 rounded-xl border border-rule bg-paper-2/40 p-3">
             {inspected.map((e) => (
               <li key={e.id}>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-2">
+                <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-2 hover:text-accent">
                   <input
                     type="checkbox"
                     checked={citedIds.includes(e.id)}
@@ -147,18 +147,18 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
       )}
 
       <section>
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Notes (optional)
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-ink-3">
+          Reasoning &amp; Tradeoff Notes (optional)
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value.slice(0, MAX_NOTE))}
           maxLength={MAX_NOTE}
           rows={3}
-          placeholder="Reasoning, expected tradeoffs…"
-          className="w-full rounded-lg border border-rule bg-paper px-2.5 py-2 text-xs text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none"
+          placeholder="Document your diagnostic hypothesis and architectural tradeoffs…"
+          className="w-full rounded-xl border border-rule bg-paper p-3 text-xs text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 shadow-xs"
         />
-        <p className="mt-0.5 text-right text-[10px] text-ink-3">
+        <p className="mt-1 text-right text-[10px] font-mono text-ink-3">
           {note.length}/{MAX_NOTE}
         </p>
       </section>
@@ -167,15 +167,15 @@ export function HypothesisForm({ caseDef, session, dispatch }: Props) {
         type="button"
         onClick={handleSubmit}
         disabled={!primaryId}
-        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-[rgb(var(--accent-ink-rgb))] disabled:cursor-not-allowed disabled:opacity-40"
+        className="lift inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[rgb(var(--accent-ink-rgb))] disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
       >
-        <CheckCircle2 size={14} />
-        {session.hypothesis ? "Update hypothesis" : "Submit hypothesis"}
+        <CheckCircle2 size={15} />
+        {session.hypothesis ? "Update Hypothesis" : "Submit Diagnostic Hypothesis"}
       </button>
 
       {saved && (
-        <p className="rounded-lg border border-ok/30 bg-ok/5 px-3 py-2 text-xs text-ok">
-          Hypothesis saved. You can now run a simulation.
+        <p className="rounded-xl border border-ok/40 bg-ok/10 px-3.5 py-2.5 text-xs font-semibold text-ok shadow-xs">
+          ✓ Diagnostic hypothesis submitted! Switch to the Report tab or header button to run load simulation.
         </p>
       )}
     </div>

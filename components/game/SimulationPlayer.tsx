@@ -42,20 +42,21 @@ export function SimulationPlayer({ run }: Props) {
     : 0;
 
   return (
-    <div className="rounded-lg border border-rule bg-paper-2/40 p-3">
+    <div className="rounded-xl border border-rule/80 bg-paper-2/60 p-4 shadow-sm">
       {/* Virtual clock + phase */}
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-            Incident timeline
+          <p className="text-[10px] font-bold uppercase tracking-widest text-ink-3">
+            Incident Timeline Playback
           </p>
-          <p className="font-mono text-lg font-bold text-ink">
+          <p className="font-mono text-xl font-extrabold text-ink">
             00:{String(pb.currentSecond).padStart(2, "0")}
-            <span className="text-sm text-ink-3"> / 00:{run.virtualDurationSeconds}</span>
+            <span className="text-xs font-semibold text-ink-3"> / 00:{run.virtualDurationSeconds}s</span>
           </p>
         </div>
         {sample && (
-          <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
+          <span className="flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1 text-xs font-bold text-accent border border-accent/20">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-slow" />
             {PHASE_LABEL[sample.phase] ?? sample.phase}
           </span>
         )}
@@ -63,7 +64,7 @@ export function SimulationPlayer({ run }: Props) {
 
       {/* Progress bar */}
       <div
-        className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-paper-3"
+        className="mb-3.5 h-2 w-full overflow-hidden rounded-full bg-paper-3/80 shadow-inner"
         role="progressbar"
         aria-valuenow={pb.currentSecond}
         aria-valuemin={0}
@@ -71,79 +72,79 @@ export function SimulationPlayer({ run }: Props) {
         aria-label="Simulation progress"
       >
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear motion-reduce:transition-none"
+          className="h-full rounded-full bg-accent transition-[width] duration-100 ease-linear motion-reduce:transition-none shadow-xs"
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {/* Live metrics grid */}
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-3.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Metric
-          label="Requests/s"
+          label="Requests / sec"
           value={sample ? String(sample.requests) : "—"}
         />
         <Metric
-          label="p95 latency"
+          label="p95 Latency"
           value={sample ? `${sample.p95LatencyMs.toFixed(0)}ms` : "—"}
           tone={sample && sample.p95LatencyMs > 2500 ? "warn" : undefined}
         />
         <Metric
-          label="Dup. orders"
+          label="Dup. Orders"
           value={String(cumulative.duplicates)}
           tone={cumulative.duplicates > 0 ? "warn" : undefined}
         />
         <Metric
-          label="Dup. charges"
+          label="Dup. Charges"
           value={String(cumulative.duplicateCharges)}
           tone={cumulative.duplicateCharges > 0 ? "warn" : undefined}
         />
       </div>
 
-      {/* Request-flow pulses (decorative; hidden from SR) */}
+      {/* Request-flow pulses */}
       <FlowPulses isPlaying={pb.isPlaying} />
 
       {/* Playback controls */}
-      <div className="mb-3 flex items-center gap-1.5">
+      <div className="mb-3 flex items-center gap-2">
         {pb.isPlaying ? (
           <button
             type="button"
             onClick={pb.pause}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-paper px-3 py-1.5 text-xs font-medium text-ink-2 hover:border-accent hover:text-accent"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-paper px-3 py-1.5 text-xs font-bold text-ink hover:border-accent hover:text-accent shadow-xs"
           >
-            <Pause size={12} /> Pause
+            <Pause size={13} /> Pause
           </button>
         ) : (
           <button
             type="button"
             onClick={pb.play}
             disabled={pb.isComplete}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-[rgb(var(--accent-ink-rgb))] disabled:opacity-40"
+            className="lift inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[rgb(var(--accent-ink-rgb))] disabled:opacity-40 shadow-xs"
           >
-            <Play size={12} /> {pb.currentSecond === 0 ? "Play" : "Resume"}
+            <Play size={13} /> {pb.currentSecond === 0 ? "Play" : "Resume"}
           </button>
         )}
         <button
           type="button"
           onClick={pb.cycleSpeed}
-          className="inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-2 hover:border-accent"
+          className="inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-bold text-ink-2 hover:border-accent"
           aria-label={`Playback speed ${pb.speed}×`}
         >
-          <FastForward size={11} /> {pb.speed}×
+          <FastForward size={12} /> {pb.speed}×
         </button>
         <button
           type="button"
           onClick={pb.skipToEnd}
-          className="inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-2 hover:border-accent"
+          className="inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-bold text-ink-2 hover:border-accent"
         >
-          <SkipForward size={11} /> Skip
+          <SkipForward size={12} /> Skip
         </button>
         <button
           type="button"
           onClick={pb.restart}
-          className="ml-auto inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-medium text-ink-3 hover:text-ink"
+          className="ml-auto inline-flex items-center gap-1 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs font-bold text-ink-3 hover:text-ink"
           aria-label="Restart playback"
         >
-          <RotateCcw size={11} />
+          <RotateCcw size={12} />
         </button>
       </div>
 
@@ -165,9 +166,9 @@ function Metric({
   const color =
     tone === "warn" ? "text-warn" : tone === "ok" ? "text-ok" : "text-ink";
   return (
-    <div className="rounded-lg border border-rule bg-paper px-2.5 py-1.5">
-      <p className="text-[10px] uppercase tracking-wider text-ink-3">{label}</p>
-      <p className={`font-mono text-sm font-bold ${color}`}>{value}</p>
+    <div className="rounded-xl border border-rule/80 bg-paper p-2.5 shadow-xs">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-3">{label}</p>
+      <p className={`font-mono text-base font-extrabold ${color}`}>{value}</p>
     </div>
   );
 }

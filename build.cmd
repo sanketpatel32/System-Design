@@ -1,0 +1,3 @@
+@echo off
+echo Running typechecks, tests, and building production static bundle...
+npm run check && npm run build

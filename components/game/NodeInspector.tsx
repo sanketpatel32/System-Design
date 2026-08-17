@@ -17,34 +17,44 @@ interface Props {
 
 export function NodeInspector({ node, onClose }: Props) {
   return (
-    <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-3">
-      <div className="flex items-start justify-between gap-2">
+    <div className="mt-3 rounded-xl border border-accent/40 bg-accent/10 p-3.5 shadow-sm">
+      <div className="flex items-start justify-between gap-2 border-b border-accent/20 pb-2.5">
         <div>
-          <h3 className="text-sm font-bold text-ink">{node.label}</h3>
-          <p className="text-xs font-mono text-ink-3">{node.type}</p>
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-accent animate-pulse-slow" aria-hidden />
+            <h3 className="text-sm font-bold tracking-tight text-ink">{node.label}</h3>
+          </div>
+          <p className="mt-0.5 text-xs font-mono font-semibold uppercase tracking-wider text-accent">
+            {node.type}
+          </p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close inspector"
-          className="rounded p-0.5 text-ink-3 hover:bg-paper-3 hover:text-ink"
+          className="rounded-lg p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink border border-transparent hover:border-rule"
         >
           <X size={14} />
         </button>
       </div>
 
       {node.description && (
-        <p className="mt-2 text-xs text-ink-2">{node.description}</p>
+        <p className="mt-2.5 text-xs leading-relaxed text-ink-2">{node.description}</p>
       )}
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-        {renderConfigFields(node).map((f) => (
-          <div key={f.label}>
-            <dt className="text-ink-3">{f.label}</dt>
-            <dd className="font-mono font-semibold text-ink">{f.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="mt-3 rounded-lg border border-rule/60 bg-paper/60 p-2.5">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-3">
+          Component Configuration
+        </p>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          {renderConfigFields(node).map((f) => (
+            <div key={f.label} className="flex flex-col">
+              <dt className="text-[11px] text-ink-3">{f.label}</dt>
+              <dd className="font-mono font-bold text-ink">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }

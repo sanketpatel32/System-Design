@@ -106,6 +106,10 @@ a:hover {
 .elev-md { box-shadow: var(--shadow-md); }
 .elev-lg { box-shadow: var(--shadow-lg); }
 
+/* Tailwind v3 has no `shadow-xs` step; alias it to the token so the
+   class isn't a silent no-op. */
+.shadow-xs { box-shadow: var(--shadow-xs); }
+
 @media (prefers-reduced-motion: no-preference) {
   .lift {
     transition: transform var(--dur-base) var(--ease-out),
@@ -252,4 +256,96 @@ a:hover {
 .prose-atlas tr:hover td {
   background: rgb(var(--paper-3-rgb) / 0.3);
 }
+
+/* ------------------------------------------------------------------ */
+/* Incident Lab / Game UI Enhancements                                */
+/* ------------------------------------------------------------------ */
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.96); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+.animate-modal-in {
+  animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow,
+  .animate-edge-flow,
+  .animate-fade-in,
+  .animate-modal-in,
+  .status-dot-pulse::after {
+    animation: none;
+  }
+}
+
+@keyframes edge-flow {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes signal-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgb(var(--accent-rgb) / 0.6)); }
+  50% { filter: drop-shadow(0 0 8px rgb(var(--accent-rgb) / 0.9)); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-edge-flow {
+  stroke-dasharray: 6 6;
+  animation: edge-flow 1.2s linear infinite;
+}
+
+.status-dot-pulse {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgb(var(--ok-rgb));
+}
+
+.status-dot-pulse::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 50%;
+  background-color: rgb(var(--ok-rgb) / 0.4);
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.game-panel {
+  background: rgb(var(--paper-2-rgb) / 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgb(var(--rule-rgb));
+  box-shadow: var(--shadow-sm);
+}
+
+.game-panel-hero {
+  background: rgb(var(--paper-rgb));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgb(var(--accent-rgb) / 0.3);
+  box-shadow: var(--shadow-md), 0 0 15px -5px rgb(var(--accent-rgb) / 0.15);
+}
+
 

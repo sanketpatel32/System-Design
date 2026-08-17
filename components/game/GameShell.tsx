@@ -85,12 +85,12 @@ export function GameShell({
 
   return (
     <div className="mx-auto max-w-[1400px] px-3 sm:px-6">
-      {/* --- Desktop: three-column grid --- */}
-      <div className="hidden gap-3 py-4 lg:grid lg:grid-cols-[24fr_50fr_26fr]">
+      {/* --- Desktop: three-column grid (map is the hero) --- */}
+      <div className="hidden items-stretch gap-3 py-4 lg:grid lg:grid-cols-[24fr_50fr_26fr]">
         <PanelCard title="Evidence Locker" icon={<Archive size={14} aria-hidden />} panelRef={evidenceRef}>
           {renderEvidence()}
         </PanelCard>
-        <PanelCard title="Architecture Map" icon={<Network size={14} aria-hidden />} panelRef={mapRef}>
+        <PanelCard title="Architecture Map" icon={<Network size={14} aria-hidden />} panelRef={mapRef} variant="hero">
           {renderMap()}
         </PanelCard>
         <PanelCard title="Ops Console" icon={<Activity size={14} aria-hidden />} panelRef={opsRef}>
@@ -156,23 +156,46 @@ function PanelCard({
   icon,
   children,
   panelRef,
+  variant,
 }: {
   title: string;
   icon: React.ReactNode;
   children: React.ReactNode;
   panelRef?: React.RefObject<HTMLDivElement>;
+  variant?: "hero";
 }) {
+  const isHero = variant === "hero";
   return (
     <section
       ref={panelRef}
       tabIndex={-1}
-      className="flex max-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-xl border border-rule bg-paper-2/40 elev-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className={`flex max-h-[calc(100dvh-8.5rem)] flex-col overflow-hidden rounded-2xl border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+        isHero
+          ? "border-accent/30 bg-paper/95 elev-md"
+          : "border-rule/80 bg-paper-2/50 elev-sm backdrop-blur-sm"
+      }`}
     >
-      <header className="flex items-center gap-1.5 border-b border-rule bg-paper-3/40 px-3 py-2">
-        <span className="text-ink-3" aria-hidden>{icon}</span>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2">
-          {title}
-        </h2>
+      <header
+        className={`flex items-center justify-between border-b px-4 py-2.5 ${
+          isHero ? "border-accent/20 bg-accent/10" : "border-rule/80 bg-paper-3/50"
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <span className={isHero ? "text-accent" : "text-ink-3"} aria-hidden>{icon}</span>
+          <h2
+            className={`text-xs font-bold uppercase tracking-wider ${
+              isHero ? "text-accent" : "text-ink"
+            }`}
+          >
+            {title}
+          </h2>
+        </div>
+        {isHero && (
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-accent/80">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-slow" />
+            TOPOLOGY
+          </span>
+        )}
       </header>
       <div className="flex-1 overflow-y-auto p-3">{children}</div>
     </section>
